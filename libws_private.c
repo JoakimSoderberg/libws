@@ -9,11 +9,43 @@ void _ws_event_callback(struct bufferevent *bev, short events, void *ptr)
 	ws_t ws = (ws_t)ptr;
 	assert(ws != NULL);
 
-	switch (events)
+	if (events & BEV_EVENT_CONNECTED)
 	{
-		case BEV_EVENT_CONNECTED:
-			break;
+		char buf[1024];
+		LIBWS_LOG(LIBWS_DEBUG, "Connected to %s", ws_get_uri(ws, buf, sizeof(buf)));
+
+		if (ws->connect_cb)
+		{
+			ws->connect_cb(ws, ws->connect_arg)
+		}
 	}
+
+	if (events & BEV_EVENT_EOF)
+	{
+		
+	}
+	
+	if (events & BEV_EVENT_ERROR)
+	{
+		char *err_msg;
+		int err;
+		LIBWS_LOG(LIBWS_DEBUG, "Error raised");
+
+		if (ws->state == WS_STATE_DNS_LOOKUP)
+		{
+			err = bufferevent_socket_get_dns_error(ws->bev);
+			err_msg = evutil_gai_strerror(err);
+
+			LIBWS_LOG(LIBWS_ERR, "DNS error %d: %s", err, err_msg);
+
+			if (ws->err_cb)
+			{
+				ws->err_cb(ws, err, err_msg, ws->err_arg);
+			}
+		}
+	}
+			
+
 
 }
 

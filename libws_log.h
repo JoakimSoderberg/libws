@@ -4,6 +4,7 @@
 
 #include "libws_config.h"
 
+#define LIBWS_NONE		(0 << 0)
 #define LIBWS_CRIT		(1 << 0)
 #define LIBWS_ERR		(1 << 1)
 #define LIBWS_WARN		(1 << 2)
@@ -21,7 +22,6 @@
 #define _LIBWS_FUNC_	__func__
 #endif
 
-
 #ifdef LIBWS_WITH_LOG
 
 #define LIBWS_LOG(prio, fmt, ...) \
@@ -31,10 +31,14 @@ void libws_log(int prio, const char *file,
 	const char *func, int line, const char *fmt, ...);
 #else
 	#define LIBWS_LOG(prio, fmt, ...)
-#endif // LIBWS_WITH_LOG
 
+#define LIBWS_TRACE(LIBWS_TRACE)
+
+#endif // LIBWS_WITH_LOG
 
 #define LIBWS_LOG_MASK(priority) (1 << (priority))
 #define LIBWS_LOG_UPTO(priority) ((priority) | ((priority) - 1))
+
+int libws_set_log_level(int prio);
 
 #endif // __LIBWS_H__

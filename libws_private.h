@@ -15,8 +15,22 @@
 #include <event2/bufferevent_ssl.h>
 #endif // LIBWS_WITH_OPENSSL
 
+
+typedef struct ws_base_s
+{
+	int debug_level;
+
+	#ifdef LIBWS_WITH_OPENSSL
+
+	SSL_CTX 				*ssl_ctx;
+
+	#endif // LIBWS_WITH_OPENSSL
+} ws_base_s;
+
 typedef struct ws_s
 {
+	ws_state_t				state;
+
 	struct event_base		*base;
 	struct evdns_base 		*dns_base;
 
@@ -44,17 +58,24 @@ typedef struct ws_s
 	struct timeval			send_timeout;
 	void					*send_timeout_arg;
 
+	ws_msg_callback_f		pong_cb;
+	void					*poing_arg;
+
+	void					*user_state;
+
 	char 					*server;
 	char					*uri;
 	int						port;
 
 	int						binary_mode;
 
+	int						debug_level;
+	ws_base_t				*ws_base;
+
 	#ifdef LIBWS_WITH_OPENSSL
 
 	int 					use_ssl;
-	SSL 					*ssl_ctx;
-	
+
 	#endif // LIBWS_WITH_OPENSSL
 } ws_s;
 
@@ -62,5 +83,7 @@ void _ws_event_callback(struct bufferevent *bev, short events, void *ptr);
 void _ws_read_callback(struct bufferevent *bev, short events, void *ptr);
 void _ws_write_callback(struct bufferevent *bev, short events, void *ptr);
 int _create_bufferevent_socket(ws_t ws);
+
+
 
 #endif // __LIBWS_PRIVATE_H__
