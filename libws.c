@@ -7,6 +7,9 @@
 #include "libws.h"
 #include "libws_private.h"
 #include "libws_log.h"
+#ifdef LIBWS_WITH_OPENSSL
+#include "libws_openssl.h"
+#endif
 
 int ws_global_init(ws_base_t *base)
 {
@@ -22,31 +25,12 @@ int ws_global_init(ws_base_t *base)
 
 	b = *base;
 
-	b->debug_level = LIBWS_NONE;
-
 	#ifdef LIBWS_WITH_OPENSSL
-
-	SSL_library_init();
-	SSL_load_error_strings();
-
-	if (!RAND_poll())
+	if (_ws_global_openssl_init(b)) 
 	{
-		LIBWS_LOG(LIBWS_CRIT, "Got no random source, cannot init OpenSSL");
 		return -1;
 	}
-
-	// Setup the SSL context.
-	{
-		SSL_METHOD *ssl_method = SSLvs23_client_method();
-
-		if (!(b->ssl_ctx = SSL_CTX_new(ssl_method)))
-		{
-			LIBWS_LOG(LIBWS_ERR, "Failed to create OpenSSL context");
-			return -1;
-		}
-	}
-
-	#endif // LIBWS_WITH_OPENSSL
+	#endif
 
 	return 0;
 }
@@ -60,14 +44,11 @@ void ws_global_destroy(ws_base_t *base)
 	b = *base;
 
 	#ifdef LIBWS_WITH_OPENSSL
+	_ws_global_openssl_destroy(b);
+	#endif
 
-	if (b->ssl_ctx)
-	{		
-		SSL_CTX_free(b->ssl_ctx);
-		b->ssl_ctx = NULL;
-	}
-
-	#endif // LIBWS_WITH_OPENSSL
+	free(*base);
+	*base = NULL;
 
 	return 0;
 }
@@ -138,14 +119,8 @@ void ws_destroy(ws_t *ws)
 	}
 
 	#ifdef LIBWS_WITH_OPENSSL
-
-	if (w->ssl_ctx)
-	{
-		SSL_CTX_free(w->ssl_ctx);
-		w->ssl_ctx = NULL;
-	}
-
-	#endif // LIBWS_WITH_OPENSSL
+	_ws_openssl_destroy(ws);
+	#endif
 
 	free(w);
 	*ws = NULL;
@@ -176,7 +151,7 @@ int ws_connect(ws_t ws, const char *server, int port, const char *uri)
 		return -1;
 	}
 
-	if (_create_bufferevent_socket(ws))
+	if (_ws_create_bufferevent_socket(ws))
 	{
 		LIBWS_LOG(LIBWS_ERR, "Failed to create bufferevent socket");
 		return -1;
@@ -211,26 +186,8 @@ int ws_close(ws_t ws)
 	ws->state = WS_STATE_DISCONNECTING;
 
 	#ifdef LIBWS_WITH_OPENSSL
-
-	//
-	// SSL_RECEIVED_SHUTDOWN tells SSL_shutdown to act as if we had already
-	// received a close notify from the other end.  SSL_shutdown will then
-	// send the final close notify in reply.  The other end will receive the
-	// close notify and send theirs.  By this time, we will have already
-	// closed the socket and the other end's real close notify will never be
-	// received.  In effect, both sides will think that they have completed a
-	// clean shutdown and keep their sessions valid.  This strategy will fail
-	// if the socket is not ready for writing, in which case this hack will
-	// lead to an unclean shutdown and lost session on the other end.
-	//
-	if (ws->ssl)
-	{
-		SSL_set_shutdown(ws->ssl, SSL_RECEIVED_SHUTDOWN);
-		SSL_shutdown(ws->ssl);
-		ws->ssl = NULL;
-	}
-
-	#endif // LIBWS_WITH_OPENSSL
+	_ws_openssl_close(ws);
+	#endif
 
 	if (ws->bev)
 	{
@@ -256,13 +213,19 @@ int ws_service(ws_t ws)
 
 int ws_service_until_quit(ws_t ws)
 {
+	int ret;
 	assert(ws != NULL);
 
-	return event_base_dispatch(ws->base);
+	ret = event_base_dispatch(ws->base);
+
+	ws->state = WS_STATE_DISCONNECTED;
+
+	return ret;
 }
 
 int ws_quit(ws_t ws, int let_running_events_complete)
 {
+	int ret;
 	assert(ws != NULL);
 
 	if (!ws->base)
@@ -271,12 +234,18 @@ int ws_quit(ws_t ws, int let_running_events_complete)
 		return -1;
 	}
 
+	ws_close(ws);
+
 	if (let_running_events_complete)
 	{
-		return event_base_loopexit(ws->base, NULL);
+		ret = event_base_loopexit(ws->base, NULL);
 	}
-	
-	return event_base_loopbreak(ws->base);
+	else
+	{
+		ret = event_base_loopbreak(ws->base);
+	}
+
+	return ret;
 }
 
 char *ws_get_uri(ws_t ws, char *buf, size_t bufsize)

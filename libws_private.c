@@ -16,13 +16,20 @@ void _ws_event_callback(struct bufferevent *bev, short events, void *ptr)
 
 		if (ws->connect_cb)
 		{
-			ws->connect_cb(ws, ws->connect_arg)
+			ws->connect_cb(ws, ws->connect_arg);
 		}
+
+		return;
 	}
 
 	if (events & BEV_EVENT_EOF)
 	{
-		
+		if (ws_close(ws))
+		{
+			LIBWS_LOG(LIBWS_ERR, "Error on websocket quit");
+		}
+
+		return;
 	}
 	
 	if (events & BEV_EVENT_ERROR)
@@ -42,11 +49,14 @@ void _ws_event_callback(struct bufferevent *bev, short events, void *ptr)
 			{
 				ws->err_cb(ws, err, err_msg, ws->err_arg);
 			}
+			else
+			{
+				ws_close(ws);
+			}
 		}
+
+		return;
 	}
-			
-
-
 }
 
 void _ws_read_callback(struct bufferevent *bev, short events, void *ptr)
@@ -65,20 +75,14 @@ void _ws_write_callback(struct bufferevent *bev, short events, void *ptr)
 
 }
 
-int _create_bufferevent_socket(ws_t ws)
+int _ws_create_bufferevent_socket(ws_t ws)
 {
 
 	#ifdef LIBWS_WITH_OPENSSL
 	if (ws->use_ssl)
 	{
-		assert(ws->ssl_ctx);
-
-		if (!(ws->bev = bufferevent_openssl_socket_new(ws->base, -1, 
-				ws->ssl_ctx, BUFFEREVENT_SSL_CONNECTING, BEV_OPT_CLOSE_ON_FREE)))
-		{
-			LIBWS_LOG(LIBWS_ERR, "Failed to create SSL socket");
+		if (_ws_create_bufferevent_openssl_socket(ws)) 
 			return -1;
-		}
 	}
 	else
 	#endif // LIBWS_WITH_OPENSSL

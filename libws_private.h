@@ -82,7 +82,7 @@ typedef struct ws_s
 void _ws_event_callback(struct bufferevent *bev, short events, void *ptr);
 void _ws_read_callback(struct bufferevent *bev, short events, void *ptr);
 void _ws_write_callback(struct bufferevent *bev, short events, void *ptr);
-int _create_bufferevent_socket(ws_t ws);
+int _ws_create_bufferevent_socket(ws_t ws);
 
 
 
