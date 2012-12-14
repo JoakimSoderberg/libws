@@ -32,13 +32,15 @@ void libws_log(int prio, const char *file,
 #else
 	#define LIBWS_LOG(prio, fmt, ...)
 
-#define LIBWS_TRACE(LIBWS_TRACE)
+#define LIBWS_LOGTRACE(fmt, ...) LIBWS_LOG(LIBWS_TRACE, fmt, ...)
 
 #endif // LIBWS_WITH_LOG
 
 #define LIBWS_LOG_MASK(priority) (1 << (priority))
 #define LIBWS_LOG_UPTO(priority) ((priority) | ((priority) - 1))
 
-int libws_set_log_level(int prio);
+void libws_set_log_level(ws_base_t base, int prio);
+int libws_get_log_level();
+
 
 #endif // __LIBWS_H__
