@@ -4,6 +4,54 @@
 #include "libws_log.h"
 #include "libws_private.h"
 
+static void _ws_connected_event(struct bufferevent *bev, short events, ws_t ws)
+{
+	char buf[1024];
+	LIBWS_LOG(LIBWS_DEBUG, "Connected to %s", ws_get_uri(ws, buf, sizeof(buf)));
+
+	if (ws->connect_cb)
+	{
+		ws->connect_cb(ws, ws->connect_arg);
+	}
+}
+
+static void _ws_eof_event(struct bufferevent *bev, short events, ws_t ws)
+{
+	if (ws->close_cb)
+	{
+		ws->close_cb(ws, close_arg);
+	}
+
+	if (ws_close(ws))
+	{
+		LIBWS_LOG(LIBWS_ERR, "Error on websocket quit");
+	}
+}
+
+static void _ws_error_event(struct bufferevent *bev, short events, ws_t ws)
+{
+	char *err_msg;
+	int err;
+	LIBWS_LOG(LIBWS_DEBUG, "Error raised");
+
+	if (ws->state == WS_STATE_DNS_LOOKUP)
+	{
+		err = bufferevent_socket_get_dns_error(ws->bev);
+		err_msg = evutil_gai_strerror(err);
+
+		LIBWS_LOG(LIBWS_ERR, "DNS error %d: %s", err, err_msg);
+
+		if (ws->err_cb)
+		{
+			ws->err_cb(ws, err, err_msg, ws->err_arg);
+		}
+		else
+		{
+			ws_close(ws);
+		}
+	}
+}
+
 void _ws_event_callback(struct bufferevent *bev, short events, void *ptr)
 {
 	ws_t ws = (ws_t)ptr;
@@ -11,55 +59,19 @@ void _ws_event_callback(struct bufferevent *bev, short events, void *ptr)
 
 	if (events & BEV_EVENT_CONNECTED)
 	{
-		char buf[1024];
-		LIBWS_LOG(LIBWS_DEBUG, "Connected to %s", ws_get_uri(ws, buf, sizeof(buf)));
-
-		if (ws->connect_cb)
-		{
-			ws->connect_cb(ws, ws->connect_arg);
-		}
-
+		_ws_connected_event(bev, events, ws);
 		return;
 	}
 
 	if (events & BEV_EVENT_EOF)
 	{
-		if (ws->close_cb)
-		{
-			ws->close_cb(ws, close_arg);
-		}
-
-		if (ws_close(ws))
-		{
-			LIBWS_LOG(LIBWS_ERR, "Error on websocket quit");
-		}
-
+		_ws_eof_event(bev, events, ws);
 		return;
 	}
 	
 	if (events & BEV_EVENT_ERROR)
 	{
-		char *err_msg;
-		int err;
-		LIBWS_LOG(LIBWS_DEBUG, "Error raised");
-
-		if (ws->state == WS_STATE_DNS_LOOKUP)
-		{
-			err = bufferevent_socket_get_dns_error(ws->bev);
-			err_msg = evutil_gai_strerror(err);
-
-			LIBWS_LOG(LIBWS_ERR, "DNS error %d: %s", err, err_msg);
-
-			if (ws->err_cb)
-			{
-				ws->err_cb(ws, err, err_msg, ws->err_arg);
-			}
-			else
-			{
-				ws_close(ws);
-			}
-		}
-
+		_ws_error_event(bev, events, ws);
 		return;
 	}
 }
@@ -69,7 +81,7 @@ void _ws_read_callback(struct bufferevent *bev, short events, void *ptr)
 	ws_t ws = (ws_t)ptr;
 	assert(ws != NULL);
 
-
+	char *buf = NULL;
 }
 
 void _ws_write_callback(struct bufferevent *bev, short events, void *ptr)

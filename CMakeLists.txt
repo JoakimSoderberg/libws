@@ -35,8 +35,22 @@ if (MSVC)
 	set(ADD_HEADERS_TO_SOURCE_LIST 1)
 endif()
 
-set(LIBWS_SOURCES libws.c)
-set(LIBWS_HEADERS libws.h)
+# Generate the config header file.
+configure_file(
+	"libws_config.h.in" 
+	"${PROJECT_BINARY_DIR}/libws_config.h"
+	)
+
+set(LIBWS_SOURCES 
+	libws.c
+	libws_private.c
+	libws_log.c)
+
+set(LIBWS_HEADERS 
+	libws.h
+	libws_private.h
+	libws_log.h
+	libws_compat.h)
 
 # With Visual Studio, the headers can be included in the project.
 if (ADD_HEADERS_TO_SOURCE_LIST)
