@@ -32,7 +32,7 @@ void libws_log(int prio, const char *file,
 #else
 	#define LIBWS_LOG(prio, fmt, ...)
 
-#define LIBWS_TRACE(LIBWS_TRACE)
+#define LIBWS_LOGTRACE(fmt, ...) LIBWS_LOG(LIBWS_TRACE, fmt, ...)
 
 #endif // LIBWS_WITH_LOG
 

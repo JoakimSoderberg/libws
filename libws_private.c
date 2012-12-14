@@ -24,6 +24,11 @@ void _ws_event_callback(struct bufferevent *bev, short events, void *ptr)
 
 	if (events & BEV_EVENT_EOF)
 	{
+		if (ws->close_cb)
+		{
+			ws->close_cb(ws, close_arg);
+		}
+
 		if (ws_close(ws))
 		{
 			LIBWS_LOG(LIBWS_ERR, "Error on websocket quit");
