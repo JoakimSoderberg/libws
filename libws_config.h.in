@@ -2,6 +2,6 @@
 #ifndef __LIBWS_CONFIG_H__
 #define __LIBWS_CONFIG_H__
 
-#cmakedefine LIBWS_WITH_SSL 1
+#cmakedefine LIBWS_WITH_OPENSSL 1
 
 #endif // __LIBWS_CONFIG_H__
