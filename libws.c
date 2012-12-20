@@ -195,6 +195,13 @@ int ws_close(ws_t ws)
 		ws->bev = NULL;
 	}
 
+	if (ws->close_cb)
+	{
+		// TODO: Make up some reasons for closing :D
+		int reason = 0;
+		ws->close_cb(ws, reason, close_arg);
+	}
+
 	return 0;
 }
 

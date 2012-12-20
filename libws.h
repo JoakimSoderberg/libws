@@ -35,8 +35,13 @@ void ws_destroy(ws_t *ws);
 
 int ws_connect(ws_t ws, const char *server, int port, const char *uri);
 
-//int ws_connect(ws_t ws, const char *uri);
-
+///
+/// Closes the websocket connection.
+///
+/// @param ws 	The websocket context to close.
+///
+/// @returns 0 on success. -1 on failure.
+///
 int ws_close(ws_t ws);
 
 ///
@@ -48,6 +53,14 @@ int ws_close(ws_t ws);
 ///
 int ws_service(ws_t ws);
 
+///
+/// Services the Websocket connection blocking until
+/// the connection is quit.
+///
+/// @param[in] ws 	The websocket context.
+///
+/// @returns		0 on success, -1 otherwise.
+///
 int ws_service_until_quit(ws_t ws);
 
 int ws_quit(ws_t ws, int let_running_events_complete);
@@ -86,6 +99,11 @@ void *ws_get_user_state(ws_t ws);
 
 int ws_get_uri(ws_t ws, char *buf, size_t bufsize);
 
+///
+/// Gets the websocket state.
+///
+/// @param[in]	ws 	The websocket context.
+///
 ws_state_t ws_get_state(ws_t ws);
 
 #ifdef LIBWS_WITH_OPENSSL
