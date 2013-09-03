@@ -8,11 +8,33 @@
 #include <stdio.h>
 #include <event2/event.h>
 
-int ws_global_init();
+///
+/// Initializes the global context for the library that's common
+/// for all connections.
+///
+/// @param[out]	base 	A pointer to a #ws_base_t to use as global context.
+///
+/// @returns 			0 on success.
+///
+int ws_global_init(ws_base_t *base);
 
-void ws_global_destroy();
+///
+/// Destroys the global context of the library.
+///
+/// @param[in]	base 	The global context to destroy.
+///
+void ws_global_destroy(ws_base_t base);
 
-int ws_init(ws_t *ws, ws_base_t ws_base);
+///
+/// Initializes a new Websocket connection context and ties
+/// it to a global context.
+///
+/// @param[out]	ws 		Websocket context.
+/// @param[in]	base 	The global websocket context.
+///
+/// @returns			0 on success.
+///
+int ws_init(ws_t *ws, ws_base_t base);
 
 void ws_destroy(ws_t *ws);
 

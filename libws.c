@@ -52,6 +52,8 @@ void ws_global_destroy(ws_base_t *base)
 
 	free(*base);
 	*base = NULL;
+
+	// TODO: Should we destroy all connections here as well?
 }
 
 int ws_init(ws_t *ws, ws_base_t ws_base)
