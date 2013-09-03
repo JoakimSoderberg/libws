@@ -1,12 +1,14 @@
 
 #include "libws_config.h"
 
+#include <event2/event.h>
 #include <stdio.h>
 #include <sys/socket.h>
 #include <assert.h>
+#include "libws_types.h"
+#include "libws_log.h"
 #include "libws.h"
 #include "libws_private.h"
-#include "libws_log.h"
 #ifdef LIBWS_WITH_OPENSSL
 #include "libws_openssl.h"
 #endif
@@ -26,8 +28,9 @@ int ws_global_init(ws_base_t *base)
 	b = *base;
 
 	#ifdef LIBWS_WITH_OPENSSL
-	if (_ws_global_openssl_init(b)) 
+	if (_ws_global_openssl_init(b))
 	{
+		LIBWS_LOG(LIBWS_CRIT, "Failed to init OpenSSL");
 		return -1;
 	}
 	#endif
@@ -49,18 +52,16 @@ void ws_global_destroy(ws_base_t *base)
 
 	free(*base);
 	*base = NULL;
-
-	return 0;
 }
 
 int ws_init(ws_t *ws, ws_base_t ws_base)
 {
-	ws_t w = NULL;
+	struct ws_s *w = NULL;
 
 	assert(ws != NULL);
 	assert(ws_base != NULL);
 
-	if (!(*ws = (ws_s *)calloc(1, sizeof(ws_s))))
+	if (!(*ws = (struct ws_s *)calloc(1, sizeof(struct ws_s))))
 	{
 		LIBWS_LOG(LIBWS_CRIT, "Out of memory!");
 		return -1;
@@ -79,7 +80,7 @@ int ws_init(ws_t *ws, ws_base_t ws_base)
 			goto fail;
 		}
 
-		if (!(w->dns_base = evdns_base_new()))
+		if (!(w->dns_base = evdns_base_new(w->base, 1)))
 		{
 			LIBWS_LOG(LIBWS_CRIT, "Out of memory!");
 			goto fail;
@@ -88,10 +89,10 @@ int ws_init(ws_t *ws, ws_base_t ws_base)
 
 	return 0;
 fail:
-	if (ws->base)
+	if (w->base)
 	{
-		event_base_free(ws->base);
-		ws->base = NULL;
+		event_base_free(w->base);
+		w->base = NULL;
 	}
 
 	return -1;
@@ -99,10 +100,10 @@ fail:
 
 void ws_destroy(ws_t *ws)
 {
-	ws_t w;
+	struct ws_s *w;
 
 	if (!ws)
-		return 0;
+		return;
 	
 	w = *ws;
 
@@ -119,7 +120,7 @@ void ws_destroy(ws_t *ws)
 	}
 
 	#ifdef LIBWS_WITH_OPENSSL
-	_ws_openssl_destroy(ws);
+	_ws_openssl_destroy(w);
 	#endif
 
 	free(w);
@@ -140,7 +141,7 @@ int ws_connect(ws_t ws, const char *server, int port, const char *uri)
 	{
 		if (ws_close(ws))
 		{
-			LIBWS_LOG(LIBWS_ERR, "")
+			LIBWS_LOG(LIBWS_ERR, "Already connected");
 			return -1;
 		}
 	}
@@ -160,7 +161,8 @@ int ws_connect(ws_t ws, const char *server, int port, const char *uri)
 	// TODO: Add Websocket magic stuff to buf.
 	evbuffer_add_printf(bufferevent_get_output(ws->bev), "");
 	
-	if (bufferevent_socket_connect_hostname(ws->base, ws->dns_base, AF_UNSPEC, server, port))
+	if (bufferevent_socket_connect_hostname(ws->bev, 
+				ws->dns_base, AF_UNSPEC, server, port))
 	{
 		LIBWS_LOG(LIBWS_ERR, "Failed to create connect event");
 		return -1;
@@ -199,7 +201,7 @@ int ws_close(ws_t ws)
 	{
 		// TODO: Make up some reasons for closing :D
 		int reason = 0;
-		ws->close_cb(ws, reason, close_arg);
+		ws->close_cb(ws, reason, ws->close_arg);
 	}
 
 	return 0;
@@ -266,7 +268,7 @@ char *ws_get_uri(ws_t ws, char *buf, size_t bufsize)
 	}
 
 	// TODO: Check return value?
-	evutil_vsnprintf(buf, bufsize, "%s://%s:%d/%s", 
+	evutil_snprintf(buf, bufsize, "%s://%s:%d/%s", 
 		(ws->use_ssl != LIBWS_SSL_OFF) ? "wss" : "ws", 
 		ws->server,
 		ws->port,

@@ -3,27 +3,10 @@
 #define __LIBWS_H__
 
 #include "libws_config.h"
+#include "libws_types.h"
 
 #include <stdio.h>
 #include <event2/event.h>
-
-typedef struct ws_s *ws_t;
-typedef struct ws_base_s *ws_base_t;
-
-typedef enum ws_state_e
-{
-	WS_STATE_DNS_LOOKUP,
-	WS_STATE_DISCONNECTING,
-	WS_STATE_DISCONNECTED,
-	WS_STATE_CONNECTING,
-	WS_STATE_CONNECTED
-} ws_state_t;
-
-typedef void (*ws_msg_callback_f)(ws_t ws, const char *msg, size_t len, void *arg);
-typedef void (*ws_err_callback_f)(ws_t ws, int errcode, const char *errmsg, void *arg);
-typedef void (*ws_close_callback_f)(ws_t ws, int reason, void *arg);
-typedef void (*ws_connect_callback_f)(ws_t ws, void *arg);
-typedef void (*ws_timeout_callback_f)(ws_t ws, void *arg);
 
 int ws_global_init();
 
@@ -63,6 +46,10 @@ int ws_service(ws_t ws);
 ///
 int ws_service_until_quit(ws_t ws);
 
+///
+/// Quit
+///
+///
 int ws_quit(ws_t ws, int let_running_events_complete);
 
 int ws_send_msg(ws_t ws, const char *msg, size_t len);
@@ -107,13 +94,6 @@ int ws_get_uri(ws_t ws, char *buf, size_t bufsize);
 ws_state_t ws_get_state(ws_t ws);
 
 #ifdef LIBWS_WITH_OPENSSL
-
-typedef enum libws_ssl_state_e
-{
-	LIBWS_SSL_OFF,
-	LIBWS_SSL_ON,
-	LIBWS_SSL_SELFSIGNED
-} libws_ssl_state_t;
 
 int ws_set_ssl_state(ws_t ws, libws_ssl_state_t ssl);
 

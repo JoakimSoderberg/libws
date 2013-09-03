@@ -1,6 +1,8 @@
 
 #include "libws_config.h"
 
+#include <stdio.h>
+
 #include "libws_log.h"
 #include "libws_private.h"
 
@@ -19,7 +21,8 @@ static void _ws_eof_event(struct bufferevent *bev, short events, ws_t ws)
 {
 	if (ws->close_cb)
 	{
-		ws->close_cb(ws, close_arg);
+		// TODO: Pass a reason.
+		ws->close_cb(ws, 0, ws->close_arg);
 	}
 
 	if (ws_close(ws))
@@ -30,7 +33,7 @@ static void _ws_eof_event(struct bufferevent *bev, short events, ws_t ws)
 
 static void _ws_error_event(struct bufferevent *bev, short events, ws_t ws)
 {
-	char *err_msg;
+	const char *err_msg;
 	int err;
 	LIBWS_LOG(LIBWS_DEBUG, "Error raised");
 
@@ -76,7 +79,7 @@ void _ws_event_callback(struct bufferevent *bev, short events, void *ptr)
 	}
 }
 
-void _ws_read_callback(struct bufferevent *bev, short events, void *ptr)
+void _ws_read_callback(struct bufferevent *bev, void *ptr)
 {
 	ws_t ws = (ws_t)ptr;
 	assert(ws != NULL);
@@ -84,7 +87,7 @@ void _ws_read_callback(struct bufferevent *bev, short events, void *ptr)
 	char *buf = NULL;
 }
 
-void _ws_write_callback(struct bufferevent *bev, short events, void *ptr)
+void _ws_write_callback(struct bufferevent *bev, void *ptr)
 {
 	ws_t ws = (ws_t)ptr;
 	assert(ws != NULL);
@@ -99,27 +102,31 @@ int _ws_create_bufferevent_socket(ws_t ws)
 	if (ws->use_ssl)
 	{
 		if (_ws_create_bufferevent_openssl_socket(ws)) 
+		{
 			return -1;
+		}
 	}
 	else
 	#endif // LIBWS_WITH_OPENSSL
 	{
-		if (!(ws->bev = bufferevent_socket_new(ws->base, -1, BEV_OPT_CLOSE_ON_FREE))
+		if (!(ws->bev = bufferevent_socket_new(ws->base, -1, 
+										BEV_OPT_CLOSE_ON_FREE)))
 		{
 			LIBWS_LOG(LIBWS_ERR, "Failed to create socket");
 			return -1;
 		}
 	}
 
-	bufferevent_setcb(ws->bev, _ws_read_callback, _ws_write_callback, _ws_event_callback, (void *)ws);
+	bufferevent_setcb(ws->bev, _ws_read_callback, _ws_write_callback, 
+					_ws_event_callback, (void *)ws);
 
 	bufferevent_enable(ws->bev, EV_READ | EV_WRITE);
 
 	return 0;
 fail:
-	if (w->bev)
+	if (ws->bev)
 	{
-		bufferevent_free(w->bev);
+		bufferevent_free(ws->bev);
 	}
 
 	return -1;

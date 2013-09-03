@@ -1,10 +1,12 @@
 
+#include "libws_log.h"
 #include "libws.h"
 #include "libws_private.h"
 #include "libws_openssl.h"
+#include "openssl/ssl.h"
 
 
-void _ws_global_openssl_init(ws_base_t ws_base)
+int _ws_global_openssl_init(ws_base_t ws_base)
 {
 	SSL_library_init();
 	SSL_load_error_strings();
@@ -17,7 +19,7 @@ void _ws_global_openssl_init(ws_base_t ws_base)
 
 	// Setup the SSL context.
 	{
-		SSL_METHOD *ssl_method = SSLvs23_client_method();
+		SSL_METHOD *ssl_method = SSLv23_client_method();
 
 		if (!(ws_base->ssl_ctx = SSL_CTX_new(ssl_method)))
 		{
@@ -43,10 +45,10 @@ int _ws_openssl_init(ws_t ws, ws_base_t ws_base)
 
 void _ws_openssl_destroy(ws_t ws)
 {
-	if (ws->ssl_ctx)
+	if (ws->ws_base->ssl_ctx)
 	{
-		SSL_CTX_free(ws->ssl_ctx);
-		ws->ssl_ctx = NULL;
+		SSL_CTX_free(ws->ws_base->ssl_ctx);
+		ws->ws_base->ssl_ctx = NULL;
 	}
 }
 
@@ -75,11 +77,11 @@ int _ws_openssl_close(ws_t ws)
 
 int _ws_create_bufferevent_openssl_socket(ws_t ws)
 {
-	assert(ws->ssl_ctx);
-	assert(ws->use_ssl);
+	assert(ws->ws_base->ssl_ctx);
+	assert(ws->ssl);
 
 	if (!(ws->bev = bufferevent_openssl_socket_new(ws->base, -1, 
-			ws->ssl_ctx, BUFFEREVENT_SSL_CONNECTING, BEV_OPT_CLOSE_ON_FREE)))
+			ws->ssl, BUFFEREVENT_SSL_CONNECTING, BEV_OPT_CLOSE_ON_FREE)))
 	{
 		LIBWS_LOG(LIBWS_ERR, "Failed to create SSL socket");
 		return -1;

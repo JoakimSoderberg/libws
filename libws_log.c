@@ -1,12 +1,16 @@
 
 #include "libws_config.h"
 
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdarg.h>
+
+#include "libws_log.h"
 #include "libws.h"
 #include "libws_private.h"
-#include "libws_log.h"
 
 static int _ws_log_level = LIBWS_NONE;
-static ws_log_callback_f _ws_log_cb = NULL;
+static ws_log_callback_f _ws_log_cb;
 
 const char *ws_log_get_prio_str(int prio)
 {
@@ -27,7 +31,7 @@ const char *ws_log_get_prio_str(int prio)
 void libws_default_log_cb(int prio, const char *file, 
 	const char *func, int line, const char *fmt, va_list args)
 {
-	int fd = stdio;
+	FILE *fd = stdout;
 
 	switch (prio)
 	{
@@ -40,17 +44,17 @@ void libws_default_log_cb(int prio, const char *file,
 		case LIBWS_DEBUG:
 		case LIBWS_DEBUG2:
 		case LIBWS_TRACE:
-			fd = stdio;
+			fd = stdout;
 			break;
 	}
 
 	fprintf(fd, "%s, %s(),%d: ", ws_log_get_prio_str(prio), func, line);
-	vfprintf(fd, fmt, va_args);
+	vfprintf(fd, fmt, args);
 	fprintf(fd, "\n");
 }
 
 void libws_log(int prio, const char *file, 
-	const char *func, int line, const char *fmt, ...);
+	const char *func, int line, const char *fmt, ...)
 {
 	va_list args;
 
@@ -64,7 +68,7 @@ void libws_log(int prio, const char *file,
 	{
 		va_start(args, fmt);
 		_ws_log_cb(prio, file, func, line, fmt, args);
-		va_end(args)
+		va_end(args);
 	}
 }
 

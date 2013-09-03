@@ -11,10 +11,13 @@
 ///
 
 #include "libws_config.h"
+#include "libws_log.h"
+#include "libws_types.h"
 
-#include "libws.h"
+//#include "libws.h"
 #include <event2/event.h>
 #include <event2/bufferevent.h>
+//#include <event2/evdns.h>
 
 #ifdef LIBWS_WITH_OPENSSL
 #include <openssl/bio.h>
@@ -44,9 +47,10 @@ typedef struct ws_s
 
 	struct event_base		*base;				///< Libevent event base.
 	struct evdns_base 		*dns_base;			///< Libevent DNS base.
+	struct bufferevent 		*bev;				///< Buffer event socket.
 
 	ws_msg_callback_f		msg_cb;				///< Callback for when a message is received on the websocket.
-	void 					*msg_arg			///< The user supplied argument to pass to the ws_s#msg_cb callback.
+	void 					*msg_arg;			///< The user supplied argument to pass to the ws_s#msg_cb callback.
 
 	ws_err_callback_f 		err_cb;				///< Callback for when an error occurs on the websocket connection.
 	void					*err_arg;			///< The user supplied argument to pass to the ws_s#error_cb callback.
@@ -81,11 +85,12 @@ typedef struct ws_s
 	int						binary_mode;
 
 	int						debug_level;
-	ws_base_t				*ws_base;
+	struct ws_base_s		*ws_base;
 
 	#ifdef LIBWS_WITH_OPENSSL
 
 	int 					use_ssl;
+	SSL 					*ssl;
 
 	#endif // LIBWS_WITH_OPENSSL
 } ws_s;
@@ -100,18 +105,18 @@ void _ws_event_callback(struct bufferevent *bev, short events, void *ptr);
 /// Libevent bufferevent callback for when there is datata to be read
 /// on the websocket socket.
 ///
-void _ws_read_callback(struct bufferevent *bev, short events, void *ptr);
+void _ws_read_callback(struct bufferevent *bev, void *ptr);
 
 ///
 /// Libevent bufferevent callback for when a write is done on
 /// the websocket socket.
 ///
-void _ws_write_callback(struct bufferevent *bev, short events, void *ptr);
+void _ws_write_callback(struct bufferevent *bev, void *ptr);
 
 ///
 /// Helper function for creating a bufferevent socket.
 ///
-int _ws_create_bufferevent_socket(ws_t ws);
+int _ws_create_bufferevent_socket(ws_s *ws);
 
 
 
