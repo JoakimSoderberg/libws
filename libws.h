@@ -36,8 +36,23 @@ void ws_global_destroy(ws_base_t base);
 ///
 int ws_init(ws_t *ws, ws_base_t base);
 
+///
+/// Destroys a Websocket connecton context.
+///
+/// @param[in]	ws 	The context.
+///
 void ws_destroy(ws_t *ws);
 
+///
+/// Connects to a Websocket on a specified server.
+///
+/// @param[in]	ws 		Websocket context.
+/// @param[in]	server	Websocket server hostname.
+/// @param[in]	port	Websocket server port.
+/// @param[in]	uri 	The websocket uri.
+///
+/// @returns			0 on success.
+///
 int ws_connect(ws_t ws, const char *server, int port, const char *uri);
 
 ///
