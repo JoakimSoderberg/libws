@@ -8,6 +8,7 @@
 #include "libws_types.h"
 #include "libws_log.h"
 #include "libws.h"
+#include "libws_protocol.h"
 #include "libws_private.h"
 #ifdef LIBWS_WITH_OPENSSL
 #include "libws_openssl.h"
@@ -293,4 +294,74 @@ void *ws_get_user_state(ws_t ws)
 	return ws->user_state;
 }
 
+
+int ws_msg_frame_data_begin(ws_t ws, size_t datalen)
+{
+
+}
+
+int ws_msg_frame_data_send(ws_t ws, const char *data, size_t datalen)
+{
+}
+
+int ws_msg_begin(ws_t ws, ws_frame_type_t type)
+{
+	// TODO: Create and send save the header in the send state.
+	memset(&ws->header, 0, sizeof(ws_header_t));
+	
+	ws->header.fin = 0;
+	ws->header.rsv1 = 0;
+	ws->header.rsv2 = 0;
+	ws->header.rsv3 = 0;
+	ws->header.opcode = ws->binary_mode ? 
+						WS_OPCODE_BINARY : WS_OPCODE_TEXT;
+	
+}
+
+int ws_msg_frame_send(ws_t ws, const char *frame_data, size_t datalen)
+{
+	// TODO: Set the length in the header.
+	ws->header.opcode = WS_OPCODE_CONTINUATION;
+
+	ws->
+	
+	if (ws_msg_frame_data_begin(ws, datalen))
+	{
+		return -1;
+	}
+
+	if (ws_msg_frame_data_send(ws, frame_data, datalen))
+	{
+		return -1;
+	}
+
+	return 0;
+}
+
+int ws_msg_end(ws_t ws)
+{
+	// TODO: Write a frame with FIN bit set.
+}
+
+int ws_send_msg(ws_t ws, const char *msg, size_t len)
+{
+	assert(ws != null);
+
+	if (ws_msg_begin(ws))
+	{
+		return -1;
+	}
+
+	if (ws_msg_frame_send(ws, msg, len))
+	{
+		return -1;
+	}
+
+	if (ws_msg_end(ws))
+	{
+		return -1;
+	}
+
+	return 0;
+}
 

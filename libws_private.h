@@ -87,6 +87,8 @@ typedef struct ws_s
 	int						debug_level;
 	struct ws_base_s		*ws_base;
 
+	size_t					max_frame_size;		///< The max frame size to allow before chunking.
+	ws_header_t				header;
 	size_t					frame_size;			///< The frame size of the frame currently being sent.
 	size_t					frame_data_sent;	///< The number of bytes sent so far of the current frame.
 	ws_send_state_t			send_state;			///< The state for sending data.

@@ -4,6 +4,7 @@
 
 #include "libws_config.h"
 #include "libws_types.h"
+#include "libws_protocol.h"
 
 #include <stdio.h>
 #include <event2/event.h>
@@ -89,7 +90,7 @@ int ws_service_until_quit(ws_t ws);
 /// @param[in] ws 	The websocket session context.
 /// @param[in] let_running_events_complete
 ///					Should we let pending events run, or quit
-///					right awawy?
+///					right away?
 ///
 /// @returns		0 on success.
 ///
@@ -106,7 +107,6 @@ int ws_quit(ws_t ws, int let_running_events_complete);
 ///
 int ws_send_msg(ws_t ws, const char *msg, size_t len);
 
-#if 0
 //
 // Based on this API:
 // http://autobahn.ws/python/tutorials/streaming
@@ -143,7 +143,7 @@ int ws_msg_frame_send(ws_t ws, const char *frame_data, size_t datalen);
 int ws_msg_end(ws_t ws);
 
 ///
-/// Starts sending the data for the given frame.
+/// Starts sending the data for a websocket frame.
 /// Note that there is no ws_msg_frame_data_end, since the length
 /// is given at the beginning of the frame.
 ///
@@ -167,8 +167,9 @@ int ws_msg_frame_data_begin(ws_t ws, size_t datalen);
 ///
 int ws_msg_frame_data_send(ws_t ws, const char *data, size_t datalen);
 
-#endif
 int ws_send_ping(ws_t ws);
+
+int ws_set_max_frame_size(ws_t ws, size_t max_frame_size);
 
 // TODO: Add onmsg_begin, onmsg_frame, onmsg_end
 
