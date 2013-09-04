@@ -77,21 +77,100 @@ int ws_service(ws_t ws);
 /// Services the Websocket connection blocking until
 /// the connection is quit.
 ///
-/// @param[in] ws 	The websocket context.
+/// @param[in] ws 	The websocket session context.
 ///
 /// @returns		0 on success, -1 otherwise.
 ///
 int ws_service_until_quit(ws_t ws);
 
 ///
-/// Quit
+/// Quit/disconnect from a websocket connection.
 ///
+/// @param[in] ws 	The websocket session context.
+/// @param[in] let_running_events_complete
+///					Should we let pending events run, or quit
+///					right awawy?
+///
+/// @returns		0 on success.
 ///
 int ws_quit(ws_t ws, int let_running_events_complete);
 
+///
+/// Send a websocket message.
+///
+/// @param[in]	ws 		The websocket session context.
+/// @param[in]	msg 	The message payload.
+/// @param[in]	len 	The message length in octets.
+///
+/// @returns			0 on success.
+///
 int ws_send_msg(ws_t ws, const char *msg, size_t len);
 
+#if 0
+//
+// Based on this API:
+// http://autobahn.ws/python/tutorials/streaming
+//
+
+///
+/// Begin sending a websocket message of the given type.
+///
+/// @param[in]	ws 		The websocket session context.
+/// @param[in]	type 	The type of frame to send.
+///
+/// @returns			0 on success.
+///
+int ws_msg_begin(ws_t ws, ws_frame_type_t type);
+
+///
+/// Starts sending a websocket frame.
+///
+/// @param[in]	ws 			The websocket session context.
+/// @param[in]	frame_data 	The data for the frame.
+/// @param[in]	datalen		The size of the data to send.
+///
+/// @returns				0 on success.
+///
+int ws_msg_frame_send(ws_t ws, const char *frame_data, size_t datalen);
+
+///
+/// Ends the sending of a websocket message.
+///
+/// @param[in]	ws 		The websocket session context.
+///
+/// @returns			0 on success.
+///
+int ws_msg_end(ws_t ws);
+
+///
+/// Starts sending the data for the given frame.
+/// Note that there is no ws_msg_frame_data_end, since the length
+/// is given at the beginning of the frame.
+///
+/// @param[in]	ws 			The websocket session context.
+/// @param[in]	datalen		The total size of the frame data.
+///
+/// @returns				0 on success.
+///
+int ws_msg_frame_data_begin(ws_t ws, size_t datalen);
+
+///
+/// Sends frame data. Note that you're not allowed to send more
+/// data than was specified in the #ws_msg_frame_data_begin call.
+/// You can send in chunks if you wish though.
+///
+/// @param[in]	ws 		The websocket session context.
+/// @param[in]	data 	The frame payload data to send.
+/// @param[in]	datalen	The length of the frame payload.
+///
+/// @returns			0 on success.
+///
+int ws_msg_frame_data_send(ws_t ws, const char *data, size_t datalen);
+
+#endif
 int ws_send_ping(ws_t ws);
+
+// TODO: Add onmsg_begin, onmsg_frame, onmsg_end
 
 int ws_set_onmsg_cb(ws_t ws, ws_msg_callback_f func, void *arg);
 
