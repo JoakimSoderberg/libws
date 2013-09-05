@@ -320,6 +320,10 @@ int ws_msg_begin(ws_t ws, ws_frame_type_t type)
 
 int ws_msg_frame_data_begin(ws_t ws, uint64_t datalen)
 {
+	uint8_t b[WS_MAX_HEADER_SIZE];
+	size_t header_size = 0;
+	ws_header_t *h;
+
 	assert(ws);
 	_WS_MUST_BE_CONNECTED(ws, "frame data begin");
 
@@ -334,7 +338,62 @@ int ws_msg_frame_data_begin(ws_t ws, uint64_t datalen)
 		ws->header.opcode = WS_OPCODE_CONTINUATION;
 	}
 
-	// TODO: 
+	h = &ws->header;
+
+	//  7 6 5 4 3 2 1 0
+	// +-+-+-+-+-------+
+	// |F|R|R|R| opcode|
+	// |I|S|S|S|  (4)  |
+	// |N|V|V|V|       |
+	// | |1|2|3|       |
+	// +-+-+-+-+-------+
+	b[0] = 0;
+	b[0] |= ((!!h->fin)  << 7);
+	b[0] |= ((!!h->rsv1) << 6);
+	b[0] |= ((!!h->rsv2) << 5);
+	b[0] |= ((!!h->rsv3) << 4);
+	b[0] |= (h->opcode  & 0xF);
+
+	//  7 6 5 4 3 2 1 0
+	// +-+-------------+
+	// |M| Payload len |
+	// |A|     (7)     |
+	// |S|             |
+	// |K|             |
+	// +-+-------------+
+
+	b[1] = 0;
+	b[1] |= (1 << 7); // Masking bit. This MUST be set for a client.
+	
+	header_size = 2;
+
+	if (h->payload_len < 126)
+	{
+		// Use 1 byte for payload len.
+		b[1] |= h->payload_len;
+	}
+	else if (h->payload_len == 126)
+	{
+		// Use 2 bytes.
+		b[1] = 126;
+		((uint16_t *)&b[2]) = htons((uint16_t)h->payload_len);
+
+		header_size += 2;
+	}
+	else
+	{
+		header_size += 8; 
+	}	
+
+	/*
+	// TODO: Pack and send header.
+	if (ws_pack_header(&ws->header, header_buf, sizeof(header_buf)))
+	{
+		return -1;
+	}*/
+
+	ws_pack_header_payload_len(ws->header.payload_len, )
+
 
 	return 0;
 }

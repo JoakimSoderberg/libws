@@ -38,6 +38,14 @@ typedef enum ws_opcode_e
 	// 0xB - 0xF are reserved for further control frames.
 } ws_opcode_t;
 
+#define WS_MAX_PAYLOAD_LEN 0x7FFFFFFFFFFFFFFF
+
+#define WS_HDR_BASE_SIZE 2
+#define WS_HDR_PAYLOAD_LEN_SIZE 8
+#define WS_HDR_MASK_SIZE 4
+#define WS_HDR_MIN_SIZE WS_HDR_BASE_SIZE
+#define WS_HDR_MAX_SIZE (WS_HDR_BASE_SIZE + WS_HDR_PAYLOAD_LEN_SIZE + WS_HDR_MASK_SIZE)
+
 typedef struct ws_header_s
 {
 	uint8_t fin;
