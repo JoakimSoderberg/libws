@@ -105,7 +105,7 @@ int ws_quit(ws_t ws, int let_running_events_complete);
 ///
 /// @returns			0 on success.
 ///
-int ws_send_msg(ws_t ws, const char *msg, size_t len);
+int ws_send_msg(ws_t ws, const char *msg, uint64_t len);
 
 //
 // Based on this API:
@@ -131,7 +131,7 @@ int ws_msg_begin(ws_t ws, ws_frame_type_t type);
 ///
 /// @returns				0 on success.
 ///
-int ws_msg_frame_send(ws_t ws, const char *frame_data, size_t datalen);
+int ws_msg_frame_send(ws_t ws, const char *frame_data, uint64_t datalen);
 
 ///
 /// Ends the sending of a websocket message.
@@ -152,7 +152,7 @@ int ws_msg_end(ws_t ws);
 ///
 /// @returns				0 on success.
 ///
-int ws_msg_frame_data_begin(ws_t ws, size_t datalen);
+int ws_msg_frame_data_begin(ws_t ws, uint64_t datalen);
 
 ///
 /// Sends frame data. Note that you're not allowed to send more
@@ -165,11 +165,11 @@ int ws_msg_frame_data_begin(ws_t ws, size_t datalen);
 ///
 /// @returns			0 on success.
 ///
-int ws_msg_frame_data_send(ws_t ws, const char *data, size_t datalen);
+int ws_msg_frame_data_send(ws_t ws, const char *data, uint64_t datalen);
 
 int ws_send_ping(ws_t ws);
 
-int ws_set_max_frame_size(ws_t ws, size_t max_frame_size);
+int ws_set_max_frame_size(ws_t ws, uint64_t max_frame_size);
 
 // TODO: Add onmsg_begin, onmsg_frame, onmsg_end
 
@@ -212,8 +212,4 @@ ws_state_t ws_get_state(ws_t ws);
 
 #ifdef LIBWS_WITH_OPENSSL
 
-int ws_set_ssl_state(ws_t ws, libws_ssl_state_t ssl);
-
-#endif // LIBWS_WITH_OPENSSL
-
-#endif // __LIBWS_H__
+int ws_set_ssl_state(ws_t ws, lib

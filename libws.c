@@ -295,17 +295,21 @@ void *ws_get_user_state(ws_t ws)
 }
 
 
-int ws_msg_frame_data_begin(ws_t ws, size_t datalen)
+int ws_msg_frame_data_begin(ws_t ws, uint64_t datalen)
 {
-
+	// TODO: If not connected, fail.
 }
 
-int ws_msg_frame_data_send(ws_t ws, const char *data, size_t datalen)
+int ws_msg_frame_data_send(ws_t ws, const char *data, uint64_t datalen)
 {
+	// TODO: If not connected, fail.
+	// TODO: Only send as much data as was specified in the header if given a bigger payload.
 }
 
 int ws_msg_begin(ws_t ws, ws_frame_type_t type)
 {
+	// TODO: If not connected, fail.
+
 	// TODO: Create and send save the header in the send state.
 	memset(&ws->header, 0, sizeof(ws_header_t));
 	
@@ -318,8 +322,10 @@ int ws_msg_begin(ws_t ws, ws_frame_type_t type)
 	
 }
 
-int ws_msg_frame_send(ws_t ws, const char *frame_data, size_t datalen)
+int ws_msg_frame_send(ws_t ws, const char *frame_data, uint64_t datalen)
 {
+	// TODO: If not connected, fail.
+
 	// TODO: Set the length in the header.
 	ws->header.opcode = WS_OPCODE_CONTINUATION;
 
@@ -343,9 +349,10 @@ int ws_msg_end(ws_t ws)
 	// TODO: Write a frame with FIN bit set.
 }
 
-int ws_send_msg(ws_t ws, const char *msg, size_t len)
+int ws_send_msg(ws_t ws, const char *msg, uint64_t len)
 {
 	assert(ws != null);
+	// TODO: If not connected, fail.
 
 	if (ws_msg_begin(ws))
 	{

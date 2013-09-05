@@ -87,10 +87,10 @@ typedef struct ws_s
 	int						debug_level;
 	struct ws_base_s		*ws_base;
 
-	size_t					max_frame_size;		///< The max frame size to allow before chunking.
-	ws_header_t				header;
-	size_t					frame_size;			///< The frame size of the frame currently being sent.
-	size_t					frame_data_sent;	///< The number of bytes sent so far of the current frame.
+	uint64_t				max_frame_size;		///< The max frame size to allow before chunking.
+	//ws_header_t				header;				///< Header that's being sent for the current p
+	uint64_t				frame_size;			///< The frame size of the frame currently being sent.
+	uint64_t				frame_data_sent;	///< The number of bytes sent so far of the current frame.
 	ws_send_state_t			send_state;			///< The state for sending data.
 
 	#ifdef LIBWS_WITH_OPENSSL
@@ -120,10 +120,4 @@ void _ws_read_callback(struct bufferevent *bev, void *ptr);
 void _ws_write_callback(struct bufferevent *bev, void *ptr);
 
 ///
-/// Helper function for creating a bufferevent socket.
-///
-int _ws_create_bufferevent_socket(ws_s *ws);
-
-
-
-#endif // __LIBWS_PRIVATE_H__
+/// Helper function for creating a buff
