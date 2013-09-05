@@ -26,6 +26,14 @@
 #include <event2/bufferevent_ssl.h>
 #endif // LIBWS_WITH_OPENSSL
 
+typedef enum ws_send_state_e
+{
+	WS_SEND_STATE_NOTHING,
+	WS_SEND_STATE_MESSAGE_BEGIN,
+	WS_SEND_STATE_IN_MESSAGE,
+	WS_SEND_STATE_IN_MESSAGE_PAYLOAD
+} ws_send_state_t;
+
 ///
 /// Global context for the library.
 ///
@@ -88,7 +96,7 @@ typedef struct ws_s
 	struct ws_base_s		*ws_base;
 
 	uint64_t				max_frame_size;		///< The max frame size to allow before chunking.
-	//ws_header_t				header;				///< Header that's being sent for the current p
+	ws_header_t				header;				///< Header that's being sent for the current p
 	uint64_t				frame_size;			///< The frame size of the frame currently being sent.
 	uint64_t				frame_data_sent;	///< The number of bytes sent so far of the current frame.
 	ws_send_state_t			send_state;			///< The state for sending data.
@@ -119,5 +127,11 @@ void _ws_read_callback(struct bufferevent *bev, void *ptr);
 ///
 void _ws_write_callback(struct bufferevent *bev, void *ptr);
 
-///
-/// Helper function for creating a buff
+int _ws_create_bufferevent_socket(ws_t ws);
+
+int _ws_send_data(ws_t ws, const char *msg, uint64_t len);
+
+uint32_t _ws_get_random_bits();
+
+int _ws_mask_payload(uint32_t mask, char *msg, uint64_t len);
+

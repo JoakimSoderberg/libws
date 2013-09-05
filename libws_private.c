@@ -132,3 +132,20 @@ fail:
 	return -1;
 }
 
+int _ws_send_data(ws_t ws, const char *msg, uint64_t len)
+{
+	if (ws->state != WS_STATE_CONNECTED)
+	{
+		return -1;
+	}
+
+	return 0;
+}
+
+
+uint32_t _ws_get_random_bits()
+{
+	uint32_t b;
+	return b;
+}
+

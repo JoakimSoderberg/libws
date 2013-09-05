@@ -282,60 +282,95 @@ char *ws_get_uri(ws_t ws, char *buf, size_t bufsize)
 
 void ws_set_user_state(ws_t ws, void *user_state)
 {
-	assert(ws != NULL);
-
+	assert(ws);
 	ws->user_state = user_state;
 }
 
 void *ws_get_user_state(ws_t ws)
 {
-	assert(ws != NULL);
-
+	assert(ws);
 	return ws->user_state;
 }
 
+#define _WS_MUST_BE_CONNECTED(__ws__, err_msg) \
+	if (__ws__->state != WS_STATE_CONNECTED) \
+	{ \
+		LIBWS_LOG(LIBWS_ERR, "Not connected on " err_msg); \
+		return -1; \
+	} 
+
+int ws_msg_begin(ws_t ws, ws_frame_type_t type)
+{
+	assert(ws);
+	_WS_MUST_BE_CONNECTED(ws, "message begin");
+
+	if (ws->send_state != WS_SEND_STATE_NONE)
+	{
+		return -1;
+	}
+
+	memset(&ws->header, 0, sizeof(ws_header_t));
+	ws->header.opcode = ws->binary_mode ? 
+						WS_OPCODE_BINARY : WS_OPCODE_TEXT;
+
+	ws->send_state = WS_SEND_STATE_MESSAGE_BEGIN;
+	
+	return 0;
+}
 
 int ws_msg_frame_data_begin(ws_t ws, uint64_t datalen)
 {
-	// TODO: If not connected, fail.
+	assert(ws);
+	_WS_MUST_BE_CONNECTED(ws, "frame data begin");
+
+	ws->header.payload_len = datalen;
+
+	if (ws->send_state == WS_SEND_STATE_MESSAGE_BEGIN)
+	{
+		ws->send_state = WS_SEND_STATE_IN_MESSAGE;
+	}
+	else
+	{
+		ws->header.opcode = WS_OPCODE_CONTINUATION;
+	}
+
+	// TODO: 
+
+	return 0;
 }
 
 int ws_msg_frame_data_send(ws_t ws, const char *data, uint64_t datalen)
 {
-	// TODO: If not connected, fail.
-	// TODO: Only send as much data as was specified in the header if given a bigger payload.
-}
+	assert(ws);
+	_WS_MUST_BE_CONNECTED(ws, "frame data send");
 
-int ws_msg_begin(ws_t ws, ws_frame_type_t type)
-{
-	// TODO: If not connected, fail.
+	if (ws->send_state != WS_SEND_STATE_IN_MESSAGE)
+	{
+		LIBWS_LOG(LIBWS_ERR, "In incorrect state in frame data send");
+		return -1;
+	}
 
-	// TODO: Create and send save the header in the send state.
-	memset(&ws->header, 0, sizeof(ws_header_t));
-	
-	ws->header.fin = 0;
-	ws->header.rsv1 = 0;
-	ws->header.rsv2 = 0;
-	ws->header.rsv3 = 0;
-	ws->header.opcode = ws->binary_mode ? 
-						WS_OPCODE_BINARY : WS_OPCODE_TEXT;
-	
+	return 0;
 }
 
 int ws_msg_frame_send(ws_t ws, const char *frame_data, uint64_t datalen)
 {
-	// TODO: If not connected, fail.
+	assert(ws);
+	_WS_MUST_BE_CONNECTED(ws, "message frame send");
 
-	// TODO: Set the length in the header.
-	ws->header.opcode = WS_OPCODE_CONTINUATION;
-
-	ws->
+	if ((ws->send_state != WS_SEND_STATE_MESSAGE_BEGIN)
+	 || (ws->send_state != WS_SEND_STATE_IN_MESSAGE))
+	{
+		LIBWS_LOG(LIBWS_ERR, "Incorrect send state in message frame send");
+		return -1;
+	}
 	
 	if (ws_msg_frame_data_begin(ws, datalen))
 	{
 		return -1;
 	}
 
+	// TODO: This can be chunked.
 	if (ws_msg_frame_data_send(ws, frame_data, datalen))
 	{
 		return -1;
@@ -346,13 +381,19 @@ int ws_msg_frame_send(ws_t ws, const char *frame_data, uint64_t datalen)
 
 int ws_msg_end(ws_t ws)
 {
+	assert(ws);
+	_WS_MUST_BE_CONNECTED(ws, "message end");
+
 	// TODO: Write a frame with FIN bit set.
+
+	ws->send_state = WS_SEND_STATE_NONE;
 }
 
 int ws_send_msg(ws_t ws, const char *msg, uint64_t len)
 {
-	assert(ws != null);
-	// TODO: If not connected, fail.
+	uint64_t frame_len;
+	assert(ws);
+	_WS_MUST_BE_CONNECTED(ws, "send message");
 
 	if (ws_msg_begin(ws))
 	{
@@ -363,6 +404,26 @@ int ws_send_msg(ws_t ws, const char *msg, uint64_t len)
 	{
 		return -1;
 	}
+
+	/*
+	TODO: Send in chunks based on max_frame_size
+	while (1)
+	{
+
+		if (ws_msg_frame_send(ws, msg, len))
+		{
+			return -1;
+		}
+
+		if (ws->max_frame_size)
+		{
+			if (len > ws->max_frame_size)
+			{
+				break;
+			}
+		}
+	}
+	*/
 
 	if (ws_msg_end(ws))
 	{
