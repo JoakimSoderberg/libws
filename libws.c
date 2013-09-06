@@ -31,8 +31,8 @@ int ws_global_init(ws_base_t *base)
 	#ifndef WIN32
 	if ((b->random_fd = open(WS_RANDOM_PATH, O_RDONLY)) < 0)
 	{
-		LIBWS_LOG(LIBWS_ERR, "Failed to open random source %s",
-							WS_RANDOM_PATH);
+		LIBWS_LOG(LIBWS_ERR, "Failed to open random source %s , %d",
+							WS_RANDOM_PATH, b->random_fd);
 		return -1;
 	}
 	#endif
@@ -118,7 +118,7 @@ void ws_destroy(ws_t *ws)
 {
 	struct ws_s *w;
 
-	if (!ws)
+	if (!ws || !(*ws))
 		return;
 	
 	w = *ws;
@@ -145,7 +145,7 @@ void ws_destroy(ws_t *ws)
 
 int ws_connect(ws_t ws, const char *server, int port, const char *uri)
 {
-	assert(ws != NULL);
+	assert(ws);
 
 	if (!ws->base)
 	{
@@ -293,6 +293,13 @@ char *ws_get_uri(ws_t ws, char *buf, size_t bufsize)
 	return buf;
 }
 
+void ws_set_no_copy_cb(ws_t ws, ws_no_copy_cleanup_f cleanup_f, void *extra)
+{
+	assert(ws);
+	ws->no_copy_cleanup_cb = cleanup_f;
+	ws->no_copy_extra = extra;
+}
+
 void ws_set_user_state(ws_t ws, void *user_state)
 {
 	assert(ws);
@@ -415,7 +422,7 @@ int ws_msg_frame_data_send(ws_t ws, char *data, uint64_t datalen)
 	return 0;
 }
 
-int ws_msg_frame_send(ws_t ws, const char *frame_data, uint64_t datalen)
+int ws_msg_frame_send(ws_t ws, char *frame_data, uint64_t datalen)
 {
 	assert(ws);
 	assert(frame_data);
@@ -460,7 +467,7 @@ int ws_msg_end(ws_t ws)
 	return 0;
 }
 
-int ws_send_msg(ws_t ws, const char *msg, uint64_t len)
+int ws_send_msg(ws_t ws, char *msg, uint64_t len)
 {
 	uint64_t frame_len;
 	assert(ws);

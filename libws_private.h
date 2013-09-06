@@ -74,15 +74,18 @@ typedef struct ws_s
 	void					*connect_timeout_arg;
 
 	ws_timeout_callback_f	recv_timeout_cb;
-	void					*recv_timeout_arg;
 	struct timeval			recv_timeout;
+	void					*recv_timeout_arg;
 
 	ws_timeout_callback_f	send_timeout_cb;
 	struct timeval			send_timeout;
 	void					*send_timeout_arg;
 
 	ws_msg_callback_f		pong_cb;
-	void					*poing_arg;
+	void					*pong_arg;
+
+	ws_msg_callback_f		ping_cb;
+	void					*ping_arg;
 
 	void					*user_state;
 
@@ -130,11 +133,53 @@ void _ws_read_callback(struct bufferevent *bev, void *ptr);
 ///
 void _ws_write_callback(struct bufferevent *bev, void *ptr);
 
+/// 
+/// Creates the libevent bufferevent socket.
+///
+/// @param[in]	ws 	The websocket context.
+///
+/// @returns		0 on success.
+///
 int _ws_create_bufferevent_socket(ws_t ws);
 
+///
+/// Sends data over the bufferevent socket.
+///
+/// @param[in]	ws 		The websocket context.
+/// @param[in]	msg 	The buffer to send.
+/// @param[in]	len 	Length of the buffer to send.
+/// @param[in]	no_copy Should we copy the contents of the buffer
+///						or simply use a reference? Used for zero copy.
+///						This requires that the buffer is still valid
+///						until the bufferevent sends it. To enable this
+///						you have to set a cleanup function using
+///						#ws_set_no_copy_cb that frees the data.
+///
+/// @returns			0 on success.
+/// 
 int _ws_send_data(ws_t ws, char *msg, uint64_t len, int no_copy);
 
-uint32_t _ws_get_random_mask();
+///
+/// Randomizes the contents of #buf. This is used for generating
+/// the 32-bit payload mask.
+///
+/// @param[in]	ws 		The websocket context.
+/// @param[in]	buf 	The buffer to randomize.
+/// @param[in]	len 	Size of #buf.
+///
+/// @returns			The number of bytes successfully randomized.
+///						Negative on error.
+///
+int _ws_get_random_mask(ws_t ws, char *buf, size_t len);
 
+///
+/// Masks the data in a given payload message.
+///
+/// @param[in]	mask 	The payload mask.
+/// @param[in]	msg 	The payload message to mask.
+/// @param[in]	len 	Length of the payload #msg.
+///
+/// @returns			0 on success.
+///
 int _ws_mask_payload(uint32_t mask, char *msg, uint64_t len);
 

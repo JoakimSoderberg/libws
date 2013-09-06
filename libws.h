@@ -167,7 +167,20 @@ int ws_msg_frame_data_begin(ws_t ws, uint64_t datalen);
 ///
 int ws_msg_frame_data_send(ws_t ws, char *data, uint64_t datalen);
 
+///
+/// Sends a ping. To receive the pong reply use 
+/// #ws_set_onpong_cb to set a callback.
+///
+/// @param[in]	ws 		The websocket session context.
+///
+/// @returns			0 on success.
+///
 int ws_send_ping(ws_t ws);
+
+///
+/// 
+///
+int ws_send_ping_ex(ws_t ws, char *msg, uint64_t len);
 
 int ws_set_max_frame_size(ws_t ws, uint64_t max_frame_size);
 
@@ -180,6 +193,8 @@ int ws_set_onerr_cb(ws_t ws, ws_msg_callback_f func, void *arg);
 int ws_set_onclose_cb(ws_t ws, ws_close_callback_f func, void *arg);
 
 int ws_set_origin(ws_t ws, const char *origin);
+
+int ws_set_onping_cb(ws_t ws, ws_msg_callback_f, void *arg);
 
 int ws_set_onpong_cb(ws_t ws, ws_msg_callback_f, void *arg);
 
@@ -202,6 +217,8 @@ void ws_set_user_state(ws_t ws, void *user_state);
 void *ws_get_user_state(ws_t ws);
 
 int ws_get_uri(ws_t ws, char *buf, size_t bufsize);
+
+int ws_set_no_copy_cb(ws_t ws, ws_no_copy_cleanup_f cleanup_f, void *extra);
 
 ///
 /// Gets the websocket state.
