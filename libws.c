@@ -28,6 +28,15 @@ int ws_global_init(ws_base_t *base)
 
 	b = *base;
 
+	#ifndef WIN32
+	if ((b->random_fd = open(WS_RANDOM_PATH, O_RDONLY)) < 0)
+	{
+		LIBWS_LOG(LIBWS_ERR, "Failed to open random source %s",
+							WS_RANDOM_PATH);
+		return -1;
+	}
+	#endif
+
 	#ifdef LIBWS_WITH_OPENSSL
 	if (_ws_global_openssl_init(b))
 	{
@@ -46,6 +55,10 @@ void ws_global_destroy(ws_base_t *base)
 	assert(base != NULL);
 
 	b = *base;
+
+	#ifndef WIN32
+	close(b->random_fd);
+	#endif
 
 	#ifdef LIBWS_WITH_OPENSSL
 	_ws_global_openssl_destroy(b);
@@ -343,7 +356,12 @@ int ws_msg_frame_data_begin(ws_t ws, uint64_t datalen)
 
 	ws->header.mask_bit = 0x1;
 	ws->header.payload_len = datalen;
-	ws->header.mask = _ws_get_random_bits();
+
+	if (_ws_get_random_mask(ws, &ws->header.mask, sizeof(uint32_t)) 
+		!= sizeof(uint32_t))
+	 {
+	 	return -1;
+	 }
 
 	if (ws->send_state == WS_SEND_STATE_MESSAGE_BEGIN)
 	{
@@ -361,7 +379,7 @@ int ws_msg_frame_data_begin(ws_t ws, uint64_t datalen)
 
 	ws_pack_header(&ws->header, header_buf, sizeof(header_buf), &header_len);
 	
-	if (_ws_send_data(ws, header_buf, (uint64_t)header_len))
+	if (_ws_send_data(ws, header_buf, (uint64_t)header_len, 0))
 	{
 		LIBWS_LOG(LIBWS_ERR, "Failed to send frame header");
 		return -1;
@@ -388,7 +406,7 @@ int ws_msg_frame_data_send(ws_t ws, char *data, uint64_t datalen)
 		return -1;
 	}
 
-	if (_ws_send_data(ws, data, datalen))
+	if (_ws_send_data(ws, data, datalen, 1))
 	{
 		LIBWS_LOG(LIBWS_ERR, "Failed to send frame data");
 		return -1;

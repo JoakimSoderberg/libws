@@ -101,6 +101,9 @@ typedef struct ws_s
 	uint64_t				frame_data_sent;	///< The number of bytes sent so far of the current frame.
 	ws_send_state_t			send_state;			///< The state for sending data.
 
+	ws_no_copy_cleanup_f	no_copy_cleanup_cb;
+	void 					*no_copy_extra;
+
 	#ifdef LIBWS_WITH_OPENSSL
 
 	int 					use_ssl;
@@ -129,7 +132,7 @@ void _ws_write_callback(struct bufferevent *bev, void *ptr);
 
 int _ws_create_bufferevent_socket(ws_t ws);
 
-int _ws_send_data(ws_t ws, char *msg, uint64_t len);
+int _ws_send_data(ws_t ws, char *msg, uint64_t len, int no_copy);
 
 uint32_t _ws_get_random_mask();
 

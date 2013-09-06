@@ -3,6 +3,11 @@
 
 #include <stdio.h>
 
+#ifdef WIN32
+#define _CRT_RAND_S
+#include <stdlib.h>
+#endif
+
 #include "libws_log.h"
 #include "libws_private.h"
 
@@ -171,6 +176,7 @@ int _ws_send_data(ws_t ws, char *msg, uint64_t len, int no_copy)
 	// If in no copy mode we only add a reference to the passed
 	// buffer to the underlying bufferevent, and let it use the
 	// user supplied cleanup function when it has sent the data.
+	// (Note that the header will never be sent like this).
 	if (no_copy && ws->no_copy_cleanup_cb)
 	{
 		if (evbuffer_add_reference(bufferevent_get_output(bev), 
@@ -195,10 +201,24 @@ int _ws_send_data(ws_t ws, char *msg, uint64_t len, int no_copy)
 }
 
 
-uint32_t _ws_get_random_mask()
+int _ws_get_random_mask(ws_t ws, char *buf, size_t len)
 {
-	uint32_t b;
-	return b;
+	int i;
+
+	#ifdef WIN32
+	// http://msdn.microsoft.com/en-us/library/sxtz2fa8(VS.80).aspx
+	for (i = 0; i < len)
+	{
+		if (rand_s((unsigned int)&buf[i]))
+		{
+			return -1;
+		}
+	}
+	#else
+	i = read(ws->base->random_fd, buf, len);
+	#endif 
+
+	return i;
 }
 
 int _ws_mask_payload(uint32_t mask, char *msg, uint64_t len)
