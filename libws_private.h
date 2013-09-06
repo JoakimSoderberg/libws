@@ -129,9 +129,9 @@ void _ws_write_callback(struct bufferevent *bev, void *ptr);
 
 int _ws_create_bufferevent_socket(ws_t ws);
 
-int _ws_send_data(ws_t ws, const char *msg, uint64_t len);
+int _ws_send_data(ws_t ws, char *msg, uint64_t len);
 
-uint32_t _ws_get_random_bits();
+uint32_t _ws_get_random_mask();
 
 int _ws_mask_payload(uint32_t mask, char *msg, uint64_t len);
 

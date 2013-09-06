@@ -133,7 +133,7 @@ fail:
 	return -1;
 }
 
-int _ws_send_data(ws_t ws, const char *msg, uint64_t len)
+int _ws_send_data(ws_t ws, char *msg, uint64_t len)
 {
 	assert(ws);
 
@@ -148,7 +148,7 @@ int _ws_send_data(ws_t ws, const char *msg, uint64_t len)
 }
 
 
-uint32_t _ws_get_random_bits()
+uint32_t _ws_get_random_mask()
 {
 	uint32_t b;
 	return b;

@@ -320,85 +320,57 @@ int ws_msg_begin(ws_t ws, ws_frame_type_t type)
 
 int ws_msg_frame_data_begin(ws_t ws, uint64_t datalen)
 {
-	uint8_t b[WS_MAX_HEADER_SIZE];
-	size_t header_size = 0;
-	ws_header_t *h;
+	uint8_t header_buf[WS_MAX_HEADER_SIZE];
+	size_t header_len = 0;
 
 	assert(ws);
 	_WS_MUST_BE_CONNECTED(ws, "frame data begin");
 
+	if ((ws->send_state != WS_SEND_STATE_MESSAGE_BEGIN)
+	 && (ws->send_state != WS_SEND_STATE_IN_MESSAGE))
+	{
+		LIBWS_LOG(LIBWS_ERR, "Incorrect state for frame data begin");
+		return -1;
+	)
+	
+	if (datalen > WS_MAX_PAYLOAD_LEN)
+	{
+		LIBWS_LOG(LIBWS_ERR, "Payload length (0x%x) larger than max allowed "
+							 "websocket payload (0x%x)",
+							ws->header.payload_len, WS_MAX_PAYLOAD_LEN);
+		return -1;
+	}
+
+	ws->header.mask_bit = 0x1;
 	ws->header.payload_len = datalen;
+	ws->header.mask = _ws_get_random_bits();
 
 	if (ws->send_state == WS_SEND_STATE_MESSAGE_BEGIN)
 	{
+		// Opcode will be set to either TEXT or BINARY here.
+		assert((ws->header.opcode == WS_OPCODE_TEXT) 
+			|| (ws->header.opcode == WS_OPCODE_BINARY));
+
 		ws->send_state = WS_SEND_STATE_IN_MESSAGE;
 	}
 	else
 	{
+		// We've already sent frames.
 		ws->header.opcode = WS_OPCODE_CONTINUATION;
 	}
 
-	h = &ws->header;
-
-	//  7 6 5 4 3 2 1 0
-	// +-+-+-+-+-------+
-	// |F|R|R|R| opcode|
-	// |I|S|S|S|  (4)  |
-	// |N|V|V|V|       |
-	// | |1|2|3|       |
-	// +-+-+-+-+-------+
-	b[0] = 0;
-	b[0] |= ((!!h->fin)  << 7);
-	b[0] |= ((!!h->rsv1) << 6);
-	b[0] |= ((!!h->rsv2) << 5);
-	b[0] |= ((!!h->rsv3) << 4);
-	b[0] |= (h->opcode  & 0xF);
-
-	//  7 6 5 4 3 2 1 0
-	// +-+-------------+
-	// |M| Payload len |
-	// |A|     (7)     |
-	// |S|             |
-	// |K|             |
-	// +-+-------------+
-
-	b[1] = 0;
-	b[1] |= (1 << 7); // Masking bit. This MUST be set for a client.
+	ws_pack_header(&ws->header, header_buf, sizeof(header_buf), &header_len);
 	
-	header_size = 2;
-
-	if (h->payload_len < 126)
+	if (_ws_send_data(ws, header_buf, (uint64_t)header_len))
 	{
-		// Use 1 byte for payload len.
-		b[1] |= h->payload_len;
-	}
-	else if (h->payload_len == 126)
-	{
-		// Use 2 bytes.
-		b[1] = 126;
-		((uint16_t *)&b[2]) = htons((uint16_t)h->payload_len);
-
-		header_size += 2;
-	}
-	else
-	{
-		header_size += 8; 
-	}	
-
-	/*
-	// TODO: Pack and send header.
-	if (ws_pack_header(&ws->header, header_buf, sizeof(header_buf)))
-	{
+		LIBWS_LOG(LIBWS_ERR, "Failed to send frame header");
 		return -1;
-	}*/
-
-	ws_pack_header_payload_len(ws->header.payload_len, )
-
+	}
 
 	return 0;
 }
 
-int ws_msg_frame_data_send(ws_t ws, const char *data, uint64_t datalen)
+int ws_msg_frame_data_send(ws_t ws, char *data, uint64_t datalen)
 {
 	assert(ws);
 	_WS_MUST_BE_CONNECTED(ws, "frame data send");
@@ -409,16 +381,30 @@ int ws_msg_frame_data_send(ws_t ws, const char *data, uint64_t datalen)
 		return -1;
 	}
 
+	// TODO: Don't touch original buffer as an option?
+	if (_ws_mask_payload(ws->header.mask, data, datalen))
+	{
+		LIBWS_LOG(LIBWS_ERR, "Failed to mask payload");
+		return -1;
+	}
+
+	if (_ws_send_data(ws, data, datalen))
+	{
+		LIBWS_LOG(LIBWS_ERR, "Failed to send frame data");
+		return -1;
+	}
+
 	return 0;
 }
 
 int ws_msg_frame_send(ws_t ws, const char *frame_data, uint64_t datalen)
 {
 	assert(ws);
+	assert(frame_data);
 	_WS_MUST_BE_CONNECTED(ws, "message frame send");
 
 	if ((ws->send_state != WS_SEND_STATE_MESSAGE_BEGIN)
-	 || (ws->send_state != WS_SEND_STATE_IN_MESSAGE))
+	 && (ws->send_state != WS_SEND_STATE_IN_MESSAGE))
 	{
 		LIBWS_LOG(LIBWS_ERR, "Incorrect send state in message frame send");
 		return -1;
