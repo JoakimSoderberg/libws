@@ -377,11 +377,11 @@ int ws_msg_frame_data_send(ws_t ws, char *data, uint64_t datalen)
 
 	if (ws->send_state != WS_SEND_STATE_IN_MESSAGE)
 	{
-		LIBWS_LOG(LIBWS_ERR, "In incorrect state in frame data send");
+		LIBWS_LOG(LIBWS_ERR, "Incorrect send state in frame data send");
 		return -1;
 	}
 
-	// TODO: Don't touch original buffer as an option?
+	// TODO: Don't touch original buffer as an option?	
 	if (_ws_mask_payload(ws->header.mask, data, datalen))
 	{
 		LIBWS_LOG(LIBWS_ERR, "Failed to mask payload");
@@ -429,9 +429,17 @@ int ws_msg_end(ws_t ws)
 	assert(ws);
 	_WS_MUST_BE_CONNECTED(ws, "message end");
 
+	if (ws->send_state != WS_SEND_STATE_IN_MESSAGE)
+	{
+		LIBWS_LOG(LIBWS_ERR, "Incorrect send state in message end");
+		return -1;
+	}
+
 	// TODO: Write a frame with FIN bit set.
 
 	ws->send_state = WS_SEND_STATE_NONE;
+
+	return 0;
 }
 
 int ws_send_msg(ws_t ws, const char *msg, uint64_t len)
