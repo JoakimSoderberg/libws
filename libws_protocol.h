@@ -83,7 +83,7 @@ LIBWS_INLINE void ws_pack_header_rest(ws_header_t *h, uint8_t *b, size_t len, si
 {
 	assert(h);
 	assert(b);
-	assert(len >= WS_MAX_HEADER_SIZE);
+	assert(len >= WS_HDR_MAX_SIZE);
 	assert(h->payload_len <= WS_MAX_PAYLOAD_LEN);
 	assert(header_len);
 
@@ -138,7 +138,7 @@ LIBWS_INLINE void ws_pack_header_rest(ws_header_t *h, uint8_t *b, size_t len, si
 
 	if (h->mask_bit)
 	{
-		*((uint32_t *)&buf[header_len]) = htonl(h->mask);
+		*((uint32_t *)&b[*header_len]) = htonl(h->mask);
 		*header_len += 4;
 	}
 }

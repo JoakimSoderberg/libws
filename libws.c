@@ -2,9 +2,13 @@
 #include "libws_config.h"
 
 #include <event2/event.h>
+
 #include <stdio.h>
 #include <sys/socket.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 #include <assert.h>
+
 #include "libws_types.h"
 #include "libws_log.h"
 #include "libws.h"
@@ -18,7 +22,7 @@ int ws_global_init(ws_base_t *base)
 {
 	ws_base_t b;
 
-	assert(base != NULL);
+	assert(base);
 
 	if (!(*base = (ws_base_s *)calloc(1, sizeof(ws_base_s))))
 	{
@@ -52,7 +56,7 @@ void ws_global_destroy(ws_base_t *base)
 {
 	ws_base_t b;
 
-	assert(base != NULL);
+	assert(base);
 
 	b = *base;
 
@@ -74,8 +78,8 @@ int ws_init(ws_t *ws, ws_base_t ws_base)
 {
 	struct ws_s *w = NULL;
 
-	assert(ws != NULL);
-	assert(ws_base != NULL);
+	assert(ws);
+	assert(ws_base);
 
 	if (!(*ws = (struct ws_s *)calloc(1, sizeof(struct ws_s))))
 	{
@@ -88,6 +92,7 @@ int ws_init(ws_t *ws, ws_base_t ws_base)
 
 	w->ws_base = ws_base;
 
+	// TODO: Move this to global init instead?
 	// Create Libevent context.
 	{
 		if (!(w->base = event_base_new()))
@@ -146,20 +151,12 @@ void ws_destroy(ws_t *ws)
 int ws_connect(ws_t ws, const char *server, int port, const char *uri)
 {
 	assert(ws);
-
-	if (!ws->base)
-	{
-		LIBWS_LOG(LIBWS_ERR, "Websocket instance not properly initialized");
-		return -1;
-	}
+	assert(ws->base);
 
 	if (ws->state != WS_STATE_DISCONNECTED)
 	{
-		if (ws_close(ws))
-		{
-			LIBWS_LOG(LIBWS_ERR, "Already connected");
-			return -1;
-		}
+		LIBWS_LOG(LIBWS_ERR, "Already connected");
+		return -1;
 	}
 
 	if (!server)
@@ -184,6 +181,14 @@ int ws_connect(ws_t ws, const char *server, int port, const char *uri)
 		return -1;
 	}
 
+	ws->state = WS_STATE_CONNECTING;
+
+	// Setup a timeout event for the connection attempt.
+	if (_ws_setup_connection_timeout(ws))
+	{
+		return -1;
+	}
+
 	return 0;
 }
 
@@ -199,9 +204,11 @@ int ws_connect(ws_t ws, const char *uri)
 
 int ws_close(ws_t ws)
 {
-	assert(ws != NULL);
+	assert(ws);
 
 	ws->state = WS_STATE_DISCONNECTING;
+
+	// TODO: Send a websocket ending handshake.
 
 	#ifdef LIBWS_WITH_OPENSSL
 	_ws_openssl_close(ws);
@@ -225,7 +232,7 @@ int ws_close(ws_t ws)
 
 int ws_service(ws_t ws)
 {
-	assert(ws != NULL);
+	assert(ws);
 
 	if (event_base_loop(ws->base, EVLOOP_NONBLOCK))
 	{
@@ -239,7 +246,7 @@ int ws_service(ws_t ws)
 int ws_service_until_quit(ws_t ws)
 {
 	int ret;
-	assert(ws != NULL);
+	assert(ws);
 
 	ret = event_base_dispatch(ws->base);
 
@@ -251,7 +258,7 @@ int ws_service_until_quit(ws_t ws)
 int ws_quit(ws_t ws, int let_running_events_complete)
 {
 	int ret;
-	assert(ws != NULL);
+	assert(ws);
 
 	if (!ws->base)
 	{
@@ -508,6 +515,127 @@ int ws_send_msg(ws_t ws, char *msg, uint64_t len)
 		return -1;
 	}
 
+	return 0;
+}
+
+int ws_set_max_frame_size(ws_t ws, uint64_t max_frame_size)
+{
+	assert(ws);
+
+	if (max_frame_size > WS_MAX_PAYLOAD_LEN)
+	{
+		LIBWS_LOG(LIBWS_ERR, "Max frame size cannot exceed max payload length");
+		return -1;
+	}
+
+	ws->max_frame_size = max_frame_size;
+
+	return 0;
+}
+
+uint64_t ws_get_max_frame_size(ws_t ws)
+{
+	assert(ws);
+	return ws->max_frame_size;
+}
+
+void ws_set_onconnect_cb(ws_t ws, connect_callback_f func, void *arg)
+{
+	assert(ws);
+
+	ws->connect_cb = func;
+	ws->connect_arg = arg;
+}
+
+void ws_set_onmsg_cb(ws_t ws, ws_msg_callback_f func, void *arg)
+{
+	assert(ws);
+}
+
+void ws_set_onerr_cb(ws_t ws, ws_msg_callback_f func, void *arg)
+{
+	assert(ws);
+}
+
+void ws_set_onclose_cb(ws_t ws, ws_close_callback_f func, void *arg)
+{
+	assert(ws);
+}
+
+int ws_set_origin(ws_t ws, const char *origin)
+{
+	assert(ws);
+	return 0;
+}
+
+void ws_set_onping_cb(ws_t ws, ws_msg_callback_f, void *arg)
+{
+	assert(ws);
+	return 0;
+}
+
+void ws_set_onpong_cb(ws_t ws, ws_msg_callback_f, void *arg)
+{
+	assert(ws);
+	return 0;
+}
+
+void ws_set_binary(ws_t ws, int binary)
+{
+	assert(ws);
+	ws->binary_mode = binary;
+}
+
+int ws_add_header(ws_t ws, const char *header, const char *value)
+{
+	assert(ws);
+	// TODO: Add http header add code.
+	return 0;
+}
+
+int ws_remove_header(ws_t ws, const char *header)
+{
+	assert(ws);
+	// TODO: Add http header remove code.
+	return 0;
+}
+
+int ws_is_connected(ws_t ws)
+{
+	assert(ws);
+	return  (ws->state == WS_STATE_CONNECTED);
+}
+
+void ws_set_recv_timeout_cb(ws_t ws, ws_timeout_callback_f func, 
+						struct timeval recv_timeout, void *arg)
+{
+	assert(ws);
+	
+	ws->recv_timeout_cb = func;
+	ws->recv_timeout = recv_timeout;
+	ws->recv_timeout_arg = arg;
+
+	_ws_set_timeouts(ws);
+
+	return 0;
+}
+
+void ws_set_send_timeout_cb(ws_t ws, ws_timeout_callback_f func, 
+						struct timeval send_timeout, void *arg)
+{
+	assert(ws);
+
+	ws->send_timeout_cb = func;
+	ws->send_timeout = send_timeout;
+	ws->send_timeout_arg = arg;
+
+	_ws_set_timeouts(ws);
+}
+
+int ws_set_connect_timeout_cb(ws_t ws, ws_timeout_callback_f func,
+						struct timeval connect_timeout, void *arg)
+{
+	assert(ws);
 	return 0;
 }
 

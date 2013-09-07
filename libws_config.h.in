@@ -4,6 +4,6 @@
 
 #cmakedefine LIBWS_WITH_OPENSSL 1
 #cmakedefine LIBWS_WITH_LOG 1
-#cmakedefine LIBWS_INLINE @LIBWS_INLINE@
+#define LIBWS_INLINE @LIBWS_INLINE@
 
 #endif // __LIBWS_CONFIG_H__

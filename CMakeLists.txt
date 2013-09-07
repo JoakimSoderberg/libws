@@ -38,7 +38,7 @@ endif(LIBWS_WITH_OPENSSL)
 # Do system introspection.
 
 # TODO: Check for inline keyword.
-set(LIBWS_INLINE "")
+set(LIBWS_INLINE)
 
 # Generate the config header file.
 configure_file(

@@ -16,10 +16,56 @@ static void _ws_connected_event(struct bufferevent *bev, short events, ws_t ws)
 	char buf[1024];
 	LIBWS_LOG(LIBWS_DEBUG, "Connected to %s", ws_get_uri(ws, buf, sizeof(buf)));
 
+	evtimer_del(ws->connect_timeout_event);
+
 	if (ws->connect_cb)
 	{
 		ws->connect_cb(ws, ws->connect_arg);
 	}
+}
+
+///
+/// Event for when a connection attempt times out.
+///
+static void _ws_connection_timeout_event(evutil_socket_t fd, short what, void *arg)
+{
+	ws_t ws = (ws_t)arg;
+	assert(ws);
+
+	LIBWS_LOG(LIBWS_ERR, "Websocket connection timed out after %ld seconds "
+						 "for %s", ws->connect_timeout.tv_sec, ws_get_uri(ws));
+
+	if (ws->connect_timeout_cb)
+	{
+		ws->connect_timeout_cb(ws, ws->connect_timeout, ws->connect_timeout_arg);
+	}
+}
+
+int _ws_setup_connection_timeout(ws_t ws)
+{	
+	struct timeval tv = {WS_DEFAULT_CONNECT_TIMEOUT, 0};
+	assert(ws);
+	 
+	if (ws->connect_timeout.tv_sec > 0)
+	{
+		tv = ws->connect_timeout;
+	}
+
+	if (!(ws->connect_timeout_event = evtimer_new(ws->base, 
+			_ws_connection_timeout_event, ws)))
+	{
+		LIBWS_LOG(LIBWS_ERR, "Failed to create connect timeout evet");
+		return -1;
+	}
+
+	if (evtimer_add(ws->connect_timeout_event, &tv))
+	{
+		evtimer_del(ws->connect_timeout_event);
+		LIBWS_LOG(LIBWS_ERR, "Failed to create connection timeout event");
+		return -1;
+	}
+
+	return 0;
 }
 
 static void _ws_eof_event(struct bufferevent *bev, short events, ws_t ws)
@@ -60,7 +106,11 @@ static void _ws_error_event(struct bufferevent *bev, short events, ws_t ws)
 	}
 }
 
-void _ws_event_callback(struct bufferevent *bev, short events, void *ptr)
+///
+/// Libevent bufferevent callback for when an event occurs on
+/// the websocket socket.
+///
+static void _ws_event_callback(struct bufferevent *bev, short events, void *ptr)
 {
 	ws_t ws = (ws_t)ptr;
 	assert(ws);
@@ -84,7 +134,11 @@ void _ws_event_callback(struct bufferevent *bev, short events, void *ptr)
 	}
 }
 
-void _ws_read_callback(struct bufferevent *bev, void *ptr)
+///
+/// Libevent bufferevent callback for when there is datata to be read
+/// on the websocket socket.
+///
+static void _ws_read_callback(struct bufferevent *bev, void *ptr)
 {
 	ws_t ws = (ws_t)ptr;
 	assert(ws);
@@ -97,7 +151,11 @@ void _ws_read_callback(struct bufferevent *bev, void *ptr)
 	// TODO: Based on op code forward data to appropriate callback.
 }
 
-void _ws_write_callback(struct bufferevent *bev, void *ptr)
+///
+/// Libevent bufferevent callback for when a write is done on
+/// the websocket socket.
+///
+static void _ws_write_callback(struct bufferevent *bev, void *ptr)
 {
 	ws_t ws = (ws_t)ptr;
 	assert(ws);
@@ -224,6 +282,23 @@ int _ws_get_random_mask(ws_t ws, char *buf, size_t len)
 int _ws_mask_payload(uint32_t mask, char *msg, uint64_t len)
 {
 	assert(msg);
+
+	return 0;
 }
 
+void _ws_set_timeouts(ws_t ws)
+{
+	assert(ws);
+	assert(ws->bev);
+
+	// TODO: Maybe a workaround for this problem?:
+	// Setting a timeout to NULL is supposed to remove it; 
+	// however before Libevent 2.1.2-alpha this wouldn’t work 
+	// with all event types. (As a workaround for older versions, 
+	// you can try setting the timeout to a multi-day interval 
+	// and/or having your eventcb function ignore BEV_TIMEOUT 
+	// events when you don’t want them.)
+
+	bufferevent_set_timeouts(ws->bev, &ws->recv_timeout, &ws->send_timeout);
+}
 

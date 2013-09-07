@@ -7,6 +7,8 @@
 typedef struct ws_s *ws_t;
 typedef struct ws_base_s *ws_base_t;
 
+#define WS_MAX_FRAME_SIZE 0x7FFFFFFFFFFFFFFF
+
 typedef enum ws_state_e
 {
 	WS_STATE_DNS_LOOKUP,
@@ -25,10 +27,13 @@ typedef enum libws_ssl_state_e
 } libws_ssl_state_t;
 #endif // LIBWS_WITH_OPENSSL
 
-typedef void (*ws_msg_callback_f)(ws_t ws, const char *msg, size_t len, void *arg);
+#define WS_RANDOM_PATH "/dev/urandom"
+
+typedef void (*ws_msg_callback_f)(ws_t ws, const char *msg, uint64_t len, void *arg);
 typedef void (*ws_err_callback_f)(ws_t ws, int errcode, const char *errmsg, void *arg);
 typedef void (*ws_close_callback_f)(ws_t ws, int reason, void *arg);
 typedef void (*ws_connect_callback_f)(ws_t ws, void *arg);
-typedef void (*ws_timeout_callback_f)(ws_t ws, void *arg);
+typedef void (*ws_timeout_callback_f)(ws_t ws, struct timeval timeout, void *arg);
+typedef void (*ws_no_copy_cleanup_f)(ws_t ws, const void *data, uint64_t datalen, void *extra);
 
 #endif // __LIBWS_TYPES_H__

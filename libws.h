@@ -178,11 +178,19 @@ int ws_msg_frame_data_send(ws_t ws, char *data, uint64_t datalen);
 int ws_send_ping(ws_t ws);
 
 ///
-/// 
+/// Sends a ping with a payload. Same as #ws_send_ping but with
+/// a specified payload.
+/// @param[in]	ws 		The websocket session context.
+/// @param[in]	data 	The frame payload data to send.
+/// @param[in]	datalen	The length of the frame payload.
+///
+/// @returns			0 on success.
 ///
 int ws_send_ping_ex(ws_t ws, char *msg, uint64_t len);
 
 int ws_set_max_frame_size(ws_t ws, uint64_t max_frame_size);
+
+uint64_t ws_get_max_frame_size(ws_t ws);
 
 // TODO: Add onmsg_begin, onmsg_frame, onmsg_end
 

@@ -39,6 +39,10 @@ typedef enum ws_send_state_e
 ///
 typedef struct ws_base_s
 {
+	#ifndef WIN32
+	int random_fd;
+	#endif
+
 	#ifdef LIBWS_WITH_OPENSSL
 
 	SSL_CTX 				*ssl_ctx;
@@ -53,6 +57,7 @@ typedef struct ws_s
 {
 	ws_state_t				state;				///< Websocket state.
 
+	// TODO: Move the bases into the ws_base_t instead?
 	struct event_base		*base;				///< Libevent event base.
 	struct evdns_base 		*dns_base;			///< Libevent DNS base.
 	struct bufferevent 		*bev;				///< Buffer event socket.
@@ -72,6 +77,7 @@ typedef struct ws_s
 	ws_timeout_callback_f	connect_timeout_cb;
 	struct timeval			connect_timeout;
 	void					*connect_timeout_arg;
+	struct event 			*connect_timeout_event;
 
 	ws_timeout_callback_f	recv_timeout_cb;
 	struct timeval			recv_timeout;
@@ -103,7 +109,6 @@ typedef struct ws_s
 	uint64_t				frame_size;			///< The frame size of the frame currently being sent.
 	uint64_t				frame_data_sent;	///< The number of bytes sent so far of the current frame.
 	ws_send_state_t			send_state;			///< The state for sending data.
-
 	ws_no_copy_cleanup_f	no_copy_cleanup_cb;
 	void 					*no_copy_extra;
 
@@ -115,23 +120,15 @@ typedef struct ws_s
 	#endif // LIBWS_WITH_OPENSSL
 } ws_s;
 
-///
-/// Libevent bufferevent callback for when an event occurs on
-/// the websocket socket.
-///
-void _ws_event_callback(struct bufferevent *bev, short events, void *ptr);
 
 ///
-/// Libevent bufferevent callback for when there is datata to be read
-/// on the websocket socket.
+/// Creates a timeout event for when connecting.
 ///
-void _ws_read_callback(struct bufferevent *bev, void *ptr);
-
+/// @param[in]	ws 	The websocket context.
 ///
-/// Libevent bufferevent callback for when a write is done on
-/// the websocket socket.
+/// @returns		0 on success.
 ///
-void _ws_write_callback(struct bufferevent *bev, void *ptr);
+int _ws_setup_connection_timeout(ws_t ws);
 
 /// 
 /// Creates the libevent bufferevent socket.
@@ -183,3 +180,11 @@ int _ws_get_random_mask(ws_t ws, char *buf, size_t len);
 ///
 int _ws_mask_payload(uint32_t mask, char *msg, uint64_t len);
 
+///
+/// Sets timeouts for read and write events of the underlying bufferevent.
+///
+/// @param[in]	ws 		The websocket context.
+/// 
+void _ws_set_timeouts(ws_t ws);
+
+#endif // __LIBWS_PRIVATE_H__
