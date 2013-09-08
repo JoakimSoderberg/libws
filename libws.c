@@ -140,6 +140,11 @@ void ws_destroy(ws_t *ws)
 		w->base = NULL;
 	}
 
+	if (ws->origin)
+	{
+		free(ws->origin);
+	}
+
 	#ifdef LIBWS_WITH_OPENSSL
 	_ws_openssl_destroy(w);
 	#endif
@@ -469,7 +474,7 @@ int ws_msg_end(ws_t ws)
 		return -1;
 	}
 
-	// TODO: Write a frame with FIN bit set.
+	// Write a frame with FIN bit set.
 	ws->header.fin = 0x1;
 
 	if (ws_msg_frame_send(ws, NULL, 0))
@@ -564,29 +569,66 @@ void ws_set_onmsg_cb(ws_t ws, ws_msg_callback_f func, void *arg)
 void ws_set_onerr_cb(ws_t ws, ws_msg_callback_f func, void *arg)
 {
 	assert(ws);
+
+	ws->msg_cb = func;
+	ws->msg_arg = arg;
 }
 
 void ws_set_onclose_cb(ws_t ws, ws_close_callback_f func, void *arg)
 {
 	assert(ws);
+
+	ws->close_cb = func;
+	ws->close_arg = arg;
 }
 
 int ws_set_origin(ws_t ws, const char *origin)
 {
 	assert(ws);
+
+	// TODO: Verify that origin is a valid value.
+	if (ws->origin)
+	{
+		free(ws->origin);
+	}
+
+	if (!(ws->origin = strdup(origin)))
+	{
+		LIBWS_LOG(LIBWS_ERR, "Could not copy origin string. Out of memory!");
+		return -1;
+	}
+
 	return 0;
 }
 
-void ws_set_onping_cb(ws_t ws, ws_msg_callback_f, void *arg)
+void ws_onping_default_cb(ws_t ws, char *msg, uint64_t len)
 {
 	assert(ws);
-	return 0;
+
+	// TODO: Reply with a ping.
 }
 
-void ws_set_onpong_cb(ws_t ws, ws_msg_callback_f, void *arg)
+void ws_set_onping_cb(ws_t ws, ws_msg_callback_f func, void *arg)
 {
 	assert(ws);
-	return 0;
+
+	ws->ping_cb = func ? func : ws_onping_default_cb;
+	ws->ping_arg = arg;
+}
+
+void ws_onpong_default_cb(ws_t ws, char *msg, uint64_t len)
+{
+	assert(ws);
+
+	// TODO: Note that we received a pong as reply to ping.
+}
+
+void ws_set_onpong_cb(ws_t ws, ws_msg_callback_f func, void *arg)
+{
+	assert(ws);
+
+	ws->pong_cb = func ? func : ws_onpong_default_cb;
+	ws->pong_arg = arg;
 }
 
 void ws_set_binary(ws_t ws, int binary)
@@ -598,6 +640,9 @@ void ws_set_binary(ws_t ws, int binary)
 int ws_add_header(ws_t ws, const char *header, const char *value)
 {
 	assert(ws);
+	assert(header);
+	assert(value);
+
 	// TODO: Add http header add code.
 	return 0;
 }
@@ -605,6 +650,12 @@ int ws_add_header(ws_t ws, const char *header, const char *value)
 int ws_remove_header(ws_t ws, const char *header)
 {
 	assert(ws);
+
+	if (!header)
+	{
+		return -1;
+	}
+
 	// TODO: Add http header remove code.
 	return 0;
 }
@@ -641,10 +692,13 @@ void ws_set_send_timeout_cb(ws_t ws, ws_timeout_callback_f func,
 	_ws_set_timeouts(ws);
 }
 
-int ws_set_connect_timeout_cb(ws_t ws, ws_timeout_callback_f func,
+void ws_set_connect_timeout_cb(ws_t ws, ws_timeout_callback_f func,
 						struct timeval connect_timeout, void *arg)
 {
 	assert(ws);
-	return 0;
+
+	ws->connect_timeout_cb = func;
+	ws->connect_timeout = connect_timeout;
+	ws->connect_timeout_arg = arg;
 }
 
