@@ -337,6 +337,7 @@ int ws_msg_begin(ws_t ws, ws_frame_type_t type)
 	}
 
 	memset(&ws->header, 0, sizeof(ws_header_t));
+	// FIN, RSVx bits are 0.
 	ws->header.opcode = ws->binary_mode ? 
 						WS_OPCODE_BINARY : WS_OPCODE_TEXT;
 
@@ -377,6 +378,7 @@ int ws_msg_frame_data_begin(ws_t ws, uint64_t datalen)
 	 	return -1;
 	 }
 
+	// TODO: Use this function for WS_OPCODE_PING/PONG as well?
 	if (ws->send_state == WS_SEND_STATE_MESSAGE_BEGIN)
 	{
 		// Opcode will be set to either TEXT or BINARY here.
@@ -432,7 +434,7 @@ int ws_msg_frame_data_send(ws_t ws, char *data, uint64_t datalen)
 int ws_msg_frame_send(ws_t ws, char *frame_data, uint64_t datalen)
 {
 	assert(ws);
-	assert(frame_data);
+	assert(frame_data || (!frame_data && (datalen == 0)));
 	_WS_MUST_BE_CONNECTED(ws, "message frame send");
 
 	if ((ws->send_state != WS_SEND_STATE_MESSAGE_BEGIN)
@@ -468,6 +470,13 @@ int ws_msg_end(ws_t ws)
 	}
 
 	// TODO: Write a frame with FIN bit set.
+	ws->header.fin = 0x1;
+
+	if (ws_msg_frame_send(ws, NULL, 0))
+	{
+		LIBWS_LOG(LIBWS_ERR, "Failed to send end of message frame");
+		return -1;
+	}
 
 	ws->send_state = WS_SEND_STATE_NONE;
 
