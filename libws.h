@@ -238,7 +238,7 @@ uint64_t ws_get_max_frame_size(ws_t ws);
 ///
 /// @returns			0 on success.
 /// 
-void ws_set_onconnect_cb(ws_t ws, connect_callback_f func, void *arg);
+void ws_set_onconnect_cb(ws_t ws, ws_connect_callback_f func, void *arg);
 
 ///
 /// Sets the on msg callback function.

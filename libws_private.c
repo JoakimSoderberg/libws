@@ -8,7 +8,14 @@
 #include <stdlib.h>
 #endif
 
+#include <sys/time.h>
+
+#include <event2/event.h>
+#include <event2/bufferevent.h>
+
 #include "libws_log.h"
+#include "libws_types.h"
+#include "libws_protocol.h"
 #include "libws_private.h"
 
 static void _ws_connected_event(struct bufferevent *bev, short events, ws_t ws)
@@ -42,7 +49,7 @@ static void _ws_connection_timeout_event(evutil_socket_t fd, short what, void *a
 }
 
 static int _ws_setup_timeout_event(ws_t ws, ws_timeout_callback_f func, 
-								struct **event, struct timeval *tv)
+									struct **event, struct timeval *tv)
 {
 	assert(ws);
 	assert(event);
@@ -72,7 +79,7 @@ static int _ws_setup_timeout_event(ws_t ws, ws_timeout_callback_f func,
 	return 0;
 }
 
-int _ws_setup_pong_timeout_event(ws_t ws)
+int _ws_setup_pong_timeout(ws_t ws)
 {
 	assert(ws);
 	return _ws_setup_timeout_event(ws, ws->pong_timeout_cb,
@@ -90,7 +97,7 @@ int _ws_setup_connection_timeout(ws_t ws)
 	}
 
 	return _ws_setup_timeout_event(ws, _ws_connection_timeout_event, 
-					&ws->connect_timeout_event, &tv);
+									&ws->connect_timeout_event, &tv);
 	/*
 	if (!(ws->connect_timeout_event = evtimer_new(ws->base, 
 			_ws_connection_timeout_event, ws)))
@@ -280,7 +287,7 @@ int _ws_send_data(ws_t ws, char *msg, uint64_t len, int no_copy)
 	// (Note that the header will never be sent like this).
 	if (no_copy && ws->no_copy_cleanup_cb)
 	{
-		if (evbuffer_add_reference(bufferevent_get_output(bev), 
+		if (evbuffer_add_reference(bufferevent_get_output(ws->bev), 
 			(void *)msg, len, _ws_builtin_cleanup_wrapper, (void *)ws))
 		{
 			LIBWS_LOG(LIBWS_ERR, "Failed to write reference to send buffer");

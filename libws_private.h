@@ -13,11 +13,10 @@
 #include "libws_config.h"
 #include "libws_log.h"
 #include "libws_types.h"
+#include "libws_protocol.h"
 
-//#include "libws.h"
 #include <event2/event.h>
 #include <event2/bufferevent.h>
-//#include <event2/evdns.h>
 
 #ifdef LIBWS_WITH_OPENSSL
 #include <openssl/bio.h>
@@ -28,7 +27,7 @@
 
 typedef enum ws_send_state_e
 {
-	WS_SEND_STATE_NOTHING,
+	WS_SEND_STATE_NONE,
 	WS_SEND_STATE_MESSAGE_BEGIN,
 	WS_SEND_STATE_IN_MESSAGE,
 	WS_SEND_STATE_IN_MESSAGE_PAYLOAD
@@ -45,7 +44,7 @@ typedef struct ws_base_s
 
 	#ifdef LIBWS_WITH_OPENSSL
 
-	SSL_CTX 				*ssl_ctx;
+	SSL_CTX *ssl_ctx;
 
 	#endif // LIBWS_WITH_OPENSSL
 } ws_base_s;

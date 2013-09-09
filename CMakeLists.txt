@@ -17,7 +17,6 @@ include(CheckIncludeFiles)
 include(CheckTypeSize)
 
 find_package(LibEvent REQUIRED)
-
 include_directories(${LIBEVENT_INCLUDE_DIR})
 
 set(LIBWS_DEP_LIST LibEvent)

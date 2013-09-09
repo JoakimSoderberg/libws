@@ -3,6 +3,9 @@
 #define __LIBWS_TYPES_H__
 
 #include <stdio.h>
+#include <stdint.h>
+#include <inttypes.h>
+#include <sys/time.h>
 
 typedef struct ws_s *ws_t;
 typedef struct ws_base_s *ws_base_t;
@@ -30,6 +33,9 @@ typedef enum libws_ssl_state_e
 #define WS_RANDOM_PATH "/dev/urandom"
 
 typedef void (*ws_msg_callback_f)(ws_t ws, const char *msg, uint64_t len, void *arg);
+
+//typedef void (*ws_msg_begin_callback_f)(ws_t ws, const char *msg, )
+
 typedef void (*ws_err_callback_f)(ws_t ws, int errcode, const char *errmsg, void *arg);
 typedef void (*ws_close_callback_f)(ws_t ws, int reason, void *arg);
 typedef void (*ws_connect_callback_f)(ws_t ws, void *arg);

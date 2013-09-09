@@ -122,10 +122,10 @@ fail:
 void ws_destroy(ws_t *ws)
 {
 	struct ws_s *w;
-
-	if (!ws || !(*ws))
-		return;
 	
+	if (!ws || !(*ws))
+		return; 
+
 	w = *ws;
 
 	if (w->bev)
@@ -142,9 +142,9 @@ void ws_destroy(ws_t *ws)
 		w->base = NULL;
 	}
 
-	if (ws->origin)
+	if (w->origin)
 	{
-		free(ws->origin);
+		free(w->origin);
 	}
 
 	#ifdef LIBWS_WITH_OPENSSL
@@ -345,7 +345,7 @@ int ws_msg_begin(ws_t ws)
 
 int ws_msg_frame_data_begin(ws_t ws, uint64_t datalen)
 {
-	uint8_t header_buf[WS_MAX_HEADER_SIZE];
+	uint8_t header_buf[WS_HDR_MAX_SIZE];
 	size_t header_len = 0;
 
 	assert(ws);
@@ -356,7 +356,7 @@ int ws_msg_frame_data_begin(ws_t ws, uint64_t datalen)
 	{
 		LIBWS_LOG(LIBWS_ERR, "Incorrect state for frame data begin");
 		return -1;
-	)
+	}
 	
 	if (datalen > WS_MAX_PAYLOAD_LEN)
 	{
@@ -369,7 +369,7 @@ int ws_msg_frame_data_begin(ws_t ws, uint64_t datalen)
 	ws->header.mask_bit = 0x1;
 	ws->header.payload_len = datalen;
 
-	if (_ws_get_random_mask(ws, &ws->header.mask, sizeof(uint32_t)) 
+	if (_ws_get_random_mask(ws, (char *)&ws->header.mask, sizeof(uint32_t)) 
 		!= sizeof(uint32_t))
 	{
 	 	return -1;
@@ -545,7 +545,7 @@ uint64_t ws_get_max_frame_size(ws_t ws)
 	return ws->max_frame_size;
 }
 
-void ws_set_onconnect_cb(ws_t ws, connect_callback_f func, void *arg)
+void ws_set_onconnect_cb(ws_t ws, ws_connect_callback_f func, void *arg)
 {
 	assert(ws);
 
