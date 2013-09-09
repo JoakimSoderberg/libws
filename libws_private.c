@@ -41,6 +41,44 @@ static void _ws_connection_timeout_event(evutil_socket_t fd, short what, void *a
 	}
 }
 
+static int _ws_setup_timeout_event(ws_t ws, ws_timeout_callback_f func, 
+								struct **event, struct timeval *tv)
+{
+	assert(ws);
+	assert(event);
+	assert(func);
+	assert(tv);
+
+	if (*event)
+	{
+		evtimer_del(*event);
+		*event = NULL;
+	}
+
+	if (!(*event = evtimer_new(ws->base, 
+			_ws_connection_timeout_event, ws)))
+	{
+		LIBWS_LOG(LIBWS_ERR, "Failed to create timeout evet");
+		return -1;
+	}
+
+	if (evtimer_add(*event, tv))
+	{
+		evtimer_del(*event);
+		LIBWS_LOG(LIBWS_ERR, "Failed to add timeout event");
+		return -1;
+	}
+
+	return 0;
+}
+
+int _ws_setup_pong_timeout_event(ws_t ws)
+{
+	assert(ws);
+	return _ws_setup_timeout_event(ws, ws->pong_timeout_cb,
+				&ws->pong_timeout_event, &ws->pong_timeout);
+}
+
 int _ws_setup_connection_timeout(ws_t ws)
 {	
 	struct timeval tv = {WS_DEFAULT_CONNECT_TIMEOUT, 0};
@@ -51,6 +89,9 @@ int _ws_setup_connection_timeout(ws_t ws)
 		tv = ws->connect_timeout;
 	}
 
+	return _ws_setup_timeout_event(ws, _ws_connection_timeout_event, 
+					&ws->connect_timeout_event, &tv);
+	/*
 	if (!(ws->connect_timeout_event = evtimer_new(ws->base, 
 			_ws_connection_timeout_event, ws)))
 	{
@@ -66,6 +107,7 @@ int _ws_setup_connection_timeout(ws_t ws)
 	}
 
 	return 0;
+	*/
 }
 
 static void _ws_eof_event(struct bufferevent *bev, short events, ws_t ws)
@@ -135,7 +177,7 @@ static void _ws_event_callback(struct bufferevent *bev, short events, void *ptr)
 }
 
 ///
-/// Libevent bufferevent callback for when there is datata to be read
+/// Libevent bufferevent callback for when there is data to be read
 /// on the websocket socket.
 ///
 static void _ws_read_callback(struct bufferevent *bev, void *ptr)
@@ -149,6 +191,7 @@ static void _ws_read_callback(struct bufferevent *bev, void *ptr)
 	// TODO: Read from the bufferevent.
 	// TODO: Parse the websocket header.
 	// TODO: Based on op code forward data to appropriate callback.
+
 }
 
 ///
@@ -258,6 +301,80 @@ int _ws_send_data(ws_t ws, char *msg, uint64_t len, int no_copy)
 	return 0;
 }
 
+int _ws_send_frame_raw(ws_t ws, ws_opcode_t opcode, char *data, uint64_t datalen)
+{
+	uint8_t header_buf[WS_MAX_HEADER_SIZE];
+	size_t header_len = 0;
+
+	assert(ws);
+
+	if (ws->state != WS_STATE_CONNECTED)
+	{
+		return -1;
+	}
+
+	if (ws->send_state != WS_SEND_STATE_NONE)
+	{
+		return -1;
+	}
+
+	// All control frames MUST have a payload length of 125 bytes or less
+   	// and MUST NOT be fragmented.
+   	if (WS_OPCODE_IS_CONTROL(opcode) && (datalen > 125))
+   	{
+   		LIBWS_LOG(LIBWS_ERR, "Control frame payload cannot be "
+   							 "larger than 125 bytes");
+   		return -1;
+   	}
+
+	// Pack and send header.
+	{
+		memset(&ws->header, 0, sizeof(ws_header_t));
+
+		ws->header.fin = 0x1;
+		ws->header.opcode = opcode;
+		
+		if (datalen > WS_MAX_PAYLOAD_LEN)
+		{
+			LIBWS_LOG(LIBWS_ERR, "Payload length (0x%x) larger than max allowed "
+								 "websocket payload (0x%x)",
+								 datalen, WS_MAX_PAYLOAD_LEN);
+			return -1;
+		}
+
+		ws->header.mask_bit = 0x1;
+		ws->header.payload_len = datalen;
+
+		if (_ws_get_random_mask(ws, &ws->header.mask, sizeof(uint32_t)) 
+			!= sizeof(uint32_t))
+		{
+		 	return -1;
+		}
+
+		ws_pack_header(&ws->header, header_buf, sizeof(header_buf), &header_len);
+		
+		if (_ws_send_data(ws, header_buf, (uint64_t)header_len, 0))
+		{
+			LIBWS_LOG(LIBWS_ERR, "Failed to send frame header");
+			return -1;
+		}
+	}
+
+	// Send the data.
+	{
+		if (_ws_mask_payload(ws->header.mask, data, datalen))
+		{
+			LIBWS_LOG(LIBWS_ERR, "Failed to mask payload");
+			return -1;
+		}
+
+		if (_ws_send_data(ws, data, datalen, 1))
+		{
+			LIBWS_LOG(LIBWS_ERR, "Failed to send frame data");
+			return -1;
+		}
+	}
+}
 
 int _ws_get_random_mask(ws_t ws, char *buf, size_t len)
 {

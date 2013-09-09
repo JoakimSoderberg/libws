@@ -116,11 +116,10 @@ int ws_send_msg(ws_t ws, char *msg, uint64_t len);
 /// Begin sending a websocket message of the given type.
 ///
 /// @param[in]	ws 		The websocket session context.
-/// @param[in]	type 	The type of frame to send.
 ///
 /// @returns			0 on success.
 ///
-int ws_msg_begin(ws_t ws, ws_frame_type_t type);
+int ws_msg_begin(ws_t ws);
 
 ///
 /// Starts sending a websocket frame.
@@ -186,34 +185,26 @@ int ws_send_ping(ws_t ws);
 ///
 /// @returns			0 on success.
 ///
-int ws_send_ping_ex(ws_t ws, char *msg, uint64_t len);
-
-///
-/// Sends a pong reply to the websocket.
-///
-/// @note This should only be called as a reply to a ping
-///		  message received in the callback set by #ws_set_onping_cb.
-///
-/// @see ws_send_pong_ex, ws_set_onpong_cb
-///
-/// @param[in]	ws 		The websocket session context.
-/// @param[in]	arg		User context passed to the callback.
-///
-/// @returns			0 on success.
-/// 
-void ws_send_pong(ws_t ws);
+int ws_send_ping_ex(ws_t ws, char *msg, size_t len);
 
 ///
 /// Sends a pong reply with a payload to the websocket.
-/// 
-/// @see ws_send_pong, ws_set_onpong_cb
+///
+/// @note A pong should only be sent as reply to a ping
+///		  in the callback set using #ws_set_onping_cb.
+///		  It is also a requirement in the Websocket RFC
+///		  that the payload is the same as the one received in
+///		  the ping message.
+///
+/// @see ws_set_onpong_cb, ws_set_onping_cb, ws_onpong_default_cb
 ///
 /// @param[in]	ws 		The websocket session context.
-/// @param[in]	arg		User context passed to the callback.
+/// @param[in]	msg 	Pong payload (MUST be same as ping payload).
+/// @param[in]	len 	Length of pong payload.
 ///
-/// @returns			0 on success.
+/// @returns 			0 on success.
 /// 
-void ws_send_pong_ex(ws_t ws, char *msg, uint64_t len);
+int ws_send_pong(ws_t ws, char *msg, size_t len);
 
 ///
 /// Sets the max allowed frame size. If any frame size exceeds
@@ -307,21 +298,16 @@ void ws_onping_default_cb(ws_t ws, char *msg, uint64_t len);
 /// frame is received. If this is set, it is up to the user callback
 /// to reply with a pong, or call the #ws_onping_default_cb handler.
 ///
+/// @note A Pong frame sent in response to a Ping frame must have 
+///		  identical "Application data" as found in the message body
+///		  of the Ping frame being replied to.
+///
 /// @see ws_send_ping, ws_send_ping_ex, ws_onping_default_cb
 ///
 /// @param[in]	ws 		The websocket session context.
 /// @param[in]	arg		User context passed to the callback.
 ///
-void ws_set_onping_cb(ws_t ws, ws_msg_callback_f, void *arg);
-
-///
-/// The default pong callback handler. This notes that a pong
-/// was received in reply to the ping that was sent.
-///
-/// @param[in]	ws 		The websocket session context.
-/// @param[in]	arg		User context passed to the callback.
-///
-void ws_onpong_default_cb(ws_t ws, char *msg, uint64_t len);
+void ws_set_onping_cb(ws_t ws, ws_msg_callback_f func, void *arg);
 
 ///
 /// Sets the on pong callback function for when a ping websocket
@@ -330,7 +316,19 @@ void ws_onpong_default_cb(ws_t ws, char *msg, uint64_t len);
 /// @param[in]	ws 		The websocket session context.
 /// @param[in]	arg		User context passed to the callback.
 /// 
-void ws_set_onpong_cb(ws_t ws, ws_msg_callback_f, void *arg);
+void ws_set_onpong_cb(ws_t ws, ws_msg_callback_f func, void *arg);
+
+///
+/// Sets the callback that is triggered when an expected pong
+/// wasn't received in the given time. If this isn't set nothing
+/// is done by default.
+///
+/// @param[in]	ws 		The websocket session context.
+/// @param[in]	timeout	The time to wait for a pong reply.
+/// @param[in]	arg		User context passed to the callback.
+/// 
+void ws_set_pong_timeout_cb(ws_t ws, ws_timeout_callback_f func, 
+							struct timeval timeout, void *arg);
 
 ///
 /// Sets binary mode for the messages that are sent 
@@ -381,7 +379,8 @@ int ws_is_connected(ws_t ws);
 ///
 /// @returns			0 on success.
 /// 
-void ws_set_recv_timeout_cb(ws_t ws, ws_timeout_callback_f func, struct timeval recv_timeout, void *arg);
+void ws_set_recv_timeout_cb(ws_t ws, ws_timeout_callback_f func, 
+							struct timeval recv_timeout, void *arg);
 
 ///
 /// Sets the callback for when a send operation has timed out.
@@ -393,7 +392,8 @@ void ws_set_recv_timeout_cb(ws_t ws, ws_timeout_callback_f func, struct timeval 
 ///
 /// @returns			0 on success.
 /// 
-void ws_set_send_timeout_cb(ws_t ws, ws_timeout_callback_f func, struct timeval send_timeout, void *arg);
+void ws_set_send_timeout_cb(ws_t ws, ws_timeout_callback_f func, 
+							struct timeval send_timeout, void *arg);
 
 ///
 /// Sets the callback for when a connection attempt times out.
@@ -405,7 +405,8 @@ void ws_set_send_timeout_cb(ws_t ws, ws_timeout_callback_f func, struct timeval 
 ///
 /// @returns			0 on success.
 /// 
-void ws_set_connect_timeout_cb(ws_t ws, ws_timeout_callback_f func, struct timeval connect_timeout, void *arg);
+void ws_set_connect_timeout_cb(ws_t ws, ws_timeout_callback_f func, 
+								struct timeval connect_timeout, void *arg);
 
 ///
 /// Sets the user context/state for this websocket connection.
@@ -459,7 +460,8 @@ ws_state_t ws_get_state(ws_t ws);
 #ifdef LIBWS_WITH_OPENSSL
 
 ///
-/// Sets what type of SSL connections to allow.
+/// Sets what type of SSL connections to allow. 
+/// If self signed certificates should be allowed.
 ///
 /// @see libws_ssl_state_t
 /// 

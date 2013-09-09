@@ -134,6 +134,8 @@ void ws_destroy(ws_t *ws)
 		w->bev = NULL;
 	}
 
+	// TODO: Destroy timeout events here as well? (Does Libevent do this automatically?)
+
 	if (w->base)
 	{
 		event_base_free(w->base);
@@ -196,16 +198,6 @@ int ws_connect(ws_t ws, const char *server, int port, const char *uri)
 
 	return 0;
 }
-
-/*
-int ws_connect(ws_t ws, const char *uri)
-{
-	// http://www.w3.org/Library/src/HTParse
-	ws_parse_uri()
-
-	ws_connect_advanced(ws)
-}
-*/
 
 int ws_close(ws_t ws)
 {
@@ -305,10 +297,10 @@ char *ws_get_uri(ws_t ws, char *buf, size_t bufsize)
 	return buf;
 }
 
-void ws_set_no_copy_cb(ws_t ws, ws_no_copy_cleanup_f cleanup_f, void *extra)
+void ws_set_no_copy_cb(ws_t ws, ws_no_copy_cleanup_f func, void *extra)
 {
 	assert(ws);
-	ws->no_copy_cleanup_cb = cleanup_f;
+	ws->no_copy_cleanup_cb = func;
 	ws->no_copy_extra = extra;
 }
 
@@ -331,7 +323,7 @@ void *ws_get_user_state(ws_t ws)
 		return -1; \
 	} 
 
-int ws_msg_begin(ws_t ws, ws_frame_type_t type)
+int ws_msg_begin(ws_t ws)
 {
 	assert(ws);
 	_WS_MUST_BE_CONNECTED(ws, "message begin");
@@ -370,7 +362,7 @@ int ws_msg_frame_data_begin(ws_t ws, uint64_t datalen)
 	{
 		LIBWS_LOG(LIBWS_ERR, "Payload length (0x%x) larger than max allowed "
 							 "websocket payload (0x%x)",
-							ws->header.payload_len, WS_MAX_PAYLOAD_LEN);
+							datalen, WS_MAX_PAYLOAD_LEN);
 		return -1;
 	}
 
@@ -379,9 +371,9 @@ int ws_msg_frame_data_begin(ws_t ws, uint64_t datalen)
 
 	if (_ws_get_random_mask(ws, &ws->header.mask, sizeof(uint32_t)) 
 		!= sizeof(uint32_t))
-	 {
+	{
 	 	return -1;
-	 }
+	}
 
 	// TODO: Use this function for WS_OPCODE_PING/PONG as well?
 	if (ws->send_state == WS_SEND_STATE_MESSAGE_BEGIN)
@@ -620,7 +612,8 @@ void ws_onpong_default_cb(ws_t ws, char *msg, uint64_t len)
 {
 	assert(ws);
 
-	// TODO: Note that we received a pong as reply to ping.
+	// Does nothing.
+	// TODO: In the future we maybe want to make sure the reply is the same as the ping.
 }
 
 void ws_set_onpong_cb(ws_t ws, ws_msg_callback_f func, void *arg)
@@ -629,6 +622,15 @@ void ws_set_onpong_cb(ws_t ws, ws_msg_callback_f func, void *arg)
 
 	ws->pong_cb = func ? func : ws_onpong_default_cb;
 	ws->pong_arg = arg;
+}
+
+void ws_set_pong_timeout_cb(ws_t ws, ws_timeout_callback_f func, 
+							struct timeval timeout, void *arg)
+{
+	assert(ws);
+
+	ws->pong_timeout_cb = func;
+	ws->pong_timeout_arg = arg;
 }
 
 void ws_set_binary(ws_t ws, int binary)
@@ -702,3 +704,39 @@ void ws_set_connect_timeout_cb(ws_t ws, ws_timeout_callback_f func,
 	ws->connect_timeout_arg = arg;
 }
 
+int ws_send_ping_ex(ws_t ws, char *msg, size_t len)
+{
+	assert(ws);
+
+	if (_ws_send_frame_raw(ws, WS_OPCODE_PING, msg, (uint64_t)len))
+	{
+		return -1;
+	}
+
+	if (ws->pong_timeout_cb && _ws_setup_pong_timeout(ws))
+	{
+		LIBWS_LOG(LIBWS_ERR, "Failed to setup pong timeout callback");
+	}
+
+	return 0;
+}
+
+int ws_send_ping(ws_t ws)
+{
+	assert(ws);
+	return ws_send_ping_ex(ws, NULL, 0);
+}
+
+int ws_send_pong(ws_t ws, char *msg, uint64_t len)
+{
+	assert(ws);
+
+	if (_ws_send_frame_raw(ws, WS_OPCODE_PONG, msg, (uint64_t)len))
+	{
+		return -1;
+	}
+
+	// TODO: The pong MUST contain the same payload as the PING.
+
+	return 0;
+}
