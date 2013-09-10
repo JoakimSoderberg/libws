@@ -18,8 +18,10 @@
 #include "libws_protocol.h"
 #include "libws_private.h"
 
-static void _ws_connected_event(struct bufferevent *bev, short events, ws_t ws)
+static void _ws_connected_event(struct bufferevent *bev, short events, void *arg)
 {
+	ws_t ws = (ws_t)arg;
+	assert(ws);
 	char buf[1024];
 	LIBWS_LOG(LIBWS_DEBUG, "Connected to %s", ws_get_uri(ws, buf, sizeof(buf)));
 
@@ -48,30 +50,43 @@ static void _ws_connection_timeout_event(evutil_socket_t fd, short what, void *a
 	}
 }
 
-static int _ws_setup_timeout_event(ws_t ws, ws_timeout_callback_f func, 
-									struct **event, struct timeval *tv)
+static void _ws_pong_timeout_event(evutil_socket_t fd, short what, void *arg)
+{
+	ws_t ws = (ws_t)arg;
+	assert(ws);
+
+	// TODO: Make sure we delete this event if the ws->pong_timeout_cb is set to NULL while waiting for event to time out.
+
+	if (ws->pong_timeout_cb)
+	{
+		ws->pong_timeout_cb(ws, ws->pong_timeout, ws->pong_arg);
+	}
+}
+
+static int _ws_setup_timeout_event(ws_t ws, event_callback_fn func, 
+									struct event **ev, struct timeval *tv)
 {
 	assert(ws);
-	assert(event);
+	assert(ev);
 	assert(func);
 	assert(tv);
 
-	if (*event)
+	if (*ev)
 	{
-		evtimer_del(*event);
-		*event = NULL;
+		evtimer_del(*ev);
+		*ev = NULL;
 	}
 
-	if (!(*event = evtimer_new(ws->base, 
-			_ws_connection_timeout_event, ws)))
+	if (!(*ev = evtimer_new(ws->base, 
+			_ws_connection_timeout_event, (void *)ws)))
 	{
 		LIBWS_LOG(LIBWS_ERR, "Failed to create timeout evet");
 		return -1;
 	}
 
-	if (evtimer_add(*event, tv))
+	if (evtimer_add(*ev, tv))
 	{
-		evtimer_del(*event);
+		evtimer_del(*ev);
 		LIBWS_LOG(LIBWS_ERR, "Failed to add timeout event");
 		return -1;
 	}
@@ -82,7 +97,7 @@ static int _ws_setup_timeout_event(ws_t ws, ws_timeout_callback_f func,
 int _ws_setup_pong_timeout(ws_t ws)
 {
 	assert(ws);
-	return _ws_setup_timeout_event(ws, ws->pong_timeout_cb,
+	return _ws_setup_timeout_event(ws, _ws_pong_timeout_event,
 				&ws->pong_timeout_event, &ws->pong_timeout);
 }
 
@@ -288,7 +303,7 @@ int _ws_send_data(ws_t ws, char *msg, uint64_t len, int no_copy)
 	if (no_copy && ws->no_copy_cleanup_cb)
 	{
 		if (evbuffer_add_reference(bufferevent_get_output(ws->bev), 
-			(void *)msg, len, _ws_builtin_cleanup_wrapper, (void *)ws))
+			(void *)msg, len, _ws_builtin_no_copy_cleanup_wrapper, (void *)ws))
 		{
 			LIBWS_LOG(LIBWS_ERR, "Failed to write reference to send buffer");
 			return -1;
@@ -310,7 +325,7 @@ int _ws_send_data(ws_t ws, char *msg, uint64_t len, int no_copy)
 
 int _ws_send_frame_raw(ws_t ws, ws_opcode_t opcode, char *data, uint64_t datalen)
 {
-	uint8_t header_buf[WS_MAX_HEADER_SIZE];
+	uint8_t header_buf[WS_HDR_MAX_SIZE];
 	size_t header_len = 0;
 
 	assert(ws);
@@ -352,7 +367,7 @@ int _ws_send_frame_raw(ws_t ws, ws_opcode_t opcode, char *data, uint64_t datalen
 		ws->header.mask_bit = 0x1;
 		ws->header.payload_len = datalen;
 
-		if (_ws_get_random_mask(ws, &ws->header.mask, sizeof(uint32_t)) 
+		if (_ws_get_random_mask(ws, (char *)&ws->header.mask, sizeof(uint32_t)) 
 			!= sizeof(uint32_t))
 		{
 		 	return -1;
@@ -397,7 +412,7 @@ int _ws_get_random_mask(ws_t ws, char *buf, size_t len)
 		}
 	}
 	#else
-	i = read(ws->base->random_fd, buf, len);
+	i = read(ws->ws_base->random_fd, buf, len);
 	#endif 
 
 	return i;

@@ -19,7 +19,7 @@ int _ws_global_openssl_init(ws_base_t ws_base)
 
 	// Setup the SSL context.
 	{
-		SSL_METHOD *ssl_method = SSLv23_client_method();
+		const SSL_METHOD *ssl_method = SSLv23_client_method();
 
 		if (!(ws_base->ssl_ctx = SSL_CTX_new(ssl_method)))
 		{

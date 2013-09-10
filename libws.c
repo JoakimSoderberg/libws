@@ -1,6 +1,7 @@
 
 #include "libws_config.h"
 
+#include <event2/dns.h>
 #include <event2/event.h>
 
 #include <stdio.h>
@@ -593,7 +594,7 @@ int ws_set_origin(ws_t ws, const char *origin)
 	return 0;
 }
 
-void ws_onping_default_cb(ws_t ws, char *msg, uint64_t len)
+void ws_onping_default_cb(ws_t ws, const char *msg, uint64_t len, void *arg)
 {
 	assert(ws);
 
@@ -608,7 +609,7 @@ void ws_set_onping_cb(ws_t ws, ws_msg_callback_f func, void *arg)
 	ws->ping_arg = arg;
 }
 
-void ws_onpong_default_cb(ws_t ws, char *msg, uint64_t len)
+void ws_onpong_default_cb(ws_t ws, const char *msg, uint64_t len, void *arg)
 {
 	assert(ws);
 
@@ -678,8 +679,6 @@ void ws_set_recv_timeout_cb(ws_t ws, ws_timeout_callback_f func,
 	ws->recv_timeout_arg = arg;
 
 	_ws_set_timeouts(ws);
-
-	return 0;
 }
 
 void ws_set_send_timeout_cb(ws_t ws, ws_timeout_callback_f func, 

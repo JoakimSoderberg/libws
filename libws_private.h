@@ -15,6 +15,8 @@
 #include "libws_types.h"
 #include "libws_protocol.h"
 
+#include <sys/time.h>
+
 #include <event2/event.h>
 #include <event2/bufferevent.h>
 

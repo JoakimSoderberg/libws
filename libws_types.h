@@ -11,6 +11,7 @@ typedef struct ws_s *ws_t;
 typedef struct ws_base_s *ws_base_t;
 
 #define WS_MAX_FRAME_SIZE 0x7FFFFFFFFFFFFFFF
+#define WS_DEFAULT_CONNECT_TIMEOUT 60
 
 typedef enum ws_state_e
 {
