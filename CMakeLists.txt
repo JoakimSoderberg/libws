@@ -51,11 +51,15 @@ include_directories(${PROJECT_BINARY_DIR})
 set(SRCS 
 	libws.c
 	libws_private.c
+	libws_header.c
+	libws_handshake.c
 	libws_log.c)
 
 set(HDRS_PUBLIC 
 	libws.h
 	libws_types.h
+	libws_header.h
+	libws_handshake.h
 	libws_log.h)
 
 set(HDRS_PRIVATE
