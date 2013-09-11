@@ -75,7 +75,7 @@ fail:
 	return -1;
 }
 
-static void ws_pack_header_first_byte(ws_header_t *h, uint8_t *b)
+static void _ws_pack_header_first_byte(ws_header_t *h, uint8_t *b)
 {
 	assert(h);
 	assert(b);
@@ -95,7 +95,7 @@ static void ws_pack_header_first_byte(ws_header_t *h, uint8_t *b)
 	b[0] |= (h->opcode  & 0xF);
 }
 
-static void ws_pack_header_rest(ws_header_t *h, uint8_t *b, size_t len, size_t *header_len)
+static void _ws_pack_header_rest(ws_header_t *h, uint8_t *b, size_t len, size_t *header_len)
 {
 	assert(h);
 	assert(b);
@@ -163,7 +163,8 @@ static void ws_pack_header_rest(ws_header_t *h, uint8_t *b, size_t len, size_t *
 
 void ws_pack_header(ws_header_t *h, uint8_t *b, size_t len, size_t *header_len)
 {
-	ws_pack_header_first_byte(h, b);
-	ws_pack_header_rest(h, b, len, header_len);
+	_ws_pack_header_first_byte(h, b);
+	_ws_pack_header_rest(h, b, len, header_len);
 }
+
 
