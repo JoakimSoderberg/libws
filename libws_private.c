@@ -15,7 +15,7 @@
 
 #include "libws_log.h"
 #include "libws_types.h"
-#include "libws_protocol.h"
+#include "libws_header.h"
 #include "libws_private.h"
 
 static void _ws_connected_event(struct bufferevent *bev, short events, void *arg)

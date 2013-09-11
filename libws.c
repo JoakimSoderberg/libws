@@ -13,7 +13,7 @@
 #include "libws_types.h"
 #include "libws_log.h"
 #include "libws.h"
-#include "libws_protocol.h"
+#include "libws_header.h"
 #include "libws_private.h"
 #ifdef LIBWS_WITH_OPENSSL
 #include "libws_openssl.h"

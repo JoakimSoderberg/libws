@@ -4,7 +4,7 @@
 
 #include "libws_config.h"
 #include "libws_types.h"
-#include "libws_protocol.h"
+#include "libws_header.h"
 
 #include <stdio.h>
 #include <event2/event.h>
@@ -291,7 +291,7 @@ int ws_set_origin(ws_t ws, const char *origin);
 /// @param[in]	ws 		The websocket session context.
 /// @param[in]	arg		User context passed to the callback.
 ///
-void ws_onping_default_cb(ws_t ws, char *msg, uint64_t len);
+void ws_onping_default_cb(ws_t ws, char *msg, uint64_t len, void *arg);
 
 ///
 /// Sets the on ping callback function for when a ping websocket

@@ -76,7 +76,8 @@ typedef struct ws_header_s
 	uint32_t mask;			///< Masking key for the payload.
 } ws_header_t;
 
-int ws_unpack_header(ws_header_t *h, const unsigned char *b, size_t len);
+int ws_unpack_header(ws_header_t *h, size_t *header_len, 
+					const unsigned char *b, size_t len);
 
 ///
 /// Packs a websocket header struct into a network byte order

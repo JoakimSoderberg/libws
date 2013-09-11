@@ -2,7 +2,7 @@
 #include "libws_config.h"
 #include "libws_log.h"
 #include "libws_types.h"
-#include "libws_protocol.h"
+#include "libws_header.h"
 
 int ws_unpack_header(ws_header_t *h, size_t *header_len, 
 					const unsigned char *b, size_t len)
@@ -13,7 +13,7 @@ int ws_unpack_header(ws_header_t *h, size_t *header_len,
 
 	*header_len = 0;
 
-	if (len < WS_MIN_HEADER_SIZE)
+	if (len < WS_HDR_MIN_SIZE)
 	{
 		goto fail;
 	}
