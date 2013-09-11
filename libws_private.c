@@ -2,6 +2,7 @@
 #include "libws_config.h"
 
 #include <stdio.h>
+#include <assert.h>
 
 #ifdef WIN32
 #define _CRT_RAND_S
@@ -384,7 +385,7 @@ int _ws_send_frame_raw(ws_t ws, ws_opcode_t opcode, char *data, uint64_t datalen
 
 	// Send the data.
 	{
-		if (_ws_mask_payload(ws->header.mask, data, datalen))
+		if (ws_mask_payload(ws->header.mask, data, datalen))
 		{
 			LIBWS_LOG(LIBWS_ERR, "Failed to mask payload");
 			return -1;
@@ -416,13 +417,6 @@ int _ws_get_random_mask(ws_t ws, char *buf, size_t len)
 	#endif 
 
 	return i;
-}
-
-int _ws_mask_payload(uint32_t mask, char *msg, uint64_t len)
-{
-	assert(msg);
-
-	return 0;
 }
 
 void _ws_set_timeouts(ws_t ws)

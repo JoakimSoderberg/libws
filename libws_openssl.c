@@ -1,9 +1,14 @@
 
+#include "libws_config.h"
+#include <assert.h>
 #include "libws_log.h"
 #include "libws.h"
 #include "libws_private.h"
 #include "libws_openssl.h"
-#include "openssl/ssl.h"
+#include <openssl/ssl.h>
+#include <event2/event.h>
+#include <event2/listener.h>
+#include <event2/bufferevent_ssl.h>
 
 
 int _ws_global_openssl_init(ws_base_t ws_base)

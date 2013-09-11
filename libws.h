@@ -457,6 +457,24 @@ void ws_set_no_copy_cb(ws_t ws, ws_no_copy_cleanup_f func, void *extra);
 ///
 ws_state_t ws_get_state(ws_t ws);
 
+///
+/// Masks a given payload.
+///
+/// @param[in]	mask 	The mask to use.
+/// @param[in]	msg 	The message to mask.
+/// @param[in]	len 	Length of the message buffer.
+///
+void ws_mask_payload(uint32_t mask, char *msg, uint64_t len);
+
+///
+/// Unmasks a given payload.
+///
+/// @param[in]	mask 	The mask to use.
+/// @param[in]	msg 	The message to mask.
+/// @param[in]	len 	Length of the message buffer.
+///
+void ws_unmask_payload(uint32_t mask, char *msg, uint64_t len);
+
 #ifdef LIBWS_WITH_OPENSSL
 
 ///

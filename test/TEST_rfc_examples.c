@@ -12,7 +12,7 @@ int compare_headers(ws_header_t *e, ws_header_t *h)
 	#define CMP_HDR_VAR(name, var) \
 		if (e->var != h->var) \
 		{ \
-			libws_test_FAILURE("	" name "0x%x expected 0x%x", h->var, e->var); \
+			libws_test_FAILURE("	" name " 0x%x expected 0x%x", h->var, e->var); \
 			ret = -1; \
 		} \
 		else \
@@ -48,9 +48,15 @@ int do_unpack_test(char *buf, size_t buflen,
 		ret = -1;
 	}
 		
-	ret |= compare_headers(expected_header, &header);
+	if (compare_headers(expected_header, &header))
+		return -1;
 
 	payload = &buf[header_len];
+
+	if (header.mask_bit)
+	{
+		ws_unmask_payload(header.mask, payload, header.payload_len);
+	}
 
 	if (!memcmp(payload, expected_payload, expected_payload_len))
 	{
@@ -100,7 +106,7 @@ int TEST_rfc_examples(int argc, char *argv[])
 	// 
 	//   *  0x81 0x05 0x48 0x65 0x6c 0x6c 0x6f (contains "Hello")
 	// 
-	libws_test_STATUS("Testing a single-frame unmasked text message containing \"Hello\"");
+	libws_test_STATUS("Testing a single-frame UNMASKED text message containing \"Hello\"");
 	{
 		char single_frame_unmasked[] = {0x81, 0x05, 0x48, 0x65, 0x6c, 0x6c, 0x6f};
 
@@ -114,22 +120,10 @@ int TEST_rfc_examples(int argc, char *argv[])
 		h->payload_len = strlen("Hello");
 		h->mask = 0;
 
-		do_unpack_test(single_frame_unmasked, 
-			sizeof(single_frame_unmasked),
-			&expected_header,
-			"Hello", strlen("Hello"));
-		/*
-		if (ws_unpack_header(&header, &header_len, 
-			(unsigned char *)single_frame_unmasked, 
-			sizeof(single_frame_unmasked)))
-		{
-			libws_test_FAILURE("Could not unpack header\n");
-			ret = -1;
-		}
-		
-		compare_headers(&expected_header, &header);
-		*/
-		//printf("payload: \"%s\"\n", &single_frame_unmasked[header_len]);
+		ret |= do_unpack_test(single_frame_unmasked, 
+					sizeof(single_frame_unmasked),
+					&expected_header,
+					"Hello", strlen("Hello"));
 	}
 
 	// o  A single-frame masked text message
@@ -137,8 +131,24 @@ int TEST_rfc_examples(int argc, char *argv[])
 	//   *  0x81 0x85 0x37 0xfa 0x21 0x3d 0x7f 0x9f 0x4d 0x51 0x58
 	//      (contains "Hello")
 	//
+	libws_test_STATUS("Testing a single-frame MASKED text message containing \"Hello\"");
 	{
 		char single_frame_masked[] = {0x81, 0x85, 0x37, 0xfa, 0x21, 0x3d, 0x7f, 0x9f, 0x4d, 0x51, 0x58};
+		
+		h = &expected_header;
+		h->fin = 1;
+		h->rsv1 = 0;
+		h->rsv2 = 0;
+		h->rsv3 = 0;
+		h->opcode = WS_OPCODE_TEXT;
+		h->mask_bit = 1;
+		h->payload_len = strlen("Hello");
+		h->mask = (0x37) | (0xfa << 8) | (0x21 << 16) | (0x3d << 24);
+
+		ret |= do_unpack_test(single_frame_masked, 
+					sizeof(single_frame_masked),
+					&expected_header,
+					"Hello", strlen("Hello"));
 	}
 
 	// o  A fragmented unmasked text message

@@ -26,7 +26,7 @@ add_executable(${LIBWS_TESTS_NAME}
 
 # Add test dependencies.	
 add_dependencies(${LIBWS_TESTS_NAME} ${LIBWS_DEP_LIST})
-target_link_libraries(${LIBWS_TESTS_NAME} libws ${LIBWS_LIB_LIST})
+target_link_libraries(${LIBWS_TESTS_NAME} ws ${LIBWS_LIB_LIST})
 
 ##
 ## Add all the tests to CTest.

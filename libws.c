@@ -414,7 +414,7 @@ int ws_msg_frame_data_send(ws_t ws, char *data, uint64_t datalen)
 	}
 
 	// TODO: Don't touch original buffer as an option?	
-	if (_ws_mask_payload(ws->header.mask, data, datalen))
+	if (ws_mask_payload(ws->header.mask, data, datalen))
 	{
 		LIBWS_LOG(LIBWS_ERR, "Failed to mask payload");
 		return -1;
@@ -739,3 +739,23 @@ int ws_send_pong(ws_t ws, char *msg, uint64_t len)
 
 	return 0;
 }
+
+void ws_mask_payload(uint32_t mask, char *msg, uint64_t len)
+{
+	size_t i;
+	uint8_t *m = (uint8_t *)&mask;
+	
+	if (!msg || !len)
+		return;
+
+	for (i = 0; i < len; i++)
+	{
+		msg[i] = msg[i] ^ m[i % 4];
+	}
+}
+
+void ws_unmask_payload(uint32_t mask, char *msg, uint64_t len)
+{
+	ws_mask_payload(mask, msg, len);
+}
+

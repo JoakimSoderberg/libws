@@ -22,7 +22,7 @@ find_package(LibEvent REQUIRED)
 include_directories(${LIBEVENT_INCLUDE_DIR})
 
 set(LIBWS_DEP_LIST LibEvent)
-set(LIBWS_LIB_LIST ${LIBEVENT_CORE_LIBRARY})
+set(LIBWS_LIB_LIST ${LIBEVENT_LIBRARY})
 
 if (LIBWS_WITH_OPENSSL)
 	find_package(OpenSSL REQUIRED)
@@ -31,7 +31,9 @@ if (LIBWS_WITH_OPENSSL)
 		message(FATAL_ERROR "Cannot link OpenSSL not found!")
 	endif()
 
-	list(APPEND LIBWS_LIB_LIST ${OPENSSL_LIBRARIES})
+	list(APPEND LIBWS_LIB_LIST 
+		${OPENSSL_LIBRARIES}
+		${LIBEVENT_OPENSSL_LIBRARY})
 
 	include_directories(${OPENSSL_INCLUDE_DIR})
 endif(LIBWS_WITH_OPENSSL)
@@ -81,13 +83,13 @@ source_group("Headers public"	FILES ${HDRS_PUBLIC})
 source_group("Headers private"	FILES ${HDRS_PRIVATE})
 source_group("Sources"			FILES ${SRCS})
 
-add_library(libws STATIC 
+add_library(ws STATIC 
 			${SRCS} 
 			${HDRS_PUBLIC} 
 			${HDRS_PRIVATE})
 
 # Add libs and dependencies
-add_dependencies(libws ${LIBWS_DEP_LIST})
-target_link_libraries(libws ${LIBWS_LIB_LIST})
+add_dependencies(ws ${LIBWS_DEP_LIST})
+target_link_libraries(ws ${LIBWS_LIB_LIST})
 
 add_subdirectory(test)
