@@ -106,7 +106,7 @@ int TEST_rfc_examples(int argc, char *argv[])
 	// 
 	//   *  0x81 0x05 0x48 0x65 0x6c 0x6c 0x6f (contains "Hello")
 	// 
-	libws_test_STATUS("Testing a single-frame UNMASKED text message containing \"Hello\"");
+	libws_test_STATUS("\nTesting a single-frame UNMASKED text message containing \"Hello\"");
 	{
 		char single_frame_unmasked[] = {0x81, 0x05, 0x48, 0x65, 0x6c, 0x6c, 0x6f};
 
@@ -131,7 +131,7 @@ int TEST_rfc_examples(int argc, char *argv[])
 	//   *  0x81 0x85 0x37 0xfa 0x21 0x3d 0x7f 0x9f 0x4d 0x51 0x58
 	//      (contains "Hello")
 	//
-	libws_test_STATUS("Testing a single-frame MASKED text message containing \"Hello\"");
+	libws_test_STATUS("\nTesting a single-frame MASKED text message containing \"Hello\"");
 	{
 		char single_frame_masked[] = {0x81, 0x85, 0x37, 0xfa, 0x21, 0x3d, 0x7f, 0x9f, 0x4d, 0x51, 0x58};
 		
@@ -143,7 +143,7 @@ int TEST_rfc_examples(int argc, char *argv[])
 		h->opcode = WS_OPCODE_TEXT;
 		h->mask_bit = 1;
 		h->payload_len = strlen("Hello");
-		h->mask = (0x37) | (0xfa << 8) | (0x21 << 16) | (0x3d << 24);
+		h->mask = (*((uint32_t *)&single_frame_masked[2]));
 
 		ret |= do_unpack_test(single_frame_masked, 
 					sizeof(single_frame_masked),

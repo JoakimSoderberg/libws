@@ -66,7 +66,8 @@ int ws_unpack_header(ws_header_t *h, size_t *header_len,
 	if (h->mask_bit)
 	{
 		uint32_t *mask_ptr = (uint32_t *)&b[*header_len];
-		h->mask = *mask_ptr;
+		// TODO: Hmm shouldn't it be ntohl here? (doesn't work with RFC examples though).
+		h->mask = (*mask_ptr);
 		*header_len += 4;
 	}
 
