@@ -4,6 +4,8 @@
 
 #include "libws_config.h"
 #include <stdarg.h>
+#include <stdint.h>
+#include <inttypes.h>
 
 #ifndef va_copy
 #define va_copy(dest, src) memcpy(&(dest), &(src), sizeof(va_list));

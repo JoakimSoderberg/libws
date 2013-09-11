@@ -16,6 +16,8 @@ include(CheckFunctionExists)
 include(CheckIncludeFiles)
 include(CheckTypeSize)
 
+include_directories(${PROJECT_SOURCE_DIR})
+
 find_package(LibEvent REQUIRED)
 include_directories(${LIBEVENT_INCLUDE_DIR})
 
@@ -53,22 +55,26 @@ set(SRCS
 	libws_private.c
 	libws_header.c
 	libws_handshake.c
-	libws_log.c)
+	libws_log.c
+	libws_compat.c)
 
 set(HDRS_PUBLIC 
 	libws.h
 	libws_types.h
 	libws_header.h
-	libws_handshake.h
 	libws_log.h)
 
 set(HDRS_PRIVATE
 	libws_private.h
-	libws_compat.h)
+	libws_compat.h
+	libws_handshake.h)
 
 if (LIBWS_WITH_OPENSSL)
 	list(APPEND SRCS libws_openssl.c)
 	list(APPEND HDRS_PRIVATE libws_openssl.h)
+else()
+	list(APPEND SRCS libws_sha1.c)
+	list(APPEND HDRS_PRIVATE libws_sha1.h)
 endif()
 
 source_group("Headers public"	FILES ${HDRS_PUBLIC})

@@ -18,8 +18,11 @@ create_test_sourcelist(
 	${TEST_SRCS}
 	)
 
+include_directories("${CMAKE_CURRENT_SOURCE_DIR}")
+
 add_executable(${LIBWS_TESTS_NAME}
-				${LIBWS_TESTS_SRCS})
+				${LIBWS_TESTS_SRCS}
+				"libws_test_helpers.c")
 
 # Add test dependencies.	
 add_dependencies(${LIBWS_TESTS_NAME} ${LIBWS_DEP_LIST})

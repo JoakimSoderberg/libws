@@ -20,5 +20,5 @@ uint64_t libws_ntoh64(const uint64_t input)
 
 uint64_t libws_hton64(const uint64_t input)
 {
-    return (ntoh64(input));
+    return (libws_ntoh64(input));
 }

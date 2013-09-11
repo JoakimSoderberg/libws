@@ -3,6 +3,7 @@
 #include "libws_log.h"
 #include "libws_types.h"
 #include "libws_header.h"
+#include <assert.h>
 
 int ws_unpack_header(ws_header_t *h, size_t *header_len, 
 					const unsigned char *b, size_t len)
@@ -23,7 +24,7 @@ int ws_unpack_header(ws_header_t *h, size_t *header_len,
 	h->rsv1		= (b[0] >> 6) & 0x1;
 	h->rsv2		= (b[0] >> 5) & 0x1;
 	h->rsv3		= (b[0] >> 4) & 0x1;
-	h->opcode	= (b[0] >> 3) & 0xF;
+	h->opcode	= (b[0]       & 0xF);
 
 	// Second byte.
 	h->mask_bit = (b[1] >> 7) & 0x1;
@@ -56,13 +57,13 @@ int ws_unpack_header(ws_header_t *h, size_t *header_len,
 		{
 			// 8 byte payload length.
 			uint64_t *size_ptr = (uint64_t *)&b[2];
-			// TODO: Use ntohll here!
-			h->payload_len = (uint64_t)(*size_ptr);
+			h->payload_len = libws_ntoh64(*size_ptr);
 			*header_len += 8;
 		}
 	}
 
 	// Read masking key.
+	if (h->mask_bit)
 	{
 		uint32_t *mask_ptr = (uint32_t *)&b[*header_len];
 		h->mask = *mask_ptr;
