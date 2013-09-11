@@ -139,18 +139,17 @@ static void _ws_pack_header_rest(ws_header_t *h, uint8_t *b, size_t len, size_t 
 		uint16_t *size_ptr = (uint16_t *)&b[2];
 		*header_len += 2;
 
-		b[1] = 126;
+		b[1] |= 126;
 		*size_ptr = htons((uint16_t)h->payload_len);
 	}
 	else
 	{
 		// 8 byte extra payload length.
+		uint64_t *size_ptr = (uint64_t *)&b[2];
 		*header_len += 8;
 
-		b[1] = 127;
-
-		//b[2] = ...
-		// TODO: Pack uint64_t in network byte order. Use htonll (not portable)? 
+		b[1] |= 127;
+		*size_ptr = libws_hton64(h->payload_len);
 	}
 
 	if (h->mask_bit)
