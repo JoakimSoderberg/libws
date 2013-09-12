@@ -759,3 +759,37 @@ void ws_unmask_payload(uint32_t mask, char *msg, uint64_t len)
 	ws_mask_payload(mask, msg, len);
 }
 
+int ws_add_subprotocol(ws_t ws, const char *subprotocol)
+{
+	assert(ws);
+
+	return 0;
+}
+
+int ws_remove_subprotocol(ws_t ws, const char *subprotocol)
+{
+	assert(ws);
+
+	return 0;
+}
+
+size_t ws_get_subprotocol_count(ws_t ws)
+{
+	assert(ws);
+
+	return 0;
+}
+
+const char *subprotocols[] ws_get_subprotocols(ws_t ws, size_t *count)
+{
+	assert(ws);
+
+	return NULL;
+}
+
+int ws_clear_subprotocols(ws_t ws, const char *subprotocol)
+{
+	assert(ws);
+
+	return 0;
+}

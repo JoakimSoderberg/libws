@@ -475,6 +475,52 @@ void ws_mask_payload(uint32_t mask, char *msg, uint64_t len);
 ///
 void ws_unmask_payload(uint32_t mask, char *msg, uint64_t len);
 
+///
+/// Add a subprotocol that we can speak over the Websocket.
+///
+/// @param[in]	ws 	The websocket context.
+/// @param[in]	subprotocol 	The name of the subprotocol to add.
+///
+/// @returns 					0 on success.
+///
+int ws_add_subprotocol(ws_t ws, const char *subprotocol);
+
+///
+/// Remove a subprotocol that we can speak over the Websocket.
+///
+/// @param[in]	ws 	The websocket context.
+/// @param[in]	subprotocol 	The name of the subprotocol to remove.
+///
+/// @returns 					0 on success.
+///
+int ws_remove_subprotocol(ws_t ws, const char *subprotocol);
+
+///
+/// Returns the number of subprotocols
+///
+size_t ws_get_subprotocol_count(ws_t ws);
+
+///
+/// Returns a list of current subprotocols.
+///
+/// @param[in]	ws 		The websocket context.
+/// @param[out] count 	The number of subprotocols.
+///
+/// @returns 			A list of strings containing the subprotocols.
+///						NULL if the list is empty.
+///						It is up to the caller to free this list.
+///
+const char *subprotocols[] ws_get_subprotocols(ws_t ws, size_t *count);
+
+///
+/// Clear the list of subprotocols.
+///
+/// @param[in]	ws 	The websocket context.
+///
+/// @returns 					0 on success.
+///
+int ws_clear_subprotocols(ws_t ws);
+
 #ifdef LIBWS_WITH_OPENSSL
 
 ///
