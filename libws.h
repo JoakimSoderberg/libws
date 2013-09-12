@@ -8,6 +8,8 @@
 
 #include <stdio.h>
 #include <event2/event.h>
+#include <stdint.h>
+#include <inttypes.h>
 
 ///
 /// Initializes the global context for the library that's common
@@ -464,7 +466,7 @@ ws_state_t ws_get_state(ws_t ws);
 /// @param[in]	msg 	The message to mask.
 /// @param[in]	len 	Length of the message buffer.
 ///
-void ws_mask_payload(uint32_t  mask, char *msg, uint64_t len);
+void ws_mask_payload(uint32_t mask, char *msg, uint64_t len);
 
 ///
 /// Unmasks a given payload.

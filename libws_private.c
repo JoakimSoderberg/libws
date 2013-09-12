@@ -385,11 +385,7 @@ int _ws_send_frame_raw(ws_t ws, ws_opcode_t opcode, char *data, uint64_t datalen
 
 	// Send the data.
 	{
-		if (ws_mask_payload(ws->header.mask, data, datalen))
-		{
-			LIBWS_LOG(LIBWS_ERR, "Failed to mask payload");
-			return -1;
-		}
+		ws_mask_payload(ws->header.mask, data, datalen);
 
 		if (_ws_send_data(ws, data, datalen, 1))
 		{

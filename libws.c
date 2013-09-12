@@ -9,15 +9,17 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <assert.h>
+#include <stdint.h>
+#include <inttypes.h>
 
 #include "libws_types.h"
 #include "libws_log.h"
-#include "libws.h"
 #include "libws_header.h"
 #include "libws_private.h"
 #ifdef LIBWS_WITH_OPENSSL
 #include "libws_openssl.h"
 #endif
+#include "libws.h"
 
 int ws_global_init(ws_base_t *base)
 {
@@ -296,6 +298,25 @@ char *ws_get_uri(ws_t ws, char *buf, size_t bufsize)
 		ws->uri);
 
 	return buf;
+}
+
+void ws_mask_payload(uint32_t mask, char *msg, uint64_t len)
+{
+	size_t i;
+	uint8_t *m = (uint8_t *)&mask;
+	
+	if (!msg || !len)
+		return;
+
+	for (i = 0; i < len; i++)
+	{
+		msg[i] = msg[i] ^ m[i % 4];
+	}
+}
+
+void ws_unmask_payload(uint32_t mask, char *msg, uint64_t len)
+{
+	ws_mask_payload(mask, msg, len);
 }
 
 void ws_set_no_copy_cb(ws_t ws, ws_no_copy_cleanup_f func, void *extra)
@@ -734,25 +755,6 @@ int ws_send_pong(ws_t ws, char *msg, uint64_t len)
 	// TODO: The pong MUST contain the same payload as the PING.
 
 	return 0;
-}
-
-void ws_mask_payload(uint32_t mask, char *msg, uint64_t len)
-{
-	size_t i;
-	uint8_t *m = (uint8_t *)&mask;
-	
-	if (!msg || !len)
-		return;
-
-	for (i = 0; i < len; i++)
-	{
-		msg[i] = msg[i] ^ m[i % 4];
-	}
-}
-
-void ws_unmask_payload(uint32_t mask, char *msg, uint64_t len)
-{
-	ws_mask_payload(mask, msg, len);
 }
 
 int ws_add_subprotocol(ws_t ws, const char *subprotocol)
