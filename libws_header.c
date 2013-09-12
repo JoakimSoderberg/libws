@@ -13,6 +13,7 @@ int ws_unpack_header(ws_header_t *h, size_t *header_len,
 	assert(header_len);
 
 	*header_len = 0;
+	memset(h, 0, sizeof(ws_header_t));
 
 	if (len < WS_HDR_MIN_SIZE)
 	{

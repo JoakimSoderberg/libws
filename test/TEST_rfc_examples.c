@@ -39,6 +39,7 @@ int do_unpack_test(char *buf, size_t buflen,
 	char *payload = NULL;
 	int ret = 0;
 	ws_header_t header;
+	size_t i;
 	size_t header_len;
 
 	if (ws_unpack_header(&header, &header_len, 
@@ -47,11 +48,14 @@ int do_unpack_test(char *buf, size_t buflen,
 		libws_test_FAILURE("Could not unpack header\n");
 		ret = -1;
 	}
-		
+
 	if (compare_headers(expected_header, &header))
 		return -1;
 
-	payload = &buf[header_len];
+	// Make sure we copy and null terminate the payload.
+	payload = (char *)calloc(header.payload_len + 1, sizeof(char));
+	memcpy(payload, &buf[header_len], header.payload_len);
+	payload[header.payload_len] = '\0';
 
 	if (header.mask_bit)
 	{
@@ -90,6 +94,8 @@ int do_unpack_test(char *buf, size_t buflen,
 		}
 	}
 
+	free(payload);
+
 	return ret;
 }
 
@@ -99,7 +105,7 @@ int TEST_rfc_examples(int argc, char *argv[])
 	ws_header_t expected_header;
 	ws_header_t header;
 	size_t header_len;
-	ws_header_t *h;
+	ws_header_t *h = NULL;
 
 	// 
 	// o  A single-frame unmasked text message
@@ -109,7 +115,8 @@ int TEST_rfc_examples(int argc, char *argv[])
 	libws_test_STATUS("\nTesting a single-frame UNMASKED text message containing \"Hello\"");
 	{
 		char single_frame_unmasked[] = {0x81, 0x05, 0x48, 0x65, 0x6c, 0x6c, 0x6f};
-
+		
+		memset(&expected_header, 0, sizeof(ws_header_t));
 		h = &expected_header;
 		h->fin = 1;
 		h->rsv1 = 0;
@@ -117,7 +124,7 @@ int TEST_rfc_examples(int argc, char *argv[])
 		h->rsv3 = 0;
 		h->opcode = WS_OPCODE_TEXT;
 		h->mask_bit = 0;
-		h->payload_len = strlen("Hello");
+		h->payload_len = (uint64_t)strlen("Hello");
 		h->mask = 0;
 
 		ret |= do_unpack_test(single_frame_unmasked, 
@@ -135,6 +142,7 @@ int TEST_rfc_examples(int argc, char *argv[])
 	{
 		char single_frame_masked[] = {0x81, 0x85, 0x37, 0xfa, 0x21, 0x3d, 0x7f, 0x9f, 0x4d, 0x51, 0x58};
 		
+		memset(&expected_header, 0, sizeof(ws_header_t));
 		h = &expected_header;
 		h->fin = 1;
 		h->rsv1 = 0;
@@ -142,7 +150,7 @@ int TEST_rfc_examples(int argc, char *argv[])
 		h->rsv3 = 0;
 		h->opcode = WS_OPCODE_TEXT;
 		h->mask_bit = 1;
-		h->payload_len = strlen("Hello");
+		h->payload_len = (uint64_t)strlen("Hello");
 		h->mask = (*((uint32_t *)&single_frame_masked[2]));
 
 		ret |= do_unpack_test(single_frame_masked, 
@@ -157,9 +165,44 @@ int TEST_rfc_examples(int argc, char *argv[])
 	// 
 	//   *  0x80 0x02 0x6c 0x6f (contains "lo")
 	// 
+	libws_test_STATUS("\nTesting a fragmented UNMASKED text message containing \"Hel\" and \"lo\"");
 	{
 		char frag_unmasked_part1[] = {0x01, 0x03, 0x48, 0x65, 0x6c};
 		char frag_unmasked_part2[] = {0x80, 0x02, 0x6c, 0x6f};
+		
+		libws_test_STATUS("[First fragment]:");
+		memset(&expected_header, 0, sizeof(ws_header_t));
+		h = &expected_header;
+		h->fin = 0;
+		h->rsv1 = 0;
+		h->rsv2 = 0;
+		h->rsv3 = 0;
+		h->opcode = WS_OPCODE_TEXT;
+		h->mask_bit = 0;
+		h->payload_len = (uint64_t)strlen("Hel");
+		h->mask = 0;
+
+		ret |= do_unpack_test(frag_unmasked_part1, 
+					sizeof(frag_unmasked_part1),
+					&expected_header,
+					"Hel", strlen("Hel"));
+
+		libws_test_STATUS("[Second fragment]:");
+		memset(&expected_header, 0, sizeof(ws_header_t));
+		h = &expected_header;
+		h->fin = 1;
+		h->rsv1 = 0;
+		h->rsv2 = 0;
+		h->rsv3 = 0;
+		h->opcode = WS_OPCODE_CONTINUATION;
+		h->mask_bit = 0;
+		h->payload_len = (uint64_t)strlen("lo");
+		h->mask = 0;
+
+		ret |= do_unpack_test(frag_unmasked_part2, 
+					sizeof(frag_unmasked_part2),
+					&expected_header,
+					"lo", strlen("lo"));
 	}
 
 	// o  Unmasked Ping request and masked Ping response
@@ -170,35 +213,110 @@ int TEST_rfc_examples(int argc, char *argv[])
 	//   *  0x8a 0x85 0x37 0xfa 0x21 0x3d 0x7f 0x9f 0x4d 0x51 0x58
 	//         (contains a body of "Hello", matching the body of the ping)
 	//
+	libws_test_STATUS("\nUnmasked Ping request and masked Ping response");
 	{
 		char unmasked_ping_request[] = {0x89, 0x05, 0x48, 0x65, 0x6c, 0x6c, 0x6f};
-		char unmasked_pong_response[] = {0x8a, 0x85, 0x37, 0xfa, 0x21, 0x3d, 0x7f, 0x9f, 0x4d, 0x51, 0x58};
+		char masked_pong_response[] = {0x8a, 0x85, 0x37, 0xfa, 0x21, 0x3d, 0x7f, 0x9f, 0x4d, 0x51, 0x58};
+
+		libws_test_STATUS("[Ping]:");
+		memset(&expected_header, 0, sizeof(ws_header_t));
+		h = &expected_header;
+		h->fin = 1;
+		h->rsv1 = 0;
+		h->rsv2 = 0;
+		h->rsv3 = 0;
+		h->opcode = WS_OPCODE_PING;
+		h->mask_bit = 0;
+		h->payload_len = (uint64_t)strlen("Hello");
+		h->mask = 0;
+
+		ret |= do_unpack_test(unmasked_ping_request, 
+					sizeof(unmasked_ping_request),
+					&expected_header,
+					"Hello", strlen("Hello"));
+
+		libws_test_STATUS("[Pong]:");
+		memset(&expected_header, 0, sizeof(ws_header_t));
+		h = &expected_header;
+		h->fin = 1;
+		h->rsv1 = 0;
+		h->rsv2 = 0;
+		h->rsv3 = 0;
+		h->opcode = WS_OPCODE_PONG;
+		h->mask_bit = 1;
+		h->payload_len = (uint64_t)strlen("Hello");
+		h->mask = (*((uint32_t *)&masked_pong_response[2]));
+
+		ret |= do_unpack_test(masked_pong_response, 
+					sizeof(masked_pong_response),
+					&expected_header,
+					"Hello", strlen("Hello"));	
 	}
 
 	// o  256 bytes binary message in a single unmasked frame
 	//
 	//   *  0x82 0x7E 0x0100 [256 bytes of binary data]
 	//
+	libws_test_STATUS("\n256 bytes binary message in a single unmasked frame");
 	{
-		#define FRAME_SIZE_256 (2 + 2 + 256)
-		char single_frame_unmasked_binary_256[FRAME_SIZE_256] = {0x82, 0x7E, 0x01, 0x00};
+		char single_frame_unmasked_binary_256[4 + 256] = {0x82, 0x7E, 0x01, 0x00};
+		char expected_payload[256];
 		size_t i;
 
-	for (i = 4; i < FRAME_SIZE_256; i++) 
-		single_frame_unmasked_binary_256[i] = (char)(i % 256);
+		for (i = 0; i < 256; i++) 
+		{
+			expected_payload[i] = (char)(i % 255);
+		}
+
+		memcpy(&single_frame_unmasked_binary_256[4], expected_payload, 256);
+
+		memset(&expected_header, 0, sizeof(ws_header_t));
+		h = &expected_header;
+		h->fin = 1;
+		h->rsv1 = 0;
+		h->rsv2 = 0;
+		h->rsv3 = 0;
+		h->opcode = WS_OPCODE_BINARY;
+		h->mask_bit = 0;
+		h->payload_len = (uint64_t)256;
+		h->mask = 0;
+
+		ret |= do_unpack_test(single_frame_unmasked_binary_256, 
+					sizeof(single_frame_unmasked_binary_256),
+					&expected_header,
+					expected_payload, 256);
 	}
 
 	// o  64KiB binary message in a single unmasked frame
 	//
 	//   *  0x82 0x7F 0x0000000000010000 [65536 bytes of binary data]
 	//
+	libws_test_STATUS("\n64KiB binary message in a single unmasked frame");
 	{
-		#define FRAME_SIZE_65K (2 + 8 + 65536)
-		char single_frame_unmasked_binary_65k[FRAME_SIZE_65K] = {0x82, 0x7F, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00};
+		char single_frame_unmasked_binary_65k[2 + 8 + 65536] = {0x82, 0x7F, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00};
+		char expected_payload[65536];		
 		size_t i;
 
-		for (i = 10; i < FRAME_SIZE_65K; i++)
-			single_frame_unmasked_binary_65k[i] = (char)(i % 256);
+		for (i = 0; i < 65536; i++)
+			expected_payload[i] = (char)(i % 255);
+
+		memcpy(&single_frame_unmasked_binary_65k[2 + 8], expected_payload, 65536);
+
+		memset(&expected_header, 0, sizeof(ws_header_t));
+		h = &expected_header;
+		h->fin = 1;
+		h->rsv1 = 0;
+		h->rsv2 = 0;
+		h->rsv3 = 0;
+		h->opcode = WS_OPCODE_BINARY;
+		h->mask_bit = 0;
+		h->payload_len = (uint64_t)65536;
+		h->mask = 0;
+
+		ret |= do_unpack_test(single_frame_unmasked_binary_65k, 
+					sizeof(single_frame_unmasked_binary_65k),
+					&expected_header,
+					expected_payload, 65536);
 	}
 
 	return ret;
