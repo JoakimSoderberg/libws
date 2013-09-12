@@ -414,12 +414,8 @@ int ws_msg_frame_data_send(ws_t ws, char *data, uint64_t datalen)
 	}
 
 	// TODO: Don't touch original buffer as an option?	
-	if (ws_mask_payload(ws->header.mask, data, datalen))
-	{
-		LIBWS_LOG(LIBWS_ERR, "Failed to mask payload");
-		return -1;
-	}
-
+	ws_mask_payload(ws->header.mask, data, datalen);
+	
 	if (_ws_send_data(ws, data, datalen, 1))
 	{
 		LIBWS_LOG(LIBWS_ERR, "Failed to send frame data");
@@ -780,7 +776,7 @@ size_t ws_get_subprotocol_count(ws_t ws)
 	return 0;
 }
 
-const char *subprotocols[] ws_get_subprotocols(ws_t ws, size_t *count)
+const char **ws_get_subprotocols(ws_t ws, size_t *count)
 {
 	assert(ws);
 
@@ -793,3 +789,5 @@ int ws_clear_subprotocols(ws_t ws, const char *subprotocol)
 
 	return 0;
 }
+
+

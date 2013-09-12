@@ -464,7 +464,7 @@ ws_state_t ws_get_state(ws_t ws);
 /// @param[in]	msg 	The message to mask.
 /// @param[in]	len 	Length of the message buffer.
 ///
-void ws_mask_payload(uint32_t mask, char *msg, uint64_t len);
+void ws_mask_payload(uint32_t  mask, char *msg, uint64_t len);
 
 ///
 /// Unmasks a given payload.
@@ -510,7 +510,7 @@ size_t ws_get_subprotocol_count(ws_t ws);
 ///						NULL if the list is empty.
 ///						It is up to the caller to free this list.
 ///
-const char *subprotocols[] ws_get_subprotocols(ws_t ws, size_t *count);
+const char **ws_get_subprotocols(ws_t ws, size_t *count);
 
 ///
 /// Clear the list of subprotocols.

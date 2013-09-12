@@ -57,6 +57,7 @@ typedef struct ws_base_s
 typedef struct ws_s
 {
 	ws_state_t				state;				///< Websocket state.
+	struct ws_base_s		*ws_base;			///< Base context.
 
 	// TODO: Move the bases into the ws_base_t instead?
 	struct event_base		*base;				///< Libevent event base.
@@ -107,10 +108,11 @@ typedef struct ws_s
 
 	char 					*origin;
 
+	char					**subprotocols;
+
 	int						binary_mode;
 
 	int						debug_level;
-	struct ws_base_s		*ws_base;
 
 	uint64_t				max_frame_size;		///< The max frame size to allow before chunking.
 	ws_header_t				header;				///< Header that's being sent for the current p
@@ -197,17 +199,6 @@ int _ws_send_frame_raw(ws_t ws, ws_opcode_t opcode, char *data, uint64_t datalen
 ///						Negative on error.
 ///
 int _ws_get_random_mask(ws_t ws, char *buf, size_t len);
-
-///
-/// Masks the data in a given payload message.
-///
-/// @param[in]	mask 	The payload mask.
-/// @param[in]	msg 	The payload message to mask.
-/// @param[in]	len 	Length of the payload #msg.
-///
-/// @returns			0 on success.
-///
-int _ws_mask_payload(uint32_t mask, char *msg, uint64_t len);
 
 ///
 /// Sets timeouts for read and write events of the underlying bufferevent.
