@@ -1,8 +1,9 @@
 #include "libws.h"
 #include "libws_test_helpers.h"
 
-void add_to_list(ws_t ws, char *subprotocol, size_t index, size_t expected_count)
+int add_to_list(ws_t ws, char *subprotocol, size_t index, size_t expected_count)
 {
+	int ret = 0;
 	char **prots = NULL;
 	size_t count = 0;
 	size_t was = 0;
@@ -12,6 +13,7 @@ void add_to_list(ws_t ws, char *subprotocol, size_t index, size_t expected_count
 	if (ws_add_subprotocol(ws, subprotocol))
 	{
 		libws_test_FAILURE("Could not add subprotocol \"%s\"", subprotocol);
+		ret = -1;	
 	}
 	else
 	{
@@ -22,6 +24,7 @@ void add_to_list(ws_t ws, char *subprotocol, size_t index, size_t expected_count
 	{
 		libws_test_FAILURE("Subprotocol count expected to be %u but was %u", 
 			expected_count, was);
+		ret = -1;
 	}
 	else
 	{
@@ -35,6 +38,7 @@ void add_to_list(ws_t ws, char *subprotocol, size_t index, size_t expected_count
 	if (!prots)
 	{
 		libws_test_FAILURE("NULL subprotocol list returned with count %u", count);
+		ret = -1;
 	}
 	else
 	{
@@ -47,11 +51,17 @@ void add_to_list(ws_t ws, char *subprotocol, size_t index, size_t expected_count
 	{
 		libws_test_FAILURE("\"%s\" expected, got \"%s\"", 
 			subprotocol, prots[index]);
+		ret = -1;
 	}
 	else
 	{
 		libws_test_SUCCESS("\"%s\" returned", subprotocol);
 	}
+
+	libws_test_STATUS("Freeing subprotocol list");
+	ws_free_subprotocols_list(prots, count);
+
+	return ret;
 }
 
 int TEST_ws_get_subprotocols(int argc, char **argv)
@@ -91,22 +101,15 @@ int TEST_ws_get_subprotocols(int argc, char **argv)
 	if (prots)
 	{
 		libws_test_FAILURE("Subprotocol list not empty on init");
+		ret = -1;
 	}
 	else
 	{
 		libws_test_SUCCESS("Empty subprotocol list as expected");
 	}
 
-	add_to_list(ws, "test1", 0, 1);
-	add_to_list(ws, "test2", 1, 2);
-
-	for (i = 0; i < count; i++)
-	{
-		libws_test_STATUS("\"%s\"", prots[i]);
-	}
-
-	libws_test_STATUS("Freeing subprotocol list");
-	ws_free_subprotocols_list(prots, count);
+	ret |= add_to_list(ws, "test1", 0, 1);
+	ret |= add_to_list(ws, "test2", 1, 2);
 
 	libws_test_STATUS("Clearing subprotocol list");
 	ws_clear_subprotocols(ws);
@@ -121,7 +124,9 @@ int TEST_ws_get_subprotocols(int argc, char **argv)
 		libws_test_SUCCESS("Subprotocol count == 0 after clear");
 	}
 
+	ws_destroy(&ws);
+	ws_global_destroy(&base);
 
-	return 0;
+	return ret;
 }
 

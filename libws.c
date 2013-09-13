@@ -145,10 +145,18 @@ void ws_destroy(ws_t *ws)
 		w->base = NULL;
 	}
 
+	if (w->dns_base)
+	{
+		evdns_base_free(w->dns_base, 1);
+		w->dns_base = NULL;
+	}	
+
 	if (w->origin)
 	{
 		free(w->origin);
 	}
+
+	ws_clear_subprotocols(w);
 
 	#ifdef LIBWS_WITH_OPENSSL
 	_ws_openssl_destroy(w);

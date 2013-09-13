@@ -26,7 +26,7 @@ int ws_global_init(ws_base_t *base);
 ///
 /// @param[in]	base 	The global context to destroy.
 ///
-void ws_global_destroy(ws_base_t base);
+void ws_global_destroy(ws_base_t *base);
 
 ///
 /// Initializes a new Websocket connection context and ties
