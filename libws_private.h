@@ -105,6 +105,7 @@ typedef struct ws_s
 	char 					*server;
 	char					*uri;
 	int						port;
+	char					*handshake_key_base64;
 
 	char 					*origin;
 

@@ -158,6 +158,10 @@ void ws_destroy(ws_t *ws)
 
 	ws_clear_subprotocols(w);
 
+	if (w->handshake_key_base64) free(w->handshake_key_base64);
+	if (w->server) free(w->server);
+	if (w->uri) free(w->uri);
+
 	#ifdef LIBWS_WITH_OPENSSL
 	_ws_openssl_destroy(w);
 	#endif
@@ -168,6 +172,7 @@ void ws_destroy(ws_t *ws)
 
 int ws_connect(ws_t ws, const char *server, int port, const char *uri)
 {
+	int ret = 0;
 	assert(ws);
 	assert(ws->base);
 
@@ -183,20 +188,26 @@ int ws_connect(ws_t ws, const char *server, int port, const char *uri)
 		return -1;
 	}
 
+	ws->server = strdup(server);
+	ws->uri = strdup(uri);
+	ws->port = port;
+
 	if (_ws_create_bufferevent_socket(ws))
 	{
 		LIBWS_LOG(LIBWS_ERR, "Failed to create bufferevent socket");
-		return -1;
+		ret = -1;
+		goto fail;
 	}
 
 	// TODO: Add Websocket magic stuff to buf.
 	evbuffer_add_printf(bufferevent_get_output(ws->bev), "");
 	
 	if (bufferevent_socket_connect_hostname(ws->bev, 
-				ws->dns_base, AF_UNSPEC, server, port))
+				ws->dns_base, AF_UNSPEC, ws->server, ws->port))
 	{
 		LIBWS_LOG(LIBWS_ERR, "Failed to create connect event");
-		return -1;
+		ret = -1;
+		goto fail;
 	}
 
 	ws->state = WS_STATE_CONNECTING;
@@ -204,10 +215,16 @@ int ws_connect(ws_t ws, const char *server, int port, const char *uri)
 	// Setup a timeout event for the connection attempt.
 	if (_ws_setup_connection_timeout(ws))
 	{
-		return -1;
+		ret = -1;
+		goto fail;
 	}
 
 	return 0;
+fail:
+	if (ws->server) free(ws->server);
+	if (ws->uri) free(ws->uri);
+
+	return -1;
 }
 
 int ws_close(ws_t ws)
