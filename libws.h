@@ -502,7 +502,15 @@ size_t ws_get_subprotocol_count(ws_t ws);
 ///						NULL if the list is empty.
 ///						It is up to the caller to free this list.
 ///
-const char **ws_get_subprotocols(ws_t ws, size_t *count);
+char **ws_get_subprotocols(ws_t ws, size_t *count);
+
+///
+/// Can be used to free a list of sub protocols.
+///
+/// @param[in]	subprotocols 	A list returned from #ws_get_subprotocols.
+/// @param[in]	count 			The number of items in the list.
+///
+void ws_free_subprotocols_list(char **subprotocols, size_t count);
 
 ///
 /// Clear the list of subprotocols.

@@ -109,6 +109,7 @@ typedef struct ws_s
 	char 					*origin;
 
 	char					**subprotocols;
+	size_t					num_subprotocols;
 
 	int						binary_mode;
 

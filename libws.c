@@ -761,26 +761,88 @@ int ws_add_subprotocol(ws_t ws, const char *subprotocol)
 {
 	assert(ws);
 
+	if (!(ws->subprotocols = (char **)realloc(ws->subprotocols, 
+								(ws->num_subprotocols + 1) * sizeof(char *))))
+	{
+		LIBWS_LOG(LIBWS_ERR, "Out of memory!");
+		return -1;
+	}
+
+	ws->subprotocols[ws->num_subprotocols] = strdup(subprotocol);
+	ws->num_subprotocols++;
+
 	return 0;
 }
 
 size_t ws_get_subprotocol_count(ws_t ws)
 {
 	assert(ws);
-
-	return 0;
+	return ws->num_subprotocols;
 }
 
-const char **ws_get_subprotocols(ws_t ws, size_t *count)
+char **ws_get_subprotocols(ws_t ws, size_t *count)
 {
 	assert(ws);
+	size_t i;
+	char **ret = NULL;
+	size_t lengths = 0;
+
+	if (!ws->subprotocols)
+		return NULL;
+
+	if (!(ret = (char **)calloc(ws->num_subprotocols, sizeof(char *))))
+	{
+		LIBWS_LOG(LIBWS_ERR, "Out of memory!");
+		return NULL;
+	}
+
+	for (i = 0; i < ws->num_subprotocols; i++)
+	{
+		ret[i] = strdup(ws->subprotocols[i]);
+	}
+
+	*count = ws->num_subprotocols;
+
+	return ret;
+fail:
+	if (ret)
+		free(ret);
 
 	return NULL;
 }
 
-int ws_clear_subprotocols(ws_t ws, const char *subprotocol)
+void ws_free_subprotocols_list(char **subprotocols, size_t count)
 {
+	size_t i;
+
+	if (!subprotocols)
+		return;
+
+	for (i = 0; i < count; i++)
+	{
+		free(subprotocols[i]);
+	}
+
+	free(subprotocols);
+}
+
+int ws_clear_subprotocols(ws_t ws)
+{
+	size_t i;
 	assert(ws);
+
+	if (!ws->subprotocols)
+		return 0;
+
+	for (i = 0; i < ws->num_subprotocols; i++)
+	{
+		if (ws->subprotocols[i])
+			free(ws->subprotocols[i]);
+	}
+
+	free(ws->subprotocols);
+	ws->subprotocols = NULL;
+	ws->num_subprotocols = 0;
 
 	return 0;
 }
