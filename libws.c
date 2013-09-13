@@ -764,13 +764,6 @@ int ws_add_subprotocol(ws_t ws, const char *subprotocol)
 	return 0;
 }
 
-int ws_remove_subprotocol(ws_t ws, const char *subprotocol)
-{
-	assert(ws);
-
-	return 0;
-}
-
 size_t ws_get_subprotocol_count(ws_t ws)
 {
 	assert(ws);

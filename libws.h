@@ -488,16 +488,6 @@ void ws_unmask_payload(uint32_t mask, char *msg, uint64_t len);
 int ws_add_subprotocol(ws_t ws, const char *subprotocol);
 
 ///
-/// Remove a subprotocol that we can speak over the Websocket.
-///
-/// @param[in]	ws 	The websocket context.
-/// @param[in]	subprotocol 	The name of the subprotocol to remove.
-///
-/// @returns 					0 on success.
-///
-int ws_remove_subprotocol(ws_t ws, const char *subprotocol);
-
-///
 /// Returns the number of subprotocols
 ///
 size_t ws_get_subprotocol_count(ws_t ws);
