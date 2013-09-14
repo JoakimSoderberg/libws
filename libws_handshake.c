@@ -96,10 +96,11 @@ int _ws_send_http_upgrade(ws_t ws)
 	return 0;
 }
 
-int _ws_parse_http_header(char *line, char **header_name, char **header_val)
+int _ws_parse_http_header(const char *line, char **header_name, 
+						char **header_val)
 {
 	int ret = 0;
-	char *start = line;
+	const char *start = line;
 	char *end;
 	size_t len;
 
@@ -142,6 +143,30 @@ fail:
 	return ret;
 }
 
+int _ws_parse_http_status(const char *line, char **http_version, 
+						int status_code, char **status_message)
+{
+	int ret = 0;
+	const char *s = line;
+
+	*http_version = NULL;
+	*status_message = NULL;
+	status_code = -1;
+
+	if (!line)
+		return -1;
+
+	if (!strncmp("HTTP/", line, 5))
+		return -1;
+
+	s += 5;
+	while ((*s == ' ') || (*s == '\t')) s++;
+
+
+
+	return ret;
+}
+
 int _ws_read_http_upgrade_response(ws_t ws)
 {
 	struct evbuffer *in;
@@ -154,13 +179,27 @@ int _ws_read_http_upgrade_response(ws_t ws)
 
 	in = bufferevent_get_input(ws->bev);
 
+	// Status line.
 	line = evbuffer_readln(in, &len, EVBUFFER_EOL_CRLF);
 
-	if (_ws_parse_http_header(line, &header_name, &header_val))
+	// Read all headers.
+	while (1)
 	{
-		LIBWS_LOG(LIBWS_ERR, "Failed to parse HTTP upgrade repsonse line: %s", 
-				line);
-		return -1;
+		line = evbuffer_readln(in, &len, EVBUFFER_EOL_CRLF);
+
+		// Check for end of HTTP response.
+		if (!strcmp(line, "\r\n\r\n") 
+		 || !strcmp(line, "\n\n")) // Don't be too strict...
+		{
+			break;
+		}
+
+		if (_ws_parse_http_header(line, &header_name, &header_val))
+		{
+			LIBWS_LOG(LIBWS_ERR, "Failed to parse HTTP upgrade repsonse line: %s", 
+					line);
+			return -1;
+		}
 	}
 
 	// 1.  If the status code received from the server is not 101, the

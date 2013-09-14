@@ -8,7 +8,7 @@ int _ws_generate_handshake_key(ws_t ws);
 
 int _ws_send_http_upgrade(ws_t ws);
 
-int _ws_parse_http_header(char *line, char **header_name, char **header_val);
+int _ws_parse_http_header(const char *line, char **header_name, char **header_val);
 
 int _ws_read_http_upgrade_response(ws_t ws);
 
