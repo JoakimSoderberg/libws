@@ -1,10 +1,15 @@
 
 #include "libws_config.h"
-#include "libws_log.h"
+
 #include "libws_types.h"
+#include "libws_log.h"
 #include "libws_handshake.h"
 #include "libws_private.h"
 #include "libws_base64.h"
+#include <event2/event.h>
+#include <event2/bufferevent.h>
+#include <event2/buffer.h>
+#include <assert.h>
 
 int _ws_generate_handshake_key(ws_t ws)
 {
@@ -91,9 +96,72 @@ int _ws_send_http_upgrade(ws_t ws)
 	return 0;
 }
 
+int _ws_parse_http_header(char *line, char **header_name, char **header_val)
+{
+	int ret = 0;
+	char *start = line;
+	char *end;
+	size_t len;
+
+	assert(header_name);
+	assert(header_val);
+
+	*header_name = NULL;
+	*header_val = NULL;
+
+	if (!line)
+		return -1;
+
+	if (!(end = strchr(line, ':')))
+		return -1;
+
+	len = (end - start) * sizeof(char);
+	*header_name = (char *)malloc(len + 1);
+
+	if (!(*header_name))
+		return -1;
+
+	memcpy(*header_name, line, len);
+	(*header_name)[len] = '\0';
+
+	end++;
+	while ((*end == ' ') || (*end == '\t')) end++;
+	*header_val = strdup(end);
+
+	if (!(*header_val))
+		goto fail;
+
+	return ret;
+fail:
+	if (*header_name)
+	{
+		free(*header_name);
+		*header_name = NULL;
+	}
+
+	return ret;
+}
+
 int _ws_read_http_upgrade_response(ws_t ws)
 {
+	struct evbuffer *in;
+	size_t len;
+	char *line = NULL;
+	char *header_name = NULL;
+	char *header_val = NULL;
 	assert(ws);
+	assert(ws->bev);
+
+	in = bufferevent_get_input(ws->bev);
+
+	line = evbuffer_readln(in, &len, EVBUFFER_EOL_CRLF);
+
+	if (_ws_parse_http_header(line, &header_name, &header_val))
+	{
+		LIBWS_LOG(LIBWS_ERR, "Failed to parse HTTP upgrade repsonse line: %s", 
+				line);
+		return -1;
+	}
 
 	// 1.  If the status code received from the server is not 101, the
     //    client handles the response per HTTP [RFC2616] procedures.  In

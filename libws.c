@@ -768,7 +768,7 @@ int ws_send_ping(ws_t ws)
 	return ws_send_ping_ex(ws, NULL, 0);
 }
 
-int ws_send_pong(ws_t ws, char *msg, uint64_t len)
+int ws_send_pong(ws_t ws, char *msg, size_t len)
 {
 	assert(ws);
 

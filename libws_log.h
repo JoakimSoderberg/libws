@@ -1,6 +1,6 @@
 
-#ifndef __LIBWS_H__
-#define __LIBWS_H__
+#ifndef __LIBWS_LOG_H__
+#define __LIBWS_LOG_H__
 
 #include "libws_config.h"
 #include <stdarg.h>
@@ -56,4 +56,4 @@ void libws_default_log_cb(int prio, const char *file,
 
 const char *ws_log_get_prio_str(int prio);
 
-#endif // __LIBWS_H__
+#endif // __LIBWS_LOG_H__
