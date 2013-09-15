@@ -35,12 +35,14 @@ typedef enum libws_ssl_state_e
 
 typedef void (*ws_msg_callback_f)(ws_t ws, const char *msg, uint64_t len, void *arg);
 
-//typedef void (*ws_msg_begin_callback_f)(ws_t ws, const char *msg, )
+//typedef void (*ws_msg_begin_callback_f)(ws_t ws, const char *msg);
 
 typedef void (*ws_err_callback_f)(ws_t ws, int errcode, const char *errmsg, void *arg);
 typedef void (*ws_close_callback_f)(ws_t ws, int reason, void *arg);
 typedef void (*ws_connect_callback_f)(ws_t ws, void *arg);
 typedef void (*ws_timeout_callback_f)(ws_t ws, struct timeval timeout, void *arg);
 typedef void (*ws_no_copy_cleanup_f)(ws_t ws, const void *data, uint64_t datalen, void *extra);
+typedef int (*ws_header_callback_f)(ws_t ws, const char *header_name, const char *header_val, void *arg);
+
 
 #endif // __LIBWS_TYPES_H__

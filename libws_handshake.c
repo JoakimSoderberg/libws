@@ -170,17 +170,81 @@ int _ws_parse_http_status(const char *line,
 	return 0;
 }
 
-int _ws_read_http_status(ws_t ws, struct evbuffer *in)
+ws_parse_state_t _ws_read_http_status(ws_t ws, 
+				struct evbuffer *in, 
+				int *http_major_version, 
+				int *http_minor_version,
+				int *status_code)
 {
-	return 0;
+	char *line = NULL;
+	size_t len;
+	assert(ws);
+	assert(in);
+
+	line = evbuffer_readln(in, &len, EVBUFFER_EOL_CRLF);
+
+	if (!line)
+		return WS_PARSE_STATE_NEED_MORE;
+
+	if (_ws_parse_http_status(line, 
+		http_major_version, http_minor_version, status_code))
+	{
+		free(line);
+		return WS_PARSE_STATE_ERROR;
+	}
+
+	free(line);
+	return WS_PARSE_STATE_SUCCESS;
 }
 
-int _ws_read_http_headers(ws_t ws)
+ws_parse_state_t _ws_read_http_headers(ws_t ws, struct evbuffer *in)
 {
-	return 0;
+	char *line;
+	char *header_name;
+	char *header_val;
+	size_t len;
+	assert(ws);
+	assert(in);
+
+	// TODO: Set a max header size to allow.
+
+	while ((line = evbuffer_readln(in, &len, EVBUFFER_EOL_CRLF)) != NULL)
+	{
+		// Check for end of HTTP response (empty line).
+		if (*line == '\0')
+		{
+			return WS_PARSE_STATE_SUCCESS;
+		}
+
+		if (_ws_parse_http_header(line, &header_name, &header_val))
+		{
+			LIBWS_LOG(LIBWS_ERR, "Failed to parse HTTP upgrade "
+								 "repsonse line: %s", line);
+			return WS_PARSE_STATE_ERROR;
+		}
+		
+		// Let the user get the header.
+		if (ws->header_cb)
+		{
+			if (ws->header_cb(ws, header_name, header_val, ws->header_arg))
+			{
+				LIBWS_LOG(LIBWS_DEBUG, "User header callback cancelled handshake");
+				return WS_PARSE_STATE_USER_ABORT;
+			}
+		}
+
+
+
+		free(line);
+		line = NULL;
+	}
+
+	return WS_PARSE_STATE_NEED_MORE;
 }
 
-int _ws_read_http_upgrade_response(ws_t ws)
+
+
+ws_parse_state_t _ws_read_http_upgrade_response(ws_t ws)
 {
 	struct evbuffer *in;
 	size_t len;
@@ -190,39 +254,57 @@ int _ws_read_http_upgrade_response(ws_t ws)
 	int major_version;
 	int minor_version;
 	int status_code;
+	ws_parse_state_t parse_state;
 	assert(ws);
 	assert(ws->bev);
 
 	in = bufferevent_get_input(ws->bev);
 
-	// Status line.
-	line = evbuffer_readln(in, &len, EVBUFFER_EOL_CRLF);
-	// TODO: If (line == NULL) set connect_state to NEED_MORE_DATA;
-	if (_ws_parse_http_status(line, 
-		&major_version, &minor_version, &status_code))
+	switch (ws->connect_state)
 	{
-		return -1;
+		default: 
+		{
+			LIBWS_LOG(LIBWS_ERR, "Incorrect connect state in HTTP upgrade "
+								 "response handler");
+			return WS_PARSE_STATE_ERROR; 
+		}
+		case WS_CONNECT_STATE_SENT_REQ:
+		{
+			// Parse status line HTTP/1.1 200 OK...
+			if ((parse_state = _ws_read_http_status(ws, in, 
+							&major_version, &minor_version, &status_code)) 
+							!= WS_PARSE_STATE_SUCCESS)
+			{
+				return parse_state;
+			}
+
+			ws->connect_state = WS_CONNECT_STATE_PARSED_STATUS;
+			// Fall through.
+		} 
+		case WS_CONNECT_STATE_PARSED_STATUS:
+		{
+			// Read the HTTP headers.
+			if ((parse_state = _ws_read_http_headers(ws, in)) 
+				!= WS_PARSE_STATE_SUCCESS)
+			{
+				return parse_state;
+			}
+
+			ws->connect_state = WS_CONNECT_STATE_PARSED_HEADERS;
+			// Fall through.
+		}
+		case WS_CONNECT_STATE_PARSED_HEADERS:
+		{
+
+		}
 	}
+
+	
+
+	// TODO: Verify HTTP version / status. Redirect for instance?
 
 	// Read all headers.
-	while ((line = evbuffer_readln(in, &len, EVBUFFER_EOL_CRLF)) != NULL)
-	{
-		// Check for end of HTTP response.
-		if (*line == '\0')
-		{
-			// TODO: Set status that we have read everything.
-			break;
-		}
-
-		if (_ws_parse_http_header(line, &header_name, &header_val))
-		{
-			LIBWS_LOG(LIBWS_ERR, "Failed to parse HTTP upgrade repsonse line: %s", 
-					line);
-			return -1;
-		}
-
-		free(line);
-	}
+	
 
 	// 1.  If the status code received from the server is not 101, the
     //    client handles the response per HTTP [RFC2616] procedures.  In
@@ -263,9 +345,9 @@ int _ws_read_http_upgrade_response(ws_t ws)
 	//    subprotocol not requested by the client), the client MUST _Fail
 	//    the WebSocket Connection_.
 
-	return 0;
+	return WS_PARSE_STATE_SUCCESS;
 fail:
-	return -1;
+	return WS_PARSE_STATE_ERROR;
 }
 
 

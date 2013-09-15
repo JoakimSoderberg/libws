@@ -35,12 +35,33 @@ typedef enum ws_send_state_e
 	WS_SEND_STATE_IN_MESSAGE_PAYLOAD
 } ws_send_state_t;
 
+typedef enum ws_parse_state_e
+{
+	WS_PARSE_STATE_USER_ABORT = -2,
+	WS_PARSE_STATE_ERROR = -1,
+	WS_PARSE_STATE_NONE = 0,
+	WS_PARSE_STATE_NEED_MORE,
+	WS_PARSE_STATE_SUCCESS
+} ws_parse_state_t;
+
 typedef enum ws_connect_state_e
 {
-	WS_CONNECT_STATE_NONE,
+	WS_CONNECT_STATE_ERROR = -1,
+	WS_CONNECT_STATE_NONE = 0,
 	WS_CONNECT_STATE_SENT_REQ,
-	WS_CONNECT_STATE_NEED_MORE
+	WS_CONNECT_STATE_PARSED_STATUS,
+	WS_CONNECT_STATE_PARSED_HEADERS,
+	WS_CONNECT_STATE_HANDSHAKE_COMPLETE
 } ws_connect_state_t;
+
+typedef enum ws_header_flags_e
+{
+	WS_HAS_VALID_UPGRADE_HEADER 	= (1 << 0),
+	WS_HAS_VALID_CONNECT_HEADER 	= (1 << 1),
+	WS_HAS_VALID_WS_ACCEPT_HEADER 	= (1 << 2),
+	WS_HAS_VALID_WS_EXT_HEADER 		= (1 << 3),
+
+} ws_header_flags_t;
 
 ///
 /// Global context for the library.
@@ -63,8 +84,8 @@ typedef struct ws_base_s
 ///
 typedef struct ws_s
 {
-	// TODO: Add a connect state.
 	ws_state_t				state;				///< Websocket state.
+	ws_connect_state_t 		connect_state;		///< Connection handshake state.
 	struct ws_base_s		*ws_base;			///< Base context.
 
 	// TODO: Move the bases into the ws_base_t instead?
@@ -107,6 +128,9 @@ typedef struct ws_s
 
 	ws_msg_callback_f		ping_cb;
 	void					*ping_arg;
+
+	ws_header_callback_f	header_cb;
+	void					*header_arg;
 
 	void					*user_state;
 
