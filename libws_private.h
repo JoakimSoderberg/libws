@@ -35,6 +35,13 @@ typedef enum ws_send_state_e
 	WS_SEND_STATE_IN_MESSAGE_PAYLOAD
 } ws_send_state_t;
 
+typedef enum ws_connect_state_e
+{
+	WS_CONNECT_STATE_NONE,
+	WS_CONNECT_STATE_SENT_REQ,
+	WS_CONNECT_STATE_NEED_MORE
+} ws_connect_state_t;
+
 ///
 /// Global context for the library.
 ///
@@ -56,6 +63,7 @@ typedef struct ws_base_s
 ///
 typedef struct ws_s
 {
+	// TODO: Add a connect state.
 	ws_state_t				state;				///< Websocket state.
 	struct ws_base_s		*ws_base;			///< Base context.
 

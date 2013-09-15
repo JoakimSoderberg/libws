@@ -113,6 +113,7 @@ int _ws_parse_http_header(const char *line, char **header_name,
 	if (!line)
 		return -1;
 
+	// TODO: Replace with strsep instead.
 	if (!(end = strchr(line, ':')))
 		return -1;
 
@@ -126,8 +127,11 @@ int _ws_parse_http_header(const char *line, char **header_name,
 	(*header_name)[len] = '\0';
 
 	end++;
+	// TODO: Replace with strspn instead end += strspn(end, " \t");
 	while ((*end == ' ') || (*end == '\t')) end++;
 	*header_val = strdup(end);
+
+	// TODO: Trim the right side of header value as well.
 
 	if (!(*header_val))
 		goto fail;
@@ -143,28 +147,37 @@ fail:
 	return ret;
 }
 
-int _ws_parse_http_status(const char *line, char **http_version, 
-						int status_code, char **status_message)
+int _ws_parse_http_status(const char *line, 
+						int *http_major_version, int *http_minor_version,
+						int *status_code)
 {
-	int ret = 0;
 	const char *s = line;
+	int n;
 
-	*http_version = NULL;
-	*status_message = NULL;
-	status_code = -1;
+	*status_code = -1;
+	*http_major_version = -1;
+	*http_minor_version = -1;
 
 	if (!line)
 		return -1;
 
-	if (!strncmp("HTTP/", line, 5))
+	n = sscanf(line, "HTTP/%d.%d %d", 
+		http_major_version, http_minor_version, status_code);
+
+	if (n != 3)
 		return -1;
 
-	s += 5;
-	while ((*s == ' ') || (*s == '\t')) s++;
+	return 0;
+}
 
+int _ws_read_http_status(ws_t ws, struct evbuffer *in)
+{
+	return 0;
+}
 
-
-	return ret;
+int _ws_read_http_headers(ws_t ws)
+{
+	return 0;
 }
 
 int _ws_read_http_upgrade_response(ws_t ws)
@@ -174,6 +187,9 @@ int _ws_read_http_upgrade_response(ws_t ws)
 	char *line = NULL;
 	char *header_name = NULL;
 	char *header_val = NULL;
+	int major_version;
+	int minor_version;
+	int status_code;
 	assert(ws);
 	assert(ws->bev);
 
@@ -181,16 +197,20 @@ int _ws_read_http_upgrade_response(ws_t ws)
 
 	// Status line.
 	line = evbuffer_readln(in, &len, EVBUFFER_EOL_CRLF);
+	// TODO: If (line == NULL) set connect_state to NEED_MORE_DATA;
+	if (_ws_parse_http_status(line, 
+		&major_version, &minor_version, &status_code))
+	{
+		return -1;
+	}
 
 	// Read all headers.
-	while (1)
+	while ((line = evbuffer_readln(in, &len, EVBUFFER_EOL_CRLF)) != NULL)
 	{
-		line = evbuffer_readln(in, &len, EVBUFFER_EOL_CRLF);
-
 		// Check for end of HTTP response.
-		if (!strcmp(line, "\r\n\r\n") 
-		 || !strcmp(line, "\n\n")) // Don't be too strict...
+		if (*line == '\0')
 		{
+			// TODO: Set status that we have read everything.
 			break;
 		}
 
@@ -200,6 +220,8 @@ int _ws_read_http_upgrade_response(ws_t ws)
 					line);
 			return -1;
 		}
+
+		free(line);
 	}
 
 	// 1.  If the status code received from the server is not 101, the
@@ -242,6 +264,8 @@ int _ws_read_http_upgrade_response(ws_t ws)
 	//    the WebSocket Connection_.
 
 	return 0;
+fail:
+	return -1;
 }
 
 
