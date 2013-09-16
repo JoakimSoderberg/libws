@@ -34,9 +34,9 @@ if (LIBWS_COVERAGE)
 
 		# The normal test driver doesn't have an
 		# option to run all tests at once.
-		generate_run_all_tests_driver(run_all_tests_driver
-			"${TEST_SRCS_NO_EXT}"
-			"${TEST_SRCS};libws_test_helpers.c")
+		generate_run_all_tests_driver(run_all_tests_driver # Name of driver.
+			"${TEST_SRCS_NO_EXT}"					# Name of the functions to call.
+			"${TEST_SRCS};libws_test_helpers.c")	# Sources to include in the driver.
 
 		list(APPEND TEST_DRIVERS run_all_tests_driver.c)
 

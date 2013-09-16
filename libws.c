@@ -789,8 +789,11 @@ int ws_add_subprotocol(ws_t ws, const char *subprotocol)
 	if (!(ws->subprotocols = (char **)realloc(ws->subprotocols, 
 								(ws->num_subprotocols + 1) * sizeof(char *))))
 	{
+		// LCOV_EXCL_LINE
+		// LCOV_EXCL_START
 		LIBWS_LOG(LIBWS_ERR, "Out of memory!");
 		return -1;
+		// LCOV_EXCL_STOP
 	}
 
 	ws->subprotocols[ws->num_subprotocols] = strdup(subprotocol);
@@ -817,8 +820,11 @@ char **ws_get_subprotocols(ws_t ws, size_t *count)
 
 	if (!(ret = (char **)calloc(ws->num_subprotocols, sizeof(char *))))
 	{
-		LIBWS_LOG(LIBWS_ERR, "Out of memory!");
+		// LCOV_EXCL_START
+		// TODO: Add the possibility to replace calloc/malloc/free instead, so we can unit test these lines as well (just replace calloc with one that always returns NULL).
+		LIBWS_LOG(LIBWS_ERR, "Out of memory!"); 
 		return NULL;
+		// LCOV_EXCL_STOP
 	}
 
 	for (i = 0; i < ws->num_subprotocols; i++)
