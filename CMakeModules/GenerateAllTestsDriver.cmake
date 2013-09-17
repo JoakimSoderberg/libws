@@ -9,10 +9,10 @@ function(generate_run_all_tests_driver _DRIVER_NAME _FUNCTION_NAMES _EXTRA_SOURC
 
 	foreach (func ${_FUNCTION_NAMES})
 		set(FORWARD_DECLARATIONS 
-			"${FORWARD_DECLARATIONS}\nint ${func}(int argc, char *[]);\n")
+			"${FORWARD_DECLARATIONS}int ${func}(int argc, char *[]);\n")
 
 		set(FUNCTION_CALLS 
-			"${FUNCTION_CALLS}\nret |= ${func}(argc, argv);\n")
+			"${FUNCTION_CALLS}\t${func}(argc, argv);\n")
 	endforeach()
 
 	configure_file("${CMAKE_MODULE_PATH}/run_all_tests_driver.c.in"
