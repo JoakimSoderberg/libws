@@ -41,7 +41,7 @@ if (LIBWS_COVERAGE)
 		list(APPEND TEST_DRIVERS run_all_tests_driver.c)
 
 		add_dependencies(run_all_tests_driver ${LIBWS_DEP_LIST})
-		target_link_libraries(run_all_tests_driver ws ${LIBWS_LIB_LIST} gcov)
+		target_link_libraries(run_all_tests_driver ws ${LIBWS_LIB_LIST})
 
 		include(CodeCoverage)
 		setup_target_for_coverage(
@@ -61,10 +61,6 @@ add_executable(${LIBWS_TESTS_NAME}
 # Add test dependencies.	
 add_dependencies(${LIBWS_TESTS_NAME} ${LIBWS_DEP_LIST})
 target_link_libraries(${LIBWS_TESTS_NAME} ws ${LIBWS_LIB_LIST})
-
-if(CMAKE_COMPILER_IS_GNUCXX)
-    target_link_libraries(${LIBWS_TESTS_NAME} gcov)
-endif()
 
 ##
 ## Add all the tests to CTest.

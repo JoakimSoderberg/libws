@@ -29,8 +29,8 @@ if (LIBWS_COVERAGE)
 	  MESSAGE(FATAL_ERROR "Code coverage results with an optimised (non-Debug) build may be misleading! Add -DCMAKE_BUILD_TYPE=Debug")
 	endif()
 
-	set(CMAKE_CXX_FLAGS "-g -O0 --coverage")
-	set(CMAKE_C_FLAGS "-g -O0 --coverage")
+	set(CMAKE_CXX_FLAGS "-g -O0 -fprofile-arcs -ftest-coverage")
+	set(CMAKE_C_FLAGS "-g -O0 -fprofile-arcs -ftest-coverage")
 endif()
 
 include_directories(${PROJECT_SOURCE_DIR})

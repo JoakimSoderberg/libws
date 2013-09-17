@@ -35,11 +35,6 @@ IF ( NOT CMAKE_BUILD_TYPE STREQUAL "Debug" )
 ENDIF() # NOT CMAKE_BUILD_TYPE STREQUAL "Debug"
 
 
-# Setup compiler options
-ADD_DEFINITIONS(-fprofile-arcs -ftest-coverage)
-LINK_LIBRARIES(gcov)
-
-
 # Param _targetname     The name of new the custom make target
 # Param _testrunner     The name of the target which runs the tests
 # Param _outputname     lcov output is generated as _outputname.info
