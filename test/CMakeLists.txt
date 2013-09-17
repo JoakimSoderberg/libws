@@ -3,6 +3,7 @@
 ###################################################
 
 set(LIBWS_TESTS_NAME libws_tests)
+set(LIBWS_TESTS_ALL_NAME "${LIBWS_TESTS_NAME}_all")
 
 # Find all test files with their relative path
 # to the current directory.
@@ -32,21 +33,26 @@ if (LIBWS_COVERAGE)
 	if(CMAKE_COMPILER_IS_GNUCXX OR "${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
 		include(GenerateAllTestsDriver)
 
-		# The normal test driver doesn't have an
-		# option to run all tests at once.
-		generate_run_all_tests_driver(run_all_tests_driver # Name of driver.
-			"${TEST_SRCS_NO_EXT}"					# Name of the functions to call.
-			"${TEST_SRCS};libws_test_helpers.c")	# Sources to include in the driver.
+		# The normal test driver doesn't have an option to run all tests at once
+		# When checking test coverage we want that...
+		generate_run_all_tests_driver(RUN_ALL_TESTS_SRCS 	# Name of driver (list of the sources).
+			${LIBWS_TESTS_ALL_NAME}.c						# Name of the generated driver source.
+			"${TEST_SRCS}"									# Test sources to include in the driver.
+			)
 
-		list(APPEND TEST_DRIVERS run_all_tests_driver.c)
+		list(APPEND TEST_DRIVERS ${LIBWS_TESTS_ALL_NAME}.c)
 
-		add_dependencies(run_all_tests_driver ${LIBWS_DEP_LIST})
-		target_link_libraries(run_all_tests_driver ws ${LIBWS_LIB_LIST})
+		add_executable(${LIBWS_TESTS_ALL_NAME} 
+					${RUN_ALL_TESTS_SRCS} 
+					libws_test_helpers.c)
+
+		add_dependencies(${LIBWS_TESTS_ALL_NAME}  ${LIBWS_DEP_LIST})
+		target_link_libraries(${LIBWS_TESTS_ALL_NAME} ws ${LIBWS_LIB_LIST})
 
 		include(CodeCoverage)
 		setup_target_for_coverage(
 			${LIBWS_TESTS_NAME}_coverage 	# Coverage make target.
-			run_all_tests_driver 			# Name of test runner executable.
+			${LIBWS_TESTS_ALL_NAME} 		# Name of test runner executable.
 			coverage 						# Name of output directory.
 			)
 	endif()
@@ -56,7 +62,7 @@ include_directories("${CMAKE_CURRENT_SOURCE_DIR}")
 
 add_executable(${LIBWS_TESTS_NAME}
 				${LIBWS_TESTS_SRCS}
-				"libws_test_helpers.c")
+				libws_test_helpers.c)
 
 # Add test dependencies.	
 add_dependencies(${LIBWS_TESTS_NAME} ${LIBWS_DEP_LIST})
@@ -74,4 +80,4 @@ target_link_libraries(${LIBWS_TESTS_NAME} ws ${LIBWS_LIB_LIST})
 
 # Just make some nice source groups for IDEs.
 source_group("Test Files" FILES ${TEST_SRCS})
-source_group("Test Drivers" FILES "${TEST_DRIVERS}")
+source_group("Test Drivers" FILES ${TEST_DRIVERS})
