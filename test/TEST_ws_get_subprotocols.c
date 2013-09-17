@@ -1,5 +1,6 @@
 #include "libws.h"
 #include "libws_test_helpers.h"
+#include <string.h>	
 
 int add_to_list(ws_t ws, char *subprotocol, size_t index, size_t expected_count)
 {

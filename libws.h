@@ -5,6 +5,7 @@
 #include "libws_config.h"
 #include "libws_types.h"
 #include "libws_header.h"
+#include "libws_compat.h"
 
 #include <stdio.h>
 #include <event2/event.h>

@@ -78,6 +78,10 @@ int do_unpack_test(char *buf, size_t buflen,
 			case WS_OPCODE_PONG:
 				libws_test_SUCCESS("Payload as expected: [pong]");
 				break;
+			default:
+				libws_test_FAILURE("Unexpected opcode %d", header.opcode);
+				ret = -1;
+				break;
 		}
 	}
 	else
