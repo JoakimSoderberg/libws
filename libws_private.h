@@ -63,6 +63,11 @@ typedef enum ws_header_flags_e
 
 } ws_header_flags_t;
 
+// Memory replacement functions.
+extern ws_malloc_replacement_f 	_ws_malloc;
+extern ws_free_replacement_f	_ws_free;
+extern ws_realloc_replacement_f	_ws_realloc;
+
 ///
 /// Global context for the library.
 ///
@@ -240,6 +245,8 @@ int _ws_get_random_mask(ws_t ws, char *buf, size_t len);
 /// @param[in]	ws 		The websocket context.
 /// 
 void _ws_set_timeouts(ws_t ws);
+
+
 
 
 

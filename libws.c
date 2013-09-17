@@ -3,6 +3,7 @@
 
 #include <event2/dns.h>
 #include <event2/event.h>
+#include <event2/bufferevent.h>
 
 #include <stdio.h>
 #include <sys/socket.h>
@@ -11,6 +12,7 @@
 #include <assert.h>
 #include <stdint.h>
 #include <inttypes.h>
+#include <unistd.h> // TODO: System introspection.
 
 #include "libws_types.h"
 #include "libws_log.h"
@@ -21,19 +23,34 @@
 #endif
 #include "libws.h"
 
+ws_malloc_replacement_f 	_ws_malloc = malloc;
+ws_free_replacement_f		_ws_free = free;
+ws_realloc_replacement_f	_ws_realloc = realloc;
+
+void ws_set_memory_functions(ws_malloc_replacement_f malloc_replace,
+							 ws_free_replacement_f free_replace,
+							 ws_realloc_replacement_f realloc_replace)
+{
+	_ws_malloc = malloc_replace ? malloc_replace : malloc;
+	_ws_free = free_replace ? free_replace : free;
+	_ws_realloc = realloc_replace ? realloc_replace : realloc;
+}
+
 int ws_global_init(ws_base_t *base)
 {
 	ws_base_t b;
 
 	assert(base);
 
-	if (!(*base = (ws_base_s *)calloc(1, sizeof(ws_base_s))))
+	if (!(*base = (ws_base_s *)_ws_malloc(sizeof(ws_base_s))))
 	{
 		LIBWS_LOG(LIBWS_CRIT, "Out of memory!");
 		return -1;
 	}
 
 	b = *base;
+
+	memset(b, 0, sizeof(ws_base_t));
 
 	#ifndef WIN32
 	if ((b->random_fd = open(WS_RANDOM_PATH, O_RDONLY)) < 0)
@@ -84,7 +101,7 @@ int ws_init(ws_t *ws, ws_base_t ws_base)
 	assert(ws);
 	assert(ws_base);
 
-	if (!(*ws = (struct ws_s *)calloc(1, sizeof(struct ws_s))))
+	if (!(*ws = (struct ws_s *)_ws_malloc(sizeof(struct ws_s))))
 	{
 		LIBWS_LOG(LIBWS_CRIT, "Out of memory!");
 		return -1;
@@ -92,6 +109,8 @@ int ws_init(ws_t *ws, ws_base_t ws_base)
 
 	// Just for convenience.
 	w = *ws;
+
+	memset(w, 0, sizeof(ws_t));
 
 	w->ws_base = ws_base;
 
@@ -200,7 +219,6 @@ int ws_connect(ws_t ws, const char *server, int port, const char *uri)
 	}
 
 	// TODO: Add Websocket magic stuff to buf.
-	evbuffer_add_printf(bufferevent_get_output(ws->bev), "");
 	
 	if (bufferevent_socket_connect_hostname(ws->bev, 
 				ws->dns_base, AF_UNSPEC, ws->server, ws->port))
@@ -307,7 +325,7 @@ int ws_quit(ws_t ws, int let_running_events_complete)
 
 char *ws_get_uri(ws_t ws, char *buf, size_t bufsize)
 {
-	assert(ws != NULL);
+	assert(ws);
 
 	if (!buf)
 	{
@@ -439,7 +457,7 @@ int ws_msg_frame_data_begin(ws_t ws, uint64_t datalen)
 
 	ws_pack_header(&ws->header, header_buf, sizeof(header_buf), &header_len);
 	
-	if (_ws_send_data(ws, header_buf, (uint64_t)header_len, 0))
+	if (_ws_send_data(ws, (char *)header_buf, (uint64_t)header_len, 0))
 	{
 		LIBWS_LOG(LIBWS_ERR, "Failed to send frame header");
 		return -1;
@@ -786,7 +804,7 @@ int ws_add_subprotocol(ws_t ws, const char *subprotocol)
 {
 	assert(ws);
 
-	if (!(ws->subprotocols = (char **)realloc(ws->subprotocols, 
+	if (!(ws->subprotocols = (char **)_ws_realloc(ws->subprotocols, 
 								(ws->num_subprotocols + 1) * sizeof(char *))))
 	{
 		// LCOV_EXCL_LINE
@@ -818,10 +836,9 @@ char **ws_get_subprotocols(ws_t ws, size_t *count)
 	if (!ws->subprotocols)
 		return NULL;
 
-	if (!(ret = (char **)calloc(ws->num_subprotocols, sizeof(char *))))
+	if (!(ret = (char **)_ws_malloc(ws->num_subprotocols * sizeof(char *))))
 	{
 		// LCOV_EXCL_START
-		// TODO: Add the possibility to replace calloc/malloc/free instead, so we can unit test these lines as well (just replace calloc with one that always returns NULL).
 		LIBWS_LOG(LIBWS_ERR, "Out of memory!"); 
 		return NULL;
 		// LCOV_EXCL_STOP
@@ -837,7 +854,7 @@ char **ws_get_subprotocols(ws_t ws, size_t *count)
 	return ret;
 fail:
 	if (ret)
-		free(ret);
+		_ws_free(ret);
 
 	return NULL;
 }

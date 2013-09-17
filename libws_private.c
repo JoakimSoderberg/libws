@@ -10,6 +10,7 @@
 #endif
 
 #include <sys/time.h>
+#include <unistd.h>
 
 #include <event2/event.h>
 #include <event2/bufferevent.h>
@@ -18,6 +19,11 @@
 #include "libws_types.h"
 #include "libws_header.h"
 #include "libws_private.h"
+#include "libws.h"
+
+#ifdef LIBWS_WITH_OPENSSL
+#include "libws_openssl.h"
+#endif 
 
 static void _ws_connected_event(struct bufferevent *bev, short events, void *arg)
 {
@@ -39,11 +45,13 @@ static void _ws_connected_event(struct bufferevent *bev, short events, void *arg
 ///
 static void _ws_connection_timeout_event(evutil_socket_t fd, short what, void *arg)
 {
+	char buf[256];
 	ws_t ws = (ws_t)arg;
 	assert(ws);
 
 	LIBWS_LOG(LIBWS_ERR, "Websocket connection timed out after %ld seconds "
-						 "for %s", ws->connect_timeout.tv_sec, ws_get_uri(ws));
+						 "for %s", ws->connect_timeout.tv_sec, 
+						 ws_get_uri(ws, buf, sizeof(buf)));
 
 	if (ws->connect_timeout_cb)
 	{
@@ -376,7 +384,7 @@ int _ws_send_frame_raw(ws_t ws, ws_opcode_t opcode, char *data, uint64_t datalen
 
 		ws_pack_header(&ws->header, header_buf, sizeof(header_buf), &header_len);
 		
-		if (_ws_send_data(ws, header_buf, (uint64_t)header_len, 0))
+		if (_ws_send_data(ws, (char *)header_buf, (uint64_t)header_len, 0))
 		{
 			LIBWS_LOG(LIBWS_ERR, "Failed to send frame header");
 			return -1;
@@ -393,6 +401,8 @@ int _ws_send_frame_raw(ws_t ws, ws_opcode_t opcode, char *data, uint64_t datalen
 			return -1;
 		}
 	}
+
+	return 0;
 }
 
 int _ws_get_random_mask(ws_t ws, char *buf, size_t len)

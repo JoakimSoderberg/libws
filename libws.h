@@ -30,6 +30,24 @@ int ws_global_init(ws_base_t *base);
 void ws_global_destroy(ws_base_t *base);
 
 ///
+/// Replaces the libraries memory handling functions.
+/// If any of the values are set to NULL, the default will be used.
+///
+/// @note These functions must allocate memory with the same alignment
+///		  as the C library. 
+///		  realloc(NULL, size) is the same as malloc(size).
+///		  realloc(ptr, 0) is the same as free(ptr).
+///		  The must be threadsafe if you're using them from several threads.
+///
+/// @param[in]	malloc_replace 	The malloc replacement function.
+/// @param[in]	free_replace 	The free replacement function.
+/// @param[in]	realloc_replace The realloc replamcent function.
+///
+void ws_set_memory_functions(ws_malloc_replacement_f malloc_replace,
+							 ws_free_replacement_f free_replace,
+							 ws_realloc_replacement_f realloc_replace);
+
+///
 /// Initializes a new Websocket connection context and ties
 /// it to a global context.
 ///
@@ -439,7 +457,7 @@ void *ws_get_user_state(ws_t ws);
 /// @param[out]	buf 		A buffer to put the result in.
 /// @param[in]	bufsize		The size of the buffer.
 ///
-/// @returns 				NULL on failure.
+/// @returns 				NULL on failure, #buf otherwise.
 /// 
 char *ws_get_uri(ws_t ws, char *buf, size_t bufsize);
 

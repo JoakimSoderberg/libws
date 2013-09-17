@@ -118,7 +118,7 @@ int _ws_parse_http_header(const char *line, char **header_name,
 		return -1;
 
 	len = (end - start) * sizeof(char);
-	*header_name = (char *)malloc(len + 1);
+	*header_name = (char *)_ws_malloc(len + 1);
 
 	if (!(*header_name))
 		return -1;

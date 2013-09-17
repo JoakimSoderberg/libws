@@ -6,10 +6,10 @@
 #include "libws_private.h"
 #include "libws_openssl.h"
 #include <openssl/ssl.h>
+#include <openssl/rand.h>
 #include <event2/event.h>
 #include <event2/listener.h>
 #include <event2/bufferevent_ssl.h>
-
 
 int _ws_global_openssl_init(ws_base_t ws_base)
 {
@@ -32,6 +32,8 @@ int _ws_global_openssl_init(ws_base_t ws_base)
 			return -1;
 		}
 	}
+
+	return 0;
 }
 
 void _ws_global_openssl_destroy(ws_base_t ws_base)
@@ -45,7 +47,7 @@ void _ws_global_openssl_destroy(ws_base_t ws_base)
 
 int _ws_openssl_init(ws_t ws, ws_base_t ws_base)
 {
-
+	return 0;
 }
 
 void _ws_openssl_destroy(ws_t ws)

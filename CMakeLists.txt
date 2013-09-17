@@ -17,6 +17,9 @@ include(CheckFunctionExists)
 include(CheckIncludeFiles)
 include(CheckTypeSize)
 
+set(CMAKE_CXX_FLAGS "-Wimplicit-function-declaration")
+set(CMAKE_C_FLAGS "-std=c89 -Wimplicit-function-declaration -Wpointer-sign")
+
 # Turn on coverage support.
 if (LIBWS_COVERAGE)
 	if(NOT CMAKE_COMPILER_IS_GNUCXX)
@@ -29,8 +32,8 @@ if (LIBWS_COVERAGE)
 	  MESSAGE(FATAL_ERROR "Code coverage results with an optimised (non-Debug) build may be misleading! Add -DCMAKE_BUILD_TYPE=Debug")
 	endif()
 
-	set(CMAKE_CXX_FLAGS "-g -O0 -fprofile-arcs -ftest-coverage")
-	set(CMAKE_C_FLAGS "-g -O0 -fprofile-arcs -ftest-coverage")
+	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -O0 -fprofile-arcs -ftest-coverage")
+	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -g -O0 -fprofile-arcs -ftest-coverage")
 endif()
 
 include_directories(${PROJECT_SOURCE_DIR})

@@ -1,10 +1,12 @@
 
 #include "libws_config.h"
 #include "libws_log.h"
+#include "libws_compat.h"
 #include "libws_types.h"
 #include "libws_header.h"
 #include <assert.h>
 #include <string.h>
+#include <arpa/inet.h>
 
 int ws_unpack_header(ws_header_t *h, size_t *header_len, 
 					const unsigned char *b, size_t len)

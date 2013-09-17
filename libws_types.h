@@ -44,5 +44,8 @@ typedef void (*ws_timeout_callback_f)(ws_t ws, struct timeval timeout, void *arg
 typedef void (*ws_no_copy_cleanup_f)(ws_t ws, const void *data, uint64_t datalen, void *extra);
 typedef int (*ws_header_callback_f)(ws_t ws, const char *header_name, const char *header_val, void *arg);
 
+typedef void *(*ws_malloc_replacement_f)(size_t bytes);
+typedef void (*ws_free_replacement_f)(void *ptr);
+typedef void *(*ws_realloc_replacement_f)(void *ptr, size_t bytes);
 
 #endif // __LIBWS_TYPES_H__
