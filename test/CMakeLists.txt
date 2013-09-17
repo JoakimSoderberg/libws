@@ -29,7 +29,7 @@ endforeach()
 
 # Coverage using gcov (gcc only).
 if (LIBWS_COVERAGE)
-	if(CMAKE_COMPILER_IS_GNUCXX)
+	if(CMAKE_COMPILER_IS_GNUCXX OR "${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
 		include(GenerateAllTestsDriver)
 
 		# The normal test driver doesn't have an

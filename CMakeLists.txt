@@ -20,7 +20,9 @@ include(CheckTypeSize)
 # Turn on coverage support.
 if (LIBWS_COVERAGE)
 	if(NOT CMAKE_COMPILER_IS_GNUCXX)
-		message(FATAL_ERROR "Compiler is not GNU gcc! Aborting...")
+		if (NOT "${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
+			message(FATAL_ERROR "Compiler is not GNU gcc! Aborting... You can set this on the command line using CC=/usr/bin/gcc CXX=/usr/bin/g++ cmake <options> ..")
+		endif()
 	endif()
 
 	if(NOT CMAKE_BUILD_TYPE STREQUAL "Debug")
