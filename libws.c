@@ -28,7 +28,6 @@ void ws_set_memory_functions(ws_malloc_replacement_f malloc_replace,
 							 ws_free_replacement_f free_replace,
 							 ws_realloc_replacement_f realloc_replace)
 {
-
 	_ws_set_memory_functions(malloc_replace, free_replace, realloc_replace);
 }
 
@@ -84,7 +83,7 @@ void ws_global_destroy(ws_base_t *base)
 	_ws_global_openssl_destroy(b);
 	#endif
 
-	free(*base);
+	_ws_free(*base);
 	*base = NULL;
 
 	// TODO: Should we destroy all connections here as well?
@@ -97,7 +96,7 @@ int ws_init(ws_t *ws, ws_base_t ws_base)
 	assert(ws);
 	assert(ws_base);
 
-	if (!(*ws = (struct ws_s *)_ws_malloc(sizeof(struct ws_s))))
+	if (!(*ws = (struct ws_s *)_ws_calloc(1, sizeof(struct ws_s))))
 	{
 		LIBWS_LOG(LIBWS_CRIT, "Out of memory!");
 		return -1;
@@ -105,8 +104,6 @@ int ws_init(ws_t *ws, ws_base_t ws_base)
 
 	// Just for convenience.
 	w = *ws;
-
-	memset(w, 0, sizeof(ws_t));
 
 	w->ws_base = ws_base;
 
@@ -168,20 +165,20 @@ void ws_destroy(ws_t *ws)
 
 	if (w->origin)
 	{
-		free(w->origin);
+		_ws_free(w->origin);
 	}
 
 	ws_clear_subprotocols(w);
 
-	if (w->handshake_key_base64) free(w->handshake_key_base64);
-	if (w->server) free(w->server);
-	if (w->uri) free(w->uri);
+	if (w->handshake_key_base64) _ws_free(w->handshake_key_base64);
+	if (w->server) _ws_free(w->server);
+	if (w->uri) _ws_free(w->uri);
 
 	#ifdef LIBWS_WITH_OPENSSL
 	_ws_openssl_destroy(w);
 	#endif
 
-	free(w);
+	_ws_free(w);
 	*ws = NULL;
 }
 
@@ -203,8 +200,8 @@ int ws_connect(ws_t ws, const char *server, int port, const char *uri)
 		return -1;
 	}
 
-	ws->server = strdup(server);
-	ws->uri = strdup(uri);
+	ws->server = _ws_strdup(server);
+	ws->uri = _ws_strdup(uri);
 	ws->port = port;
 
 	if (_ws_create_bufferevent_socket(ws))
@@ -638,10 +635,10 @@ int ws_set_origin(ws_t ws, const char *origin)
 	// TODO: Verify that origin is a valid value.
 	if (ws->origin)
 	{
-		free(ws->origin);
+		_ws_free(ws->origin);
 	}
 
-	if (!(ws->origin = strdup(origin)))
+	if (!(ws->origin = _ws_strdup(origin)))
 	{
 		LIBWS_LOG(LIBWS_ERR, "Could not copy origin string. Out of memory!");
 		return -1;
@@ -842,7 +839,7 @@ char **ws_get_subprotocols(ws_t ws, size_t *count)
 
 	for (i = 0; i < ws->num_subprotocols; i++)
 	{
-		ret[i] = strdup(ws->subprotocols[i]);
+		ret[i] = _ws_strdup(ws->subprotocols[i]);
 	}
 
 	*count = ws->num_subprotocols;
@@ -864,10 +861,10 @@ void ws_free_subprotocols_list(char **subprotocols, size_t count)
 
 	for (i = 0; i < count; i++)
 	{
-		free(subprotocols[i]);
+		_ws_free(subprotocols[i]);
 	}
 
-	free(subprotocols);
+	_ws_free(subprotocols);
 }
 
 int ws_clear_subprotocols(ws_t ws)
@@ -881,10 +878,10 @@ int ws_clear_subprotocols(ws_t ws)
 	for (i = 0; i < ws->num_subprotocols; i++)
 	{
 		if (ws->subprotocols[i])
-			free(ws->subprotocols[i]);
+			_ws_free(ws->subprotocols[i]);
 	}
 
-	free(ws->subprotocols);
+	_ws_free(ws->subprotocols);
 	ws->subprotocols = NULL;
 	ws->num_subprotocols = 0;
 

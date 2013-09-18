@@ -18,7 +18,7 @@ int _ws_generate_handshake_key(ws_t ws)
 	assert(ws);
 
 	if (ws->handshake_key_base64)
-		free(ws->handshake_key_base64);
+		_ws_free(ws->handshake_key_base64);
 
 	// Randomize 16 bytes and base64 encode them for the
 	// Sec-WebSocket-Key field.
@@ -129,7 +129,7 @@ int _ws_parse_http_header(const char *line, char **header_name,
 	end++;
 	// TODO: Replace with strspn instead end += strspn(end, " \t");
 	while ((*end == ' ') || (*end == '\t')) end++;
-	*header_val = strdup(end);
+	*header_val = _ws_strdup(end);
 
 	// TODO: Trim the right side of header value as well.
 
@@ -140,7 +140,7 @@ int _ws_parse_http_header(const char *line, char **header_name,
 fail:
 	if (*header_name)
 	{
-		free(*header_name);
+		_ws_free(*header_name);
 		*header_name = NULL;
 	}
 
@@ -189,11 +189,11 @@ ws_parse_state_t _ws_read_http_status(ws_t ws,
 	if (_ws_parse_http_status(line, 
 		http_major_version, http_minor_version, status_code))
 	{
-		free(line);
+		_ws_free(line);
 		return WS_PARSE_STATE_ERROR;
 	}
 
-	free(line);
+	_ws_free(line);
 	return WS_PARSE_STATE_SUCCESS;
 }
 
@@ -235,7 +235,7 @@ ws_parse_state_t _ws_read_http_headers(ws_t ws, struct evbuffer *in)
 
 
 
-		free(line);
+		_ws_free(line);
 		line = NULL;
 	}
 
