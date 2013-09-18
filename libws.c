@@ -13,6 +13,7 @@
 #include <stdint.h>
 #include <inttypes.h>
 #include <unistd.h> // TODO: System introspection.
+#include <string.h>
 
 #include "libws_types.h"
 #include "libws_log.h"
@@ -23,17 +24,12 @@
 #endif
 #include "libws.h"
 
-ws_malloc_replacement_f 	_ws_malloc = malloc;
-ws_free_replacement_f		_ws_free = free;
-ws_realloc_replacement_f	_ws_realloc = realloc;
-
 void ws_set_memory_functions(ws_malloc_replacement_f malloc_replace,
 							 ws_free_replacement_f free_replace,
 							 ws_realloc_replacement_f realloc_replace)
 {
-	_ws_malloc = malloc_replace ? malloc_replace : malloc;
-	_ws_free = free_replace ? free_replace : free;
-	_ws_realloc = realloc_replace ? realloc_replace : realloc;
+
+	_ws_set_memory_functions(malloc_replace, free_replace, realloc_replace);
 }
 
 int ws_global_init(ws_base_t *base)

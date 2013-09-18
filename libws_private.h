@@ -63,11 +63,6 @@ typedef enum ws_header_flags_e
 
 } ws_header_flags_t;
 
-// Memory replacement functions.
-extern ws_malloc_replacement_f 	_ws_malloc;
-extern ws_free_replacement_f	_ws_free;
-extern ws_realloc_replacement_f	_ws_realloc;
-
 ///
 /// Global context for the library.
 ///
@@ -246,8 +241,37 @@ int _ws_get_random_mask(ws_t ws, char *buf, size_t len);
 /// 
 void _ws_set_timeouts(ws_t ws);
 
+///
+/// Replacement malloc.
+///
+void *_ws_malloc(size_t size);
 
+///
+/// Replacement realloc.
+///
+void *_ws_realloc(void *ptr, size_t size);
 
+///
+/// Replacement free.
+///
+void _ws_free(void *ptr);
+
+///
+/// Replacement calloc.
+///
+void *_ws_calloc(size_t count, size_t size);
+
+///
+/// Replacement strdup.
+///
+char *_ws_strdup(const char *str);
+
+///
+/// Internal function to replace memory functions.
+///
+void _ws_set_memory_functions(ws_malloc_replacement_f malloc_replace,
+							 ws_free_replacement_f free_replace,
+							 ws_realloc_replacement_f realloc_replace);
 
 
 #endif // __LIBWS_PRIVATE_H__

@@ -17,8 +17,9 @@ include(CheckFunctionExists)
 include(CheckIncludeFiles)
 include(CheckTypeSize)
 
+# Aim for C89 with C++ style comments.
 set(CMAKE_CXX_FLAGS "-Wimplicit-function-declaration")
-set(CMAKE_C_FLAGS "-std=c89 -Wimplicit-function-declaration -Wpointer-sign")
+set(CMAKE_C_FLAGS "-std=gnu89 -Wimplicit-function-declaration -Wpointer-sign")
 
 # Turn on coverage support.
 if (LIBWS_COVERAGE)
