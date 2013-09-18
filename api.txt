@@ -1,0 +1,48 @@
+
+// Sending.
+
+1. // Message based.
+ws_send_msg()
+
+2. // Frame based (One big message many frames)
+ws_msg_begin()									NONE -> MSG_BEGIN
+ws_msg_frame_send()								
+		|____________ws_msg_frame_data_begin()	MSG_BEGIN -> IN_MSG
+...					 ws_msg_frame_data_send()	IN_MSG -> IN_MSG
+...					 ws_msg_frame_data_send()	IN_MSG -> IN_MSG
+ws_msg_frame_send()
+ws_msg_end()
+
+3. // Stream (one huge frame)..
+ws_msg_begin()
+ws_msg_frame_data_begin() // Size is set here.
+ws_msg_frame_data_send()
+...
+ws_msg_frame_data_send()
+
+
+// Receiving
+
+1. ws_on_msg(msg, is_binary)
+
+2. ws_on_msg_begin(opcode, is_binary)
+   ws_on_msg_frame(payload)
+   ws_on_msg_end() ----> ws_on_msg()
+
+3. ws_on_msg_begin()
+   ws_on_msg_frame_begin()
+   ws_on_msg_frame_data()
+   ...
+   ws_on_msg_frame_data()
+   ws_on_msg_frame_end() ----> ws_on_msg_frame()
+   ws_on_msg_end()
+
+
+- If msg_callback set, build msg from incoming frames and call on_msg
+
+- If msg_begin is set, turn of on_msg (but still check for ping/pong)
+	(we won't start building the msg unless the user calls the default callback from its own callback) 
+
+- msg_begin/msg_frame/msg_end can only be set together 
+
+
