@@ -43,6 +43,29 @@ ws_msg_frame_data_send()
 - If msg_begin is set, turn of on_msg (but still check for ping/pong)
 	(we won't start building the msg unless the user calls the default callback from its own callback) 
 
-- msg_begin/msg_frame/msg_end can only be set together 
+- msg_begin/msg_frame/msg_end can only be set together:
+	
+	- If the user decides to not call the default implementations
+	  from his callbacks, its up to the user to assemble the message.
+	
+	- The default callbacks uses an evbuffer to assemble the message.
+
+	- Should evbuffer_pullup be used to pass the payload of 
+	  frames to the user?:
+	  	<Received enough data for the entire frame>
+	  	if (frame_callbacks_are_set)
+	  		evbuffer_pullup... -> pass pointer to callback
+	  		in default callback:
+	  			(see below)
+	  	else
+	  		call default callback
+	  		in default callback:
+  				bypass msg_frame payload msg
+  				copy directly from bufferevent in-buffer to the msg evbuffer.
+
+  				The evbuffer_remove_buffer() function moves exactly datlen bytes from src to the end of dst, copying as little as possible. If there are fewer than datlen bytes to move, it moves all the bytes. It returns the number of bytes moved.
+
+
+
 
 
