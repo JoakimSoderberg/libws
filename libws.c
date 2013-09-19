@@ -647,7 +647,7 @@ int ws_set_origin(ws_t ws, const char *origin)
 	return 0;
 }
 
-void ws_onping_default_cb(ws_t ws, const char *msg, uint64_t len, void *arg)
+void ws_onping_default_cb(ws_t ws, const char *msg, uint64_t len, int binary, void *arg)
 {
 	assert(ws);
 
@@ -662,7 +662,7 @@ void ws_set_onping_cb(ws_t ws, ws_msg_callback_f func, void *arg)
 	ws->ping_arg = arg;
 }
 
-void ws_onpong_default_cb(ws_t ws, const char *msg, uint64_t len, void *arg)
+void ws_onpong_default_cb(ws_t ws, const char *msg, uint64_t len, int binary, void *arg)
 {
 	assert(ws);
 

@@ -312,7 +312,8 @@ int ws_set_origin(ws_t ws, const char *origin);
 /// @param[in]	ws 		The websocket session context.
 /// @param[in]	arg		User context passed to the callback.
 ///
-void ws_onping_default_cb(ws_t ws, const char *msg, uint64_t len, void *arg);
+void ws_onping_default_cb(ws_t ws, const char *msg, uint64_t len, 
+							int binary, void *arg);
 
 ///
 /// Sets the on ping callback function for when a ping websocket

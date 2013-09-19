@@ -29,14 +29,17 @@ ws_msg_frame_data_send()
    ws_on_msg_frame(payload)
    ws_on_msg_end() ----> ws_on_msg()
 
-3. ws_on_msg_begin()
-   ws_on_msg_frame_begin()
+3. 
+   ws_on_msg_frame_begin() // If this is the first frame -> ws_on_msg_begin()
+   ws_on_msg_begin()
    ws_on_msg_frame_data()
    ...
    ws_on_msg_frame_data()
    ws_on_msg_frame_end() ----> ws_on_msg_frame()
    ws_on_msg_end()
 
+
+* Add a "protocol validation" error, for when the frame is somehow incorrect, or the handshake fails.
 
 - If msg_callback set, build msg from incoming frames and call on_msg
 
@@ -64,6 +67,35 @@ ws_msg_frame_data_send()
   				copy directly from bufferevent in-buffer to the msg evbuffer.
 
   				The evbuffer_remove_buffer() function moves exactly datlen bytes from src to the end of dst, copying as little as possible. If there are fewer than datlen bytes to move, it moves all the bytes. It returns the number of bytes moved.
+
+After connection handshake...
+
+Read data
+	
+	if no header is read yet:
+
+		- Got enough data to read header? Need more! return
+		- Read header (only remove as much as needed)
+			- Call handle_frame_begin
+	else
+			- Unmask data
+			- Call handle_frame_data
+
+
+
+
+
+handle_frame_begin
+
+
+
+
+
+
+
+
+
+
 
 
 
