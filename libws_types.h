@@ -24,6 +24,14 @@ typedef enum ws_state_e
 	WS_STATE_CONNECTED
 } ws_state_t;
 
+typedef enum ws_parse_state_e
+{
+	WS_PARSE_STATE_USER_ABORT = -2,
+	WS_PARSE_STATE_ERROR = -1,
+	WS_PARSE_STATE_SUCCESS = 0,
+	WS_PARSE_STATE_NEED_MORE
+} ws_parse_state_t;
+
 #ifdef LIBWS_WITH_OPENSSL
 typedef enum libws_ssl_state_e
 {

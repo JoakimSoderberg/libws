@@ -35,15 +35,6 @@ typedef enum ws_send_state_e
 	WS_SEND_STATE_IN_MESSAGE_PAYLOAD
 } ws_send_state_t;
 
-typedef enum ws_parse_state_e
-{
-	WS_PARSE_STATE_USER_ABORT = -2,
-	WS_PARSE_STATE_ERROR = -1,
-	WS_PARSE_STATE_NONE = 0,
-	WS_PARSE_STATE_NEED_MORE,
-	WS_PARSE_STATE_SUCCESS
-} ws_parse_state_t;
-
 typedef enum ws_connect_state_e
 {
 	WS_CONNECT_STATE_ERROR = -1,

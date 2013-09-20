@@ -41,11 +41,24 @@ int do_unpack_test(char *buf, size_t buflen,
 	ws_header_t header;
 	size_t i;
 	size_t header_len;
+	ws_parse_state_t state;
 
-	if (ws_unpack_header(&header, &header_len, 
-			(unsigned char *)buf, buflen))
+	if ((state = ws_unpack_header(&header, &header_len, 
+							(unsigned char *)buf, buflen)))
 	{
-		libws_test_FAILURE("Could not unpack header\n");
+		libws_test_FAILURE("Could not unpack header:");
+		switch (state)
+		{
+			case WS_PARSE_STATE_NEED_MORE: 
+				libws_test_FAILURE("\tNeed more data");
+				break;
+			case WS_PARSE_STATE_ERROR:
+				libws_test_FAILURE("\tParse error");
+				break;
+			case WS_PARSE_STATE_USER_ABORT:
+				libws_test_FAILURE("\tUser abort");
+				break;
+		}
 		ret = -1;
 	}
 

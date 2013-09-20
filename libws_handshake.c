@@ -295,7 +295,7 @@ ws_parse_state_t _ws_read_http_upgrade_response(ws_t ws)
 		}
 		case WS_CONNECT_STATE_PARSED_HEADERS:
 		{
-
+			// TODO: Finish parsing http headers.
 		}
 	}
 

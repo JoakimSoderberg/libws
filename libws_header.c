@@ -4,12 +4,13 @@
 #include "libws_compat.h"
 #include "libws_types.h"
 #include "libws_header.h"
+#include "libws_private.h"
 #include <assert.h>
 #include <string.h>
 #include <arpa/inet.h>
 
-int ws_unpack_header(ws_header_t *h, size_t *header_len, 
-					const unsigned char *b, size_t len)
+ws_parse_state_t ws_unpack_header(ws_header_t *h, size_t *header_len, 
+									const unsigned char *b, size_t len)
 {
 	assert(b);
 	assert(h);
@@ -20,7 +21,7 @@ int ws_unpack_header(ws_header_t *h, size_t *header_len,
 
 	if (len < WS_HDR_MIN_SIZE)
 	{
-		goto fail;
+		goto need_more;
 	}
 
 	// First byte.
@@ -41,7 +42,7 @@ int ws_unpack_header(ws_header_t *h, size_t *header_len,
 	{
 		if (len < (*header_len + 2))
 		{
-			goto fail;
+			goto need_more;
 		}
 		else
 		{
@@ -55,7 +56,7 @@ int ws_unpack_header(ws_header_t *h, size_t *header_len,
 	{
 		if (len < (*header_len + 8))
 		{
-			goto fail;
+			goto need_more;
 		}
 		else
 		{
@@ -75,10 +76,10 @@ int ws_unpack_header(ws_header_t *h, size_t *header_len,
 		*header_len += 4;
 	}
 
-	return 0;
-fail:
+	return WS_PARSE_STATE_SUCCESS;
+need_more:
 	LIBWS_LOG(LIBWS_ERR, "Not enough data to unpack header");
-	return -1;
+	return WS_PARSE_STATE_NEED_MORE;
 }
 
 static void _ws_pack_header_first_byte(ws_header_t *h, uint8_t *b)
