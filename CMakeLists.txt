@@ -6,6 +6,7 @@ set(PROJECT_MAJOR_VERSION 0)
 set(PROJECT_MINOR_VERSION 1)
 set(PROJECT_PATCH_VERSION 0)
 
+option(LIBWS_WITH_TESTS "Build test suite" ON)
 option(LIBWS_WITH_OPENSSL "Compile with OpenSSL support" ON)
 option(LIBWS_WITH_LOG "Compile with logging support" ON)
 option(LIBWS_COVERAGE "(GCC Only! Requires gcov/lcov to be installed). Include target for doing coverage analysis for the test suite. Note that -DCMAKE_BUILD_TYPE=Debug must be set" OFF)
@@ -42,8 +43,8 @@ include_directories(${PROJECT_SOURCE_DIR})
 find_package(LibEvent REQUIRED)
 include_directories(${LIBEVENT_INCLUDE_DIR})
 
-set(LIBWS_DEP_LIST LibEvent)
-set(LIBWS_LIB_LIST ${LIBEVENT_LIBRARY})
+list(APPEND LIBWS_DEP_LIST LibEvent)
+list(APPEND LIBWS_LIB_LIST ${LIBEVENT_LIBRARY})
 
 if (LIBWS_WITH_OPENSSL)
 	find_package(OpenSSL REQUIRED)
@@ -112,5 +113,8 @@ add_library(ws STATIC
 # Add libs and dependencies
 add_dependencies(ws ${LIBWS_DEP_LIST})
 target_link_libraries(ws ${LIBWS_LIB_LIST})
-ENABLE_TESTING()
-add_subdirectory(test)
+
+if (LIBWS_WITH_TESTS)
+	ENABLE_TESTING()
+	add_subdirectory(test)
+endif()

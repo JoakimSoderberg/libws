@@ -67,16 +67,19 @@ int do_unpack_test(char *buf, size_t buflen,
 		switch (header.opcode)
 		{
 			case WS_OPCODE_TEXT: 
-				libws_test_SUCCESS("Payload as expected: \"%s\"", payload);
+				libws_test_SUCCESS("Payload as expected: [text] \"%s\"", payload);
 				break;
 			case WS_OPCODE_BINARY:
-				libws_test_SUCCESS("Payload as expected: [binary]");
+				libws_test_SUCCESS("Payload as expected: [binary] %u bytes", header.payload_len);
 				break;
 			case WS_OPCODE_PING:
-				libws_test_SUCCESS("Payload as expected: [ping]");
+				libws_test_SUCCESS("Payload as expected: [ping] %u bytes", header.payload_len);
 				break;
 			case WS_OPCODE_PONG:
-				libws_test_SUCCESS("Payload as expected: [pong]");
+				libws_test_SUCCESS("Payload as expected: [pong] %u bytes", header.payload_len);
+				break;
+			case WS_OPCODE_CONTINUATION:
+				libws_test_SUCCESS("Payload as expected. [continuation] \"%s\"", payload);
 				break;
 			default:
 				libws_test_FAILURE("Unexpected opcode %d", header.opcode);
