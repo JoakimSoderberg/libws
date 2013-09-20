@@ -310,6 +310,28 @@ static void _ws_event_callback(struct bufferevent *bev, short events, void *ptr)
 	}
 }
 
+int _ws_handle_frame_begin(ws_t ws)
+{
+	assert(ws);
+
+
+	return 0;
+}
+
+int _ws_handle_frame_data(ws_t ws)
+{
+	assert(ws);
+
+	return 0;
+}
+
+int _ws_handle_frame_end(ws_t ws)
+{
+	assert(ws);
+
+	return 0;
+}
+
 ///
 /// Libevent bufferevent callback for when there is data to be read
 /// on the websocket socket.
@@ -319,13 +341,48 @@ static void _ws_read_callback(struct bufferevent *bev, void *ptr)
 	ws_t ws = (ws_t)ptr;
 	assert(ws);
 	assert(bev);
+	assert(ws->bev == bev);
 
 	char *buf = NULL;
 
-	// TODO: Read from the bufferevent.
-	// TODO: Parse the websocket header.
-	// TODO: Based on op code forward data to appropriate callback.
+	struct evbuffer *in = bufferevent_get_input(bev);
 
+	if (!ws->has_header)
+	{
+		size_t header_len;
+		ev_ssize_t bytes_read;
+		char header_buf[WS_HDR_MAX_SIZE];
+		ws_parse_state_t state;
+
+		bytes_read = evbuffer_copyout(in, (void *)header_buf, 
+										sizeof(header_buf));
+
+		state = ws_unpack_header(&ws->header, &header_len, 
+				(unsigned char *)header_buf, sizeof(header_buf));
+
+		assert(state != WS_PARSE_STATE_USER_ABORT);
+
+		switch (state)
+		{
+			case WS_PARSE_STATE_SUCCESS: 
+				ws->has_header = 1;
+				if (evbuffer_drain(in, bytes_read))
+				{
+					// TODO: Error! close
+				}
+				break;
+			case WS_PARSE_STATE_NEED_MORE: return;
+			case WS_PARSE_STATE_ERROR:
+				// TODO: raise error callback. Or close?
+				break;
+		}
+
+		_ws_handle_frame_begin(ws);
+	}
+	else
+	{
+
+	}
 }
 
 ///
@@ -543,4 +600,6 @@ void _ws_set_timeouts(ws_t ws)
 
 	bufferevent_set_timeouts(ws->bev, &ws->recv_timeout, &ws->send_timeout);
 }
+
+
 
