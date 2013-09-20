@@ -70,23 +70,66 @@ ws_msg_frame_data_send()
 
 After connection handshake...
 
-Read data
+process_data:
 	
 	if no header is read yet:
 
 		- Got enough data to read header? Need more! return
+
 		- Read header (only remove as much as needed)
 			- Call handle_frame_begin
+			
 	else
-			- Unmask data
-			- Call handle_frame_data
+		# We're in a frame!
+		- Read as much frame data as we have gotten, make sure we don't read more
+		  than the frame payload though.
+		- Unmask data
+		- Call handle_frame_data with the frame payload.
+		- If we have read entire payload_len call handle_frame_end
 
 
+handle_frame_begin:
+
+	if (control_frame)
+		Init separate control frame buffer 
+			(control frames can come in the middle of a msg)
+		Don't call msg calbacks.
+		return
+
+	if !in_message
+		Init message buffer
+		in_message = true
+
+		msg_begin_cb(opcode)
+
+	frame_begin_cb(header)
+
+handle_frame_data:
+
+	if (control_frame)
+		add data to control frame buffer
+		return
+
+	if (msg_frame_data_cb)
+		get payload from incoming buffer (evbuffer_pullup)
+		msg_frame_data_cb(payload)
+	else
 
 
+handle_frame_end:
+	
+	if (control frame):
+		process_control_frame
+		# No message callback.
+		return
+	
+	frame_end_cb()
 
-handle_frame_begin
+	if (header.fin)
+		msg_end_cb()
+		in_message = false
 
+	unset header
 
 
 
