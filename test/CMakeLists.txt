@@ -51,7 +51,7 @@ if (LIBWS_COVERAGE)
 
 		include(CodeCoverage)
 		setup_target_for_coverage(
-			${LIBWS_TESTS_NAME}_coverage 	# Coverage make target.
+			coverage 						# Coverage make target.
 			${LIBWS_TESTS_ALL_NAME} 		# Name of test runner executable.
 			coverage 						# Name of output directory.
 			)
