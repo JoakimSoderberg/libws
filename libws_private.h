@@ -140,6 +140,7 @@ typedef struct ws_s
 	int						debug_level;
 
 	uint64_t				max_frame_size;		///< The max frame size to allow before chunking.
+	uint64_t 				frame_data_recv;	///< The amount of bytes that have been read for the current frame.
 	int 					has_header;
 	ws_header_t				header;				///< Header that's being sent for the current p
 	uint64_t				frame_size;			///< The frame size of the frame currently being sent.

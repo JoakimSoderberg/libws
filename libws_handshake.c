@@ -246,6 +246,7 @@ ws_parse_state_t _ws_read_http_headers(ws_t ws, struct evbuffer *in)
 
 ws_parse_state_t _ws_read_http_upgrade_response(ws_t ws)
 {
+	// Rename to _ws_read_handshake_reply
 	struct evbuffer *in;
 	size_t len;
 	char *line = NULL;

@@ -22,6 +22,7 @@
 #include "libws_header.h"
 #include "libws_private.h"
 #include "libws.h"
+#include "libws_handshake.h"
 
 #ifdef LIBWS_WITH_OPENSSL
 #include "libws_openssl.h"
@@ -332,20 +333,13 @@ int _ws_handle_frame_end(ws_t ws)
 	return 0;
 }
 
-///
-/// Libevent bufferevent callback for when there is data to be read
-/// on the websocket socket.
-///
-static void _ws_read_callback(struct bufferevent *bev, void *ptr)
+void _ws_read_websocket(ws_t ws)
 {
-	ws_t ws = (ws_t)ptr;
 	assert(ws);
-	assert(bev);
-	assert(ws->bev == bev);
+	assert(ws->bev);
 
-	char *buf = NULL;
-
-	struct evbuffer *in = bufferevent_get_input(bev);
+	struct evbuffer *in = bufferevent_get_input(ws->bev);
+	assert(in);
 
 	if (!ws->has_header)
 	{
@@ -381,7 +375,49 @@ static void _ws_read_callback(struct bufferevent *bev, void *ptr)
 	}
 	else
 	{
+		// We're in a frame.
+		size_t recv_len = evbuffer_get_length(in);
+		size_t remaining = ws->header.payload_len - ws->frame_data_recv;
+		
+		if (recv_len > remaining) 
+			recv_len = remaining;
+		
+		
+	}
 
+	return;
+}
+
+///
+/// Libevent bufferevent callback for when there is data to be read
+/// on the websocket socket.
+///
+static void _ws_read_callback(struct bufferevent *bev, void *ptr)
+{
+	ws_t ws = (ws_t)ptr;
+	assert(ws);
+	assert(bev);
+	assert(ws->bev == bev);
+
+	if (ws->state != WS_STATE_CONNECTED)
+		return;
+
+	if (ws->connect_state != WS_CONNECT_STATE_HANDSHAKE_COMPLETE)
+	{
+		// Complete the connection handshake.
+		ws_parse_state_t state;
+
+		switch ((state = _ws_read_http_upgrade_response(ws)))
+		{
+			case WS_PARSE_STATE_ERROR: break; // TODO: Close connection.
+			case WS_PARSE_STATE_NEED_MORE: return;
+			case WS_PARSE_STATE_SUCCESS: return;
+		}
+	}
+	else
+	{
+		// Connected and completed handshake we can now expect websocket data.
+		_ws_read_websocket(ws);
 	}
 }
 
