@@ -75,14 +75,26 @@ typedef struct ws_base_s
 ///
 typedef struct ws_s
 {
+	struct ws_base_s		*ws_base;			///< Base context that this websocket session belongs to.
+
+	///
+	/// @defgroup StateVariables State Variables
+	/// @{
+	///
 	ws_state_t				state;				///< Websocket state.
 	ws_connect_state_t 		connect_state;		///< Connection handshake state.
-	struct ws_base_s		*ws_base;			///< Base context.
+	void					*user_state;
+	/// @}
 
+	///
+	/// @defgroup LibeventVariables Libevent Variables
+	/// @{
+	///
 	// TODO: Move the bases into the ws_base_t instead?
 	struct event_base		*base;				///< Libevent event base.
 	struct evdns_base 		*dns_base;			///< Libevent DNS base.
 	struct bufferevent 		*bev;				///< Buffer event socket.
+	/// @}
 
 	///
 	/// @defgroup Callbacks	Callback functions
@@ -91,19 +103,42 @@ typedef struct ws_s
 	ws_msg_callback_f		msg_cb;				///< Callback for when a message is received on the websocket.
 	void 					*msg_arg;			///< The user supplied argument to pass to the ws_s#msg_cb callback.
 
+	ws_msg_begin_callback_f msg_begin_cb;		///< 
+	void 					*msg_begin_arg;
+
+	ws_msg_frame_callback_f msg_frame_cb;		///< 
+	void					*msg_frame_arg;
+	
+	ws_msg_end_callback_f 	msg_end_cb;			///<
+	void					*msg_end_arg;		///<
+
+	ws_msg_frame_begin_callback_f msg_frame_begin_cb; ///<
+	void					*msg_frame_begin_arg; ///<
+
+	ws_msg_frame_data_callback_f msg_frame_data_cb; ///<
+	void					*msg_frame_data_arg; ///<
+
+	ws_msg_frame_end_callback_f msg_frame_end_cb; ///<
+	void					*msg_frame_end_arg;	///<
+
 	ws_err_callback_f 		err_cb;				///< Callback for when an error occurs on the websocket connection.
 	void					*err_arg;			///< The user supplied argument to pass to the ws_s#error_cb callback.
 
 	ws_close_callback_f		close_cb;			///< Callback for when the websocket connection is closed.
 	void					*close_arg;			///< The user supplied argument to pass to the ws_s#close_cb callback.
 
-	ws_connect_callback_f	connect_cb;
-	void					*connect_arg;
+	///
+	/// @defgroup ConnectionCallback Connection callback
+	/// @{
+	///
+	ws_connect_callback_f	connect_cb;			///< Callback for when the connection is complete.
+	void					*connect_arg;		///< The user supplied argument
 
-	ws_timeout_callback_f	connect_timeout_cb;
-	struct timeval			connect_timeout;
-	void					*connect_timeout_arg;
-	struct event 			*connect_timeout_event;
+	ws_timeout_callback_f	connect_timeout_cb; ///< Connection timeout callback.
+	struct timeval			connect_timeout;	///< Connection timeout.
+	void					*connect_timeout_arg; ///< The user spupplied argument that is passed to the ws_s#connect_timeout_cb callback.
+	struct event 			*connect_timeout_event; ///< Libevent event that is fired when the connection times out.
+	/// @}
 
 	ws_timeout_callback_f	recv_timeout_cb;
 	struct timeval			recv_timeout;
@@ -113,22 +148,30 @@ typedef struct ws_s
 	struct timeval			send_timeout;
 	void					*send_timeout_arg;
 
-	ws_msg_callback_f		pong_cb;
-	void					*pong_arg;
+	///
+	/// @defgroup PongCallback Pong callback
+	/// @{
+	///
+	ws_msg_callback_f		pong_cb;			///< User supplied callback for when a pong frame is received.
+	void					*pong_arg;			///< The user supplied argument that will be passed to the pong callback.
 
 	ws_timeout_callback_f	pong_timeout_cb;
 	void					*pong_timeout_arg;
 	struct timeval			pong_timeout;
 	struct event 			*pong_timeout_event;
+	/// @}
 
+	///
+	/// @defgroup PingCallback Ping callback
+	/// @{
+	///
 	ws_msg_callback_f		ping_cb;
 	void					*ping_arg;
+	/// @}
 
 	ws_header_callback_f	header_cb;
 	void					*header_arg;
 	/// @}
-
-	void					*user_state;
 
 	///
 	/// @defgroup ConnectionVariables	Connection variables
@@ -145,7 +188,7 @@ typedef struct ws_s
 	size_t					num_subprotocols;
 	/// @}
 
-	int						binary_mode;
+	int						binary_mode;		///< If this is set messages will be sent as binary.
 
 	int						debug_level;
 
@@ -157,8 +200,9 @@ typedef struct ws_s
 	///
 	struct evbuffer			*msg;				///< Buffer that is used to build an incoming message.
 	uint64_t 				frame_data_recv;	///< The amount of bytes that have been read for the current frame.
-	int 					has_header;			///< Has the header been read yet?
-	ws_header_t				header;				///< Header that's being sent for the current p
+	int 					has_header;			///< Has the websocket header been read yet?
+	ws_header_t				header;				///< Header for received websocket frame.
+	int 					in_msg;				///< Are we inside a message?
 	/// @}
 	
 	///
@@ -169,15 +213,17 @@ typedef struct ws_s
 	uint64_t				frame_data_sent;	///< The number of bytes sent so far of the current frame.
 	ws_send_state_t			send_state;			///< The state for sending data.
 	ws_no_copy_cleanup_f	no_copy_cleanup_cb;	///< If set, any data written to the websocket will be freed using this callback.
-	void 					*no_copy_extra;
+	void 					*no_copy_extra;		///< User supplied argument for the ws_s#no_copy_cleanup_cb
+	
+	char 					ctrl_payload[WS_CONTROL_MAX_PAYLOAD_LEN];	///< Control frame payload.
 	/// @}
 
 	#ifdef LIBWS_WITH_OPENSSL
 	///
 	/// @defgroup OpenSSL OpenSSL variables
 	///
-	int 					use_ssl;
-	SSL 					*ssl;
+	libws_ssl_state_t 		use_ssl;			///< If SSL should be used or not.
+	SSL 					*ssl;				///< SSL session.
 
 	#endif // LIBWS_WITH_OPENSSL
 } ws_s;

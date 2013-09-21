@@ -315,13 +315,46 @@ int _ws_handle_frame_begin(ws_t ws)
 {
 	assert(ws);
 
+	if (WS_OPCODE_IS_CONTROL(ws->header.opcode))
+	{
+		memset(ws->ctrl_payload, 0, sizeof(ws->ctrl_payload));
+		return 0;
+	}
+
+	// Normal frame.
+	if (!ws->in_msg)
+	{
+		if (ws->msg)
+		{
+			if (evbuffer_get_length(ws->msg) != 0)
+			{
+				LIBWS_LOG(LIBWS_WARN, "Non-empty message buffer on new message");
+			}
+		
+			evbuffer_free(ws->msg);
+			ws->msg = NULL;
+		}
+
+		if (!(ws->msg = evbuffer_new()))
+		{
+			// TODO: Close connection. Exit program?
+			return -1;
+		}
+
+		ws->in_msg = 1;
+		ws->msg_begin_cb(ws, ws->msg_begin_arg);
+	}
+
+	ws->msg_frame_begin_cb(ws, ws->msg_frame_begin_arg);
 
 	return 0;
 }
 
-int _ws_handle_frame_data(ws_t ws)
+int _ws_handle_frame_data(ws_t ws, char *buf, size_t len)
 {
 	assert(ws);
+
+
 
 	return 0;
 }
@@ -375,17 +408,34 @@ void _ws_read_websocket(ws_t ws)
 	}
 	else
 	{
+		char *buf = NULL;
+
 		// We're in a frame.
 		size_t recv_len = evbuffer_get_length(in);
 		size_t remaining = ws->header.payload_len - ws->frame_data_recv;
-		
+		int bytes_read;
+		size_t i;
+
 		if (recv_len > remaining) 
 			recv_len = remaining;
-		
-		
-	}
 
-	return;
+		buf = (char *)_ws_malloc(recv_len);
+
+		bytes_read = evbuffer_remove(in, buf, recv_len);
+
+		if (bytes_read != recv_len)
+		{
+			LIBWS_LOG(LIBWS_ERR, "Wanted to read %u but only got %d", 
+					recv_len, bytes_read);
+		}
+
+		if (ws->header.mask_bit)
+		{
+			ws_unmask_payload(ws->header.mask, buf, bytes_read);
+		}
+
+		_ws_handle_frame_data(ws, buf, bytes_read);
+	}
 }
 
 ///

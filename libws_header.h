@@ -32,6 +32,7 @@ typedef enum ws_opcode_e
 	((opcode >= WS_OPCODE_CLOSE) && (opcode <= WS_OPCODE_CONTROL_RSV_0XF))
 
 #define WS_MAX_PAYLOAD_LEN 0x7FFFFFFFFFFFFFFF
+#define WS_CONTROL_MAX_PAYLOAD_LEN 125
 
 #define WS_HDR_BASE_SIZE 2
 #define WS_HDR_PAYLOAD_LEN_SIZE 8

@@ -37,7 +37,7 @@ void ws_global_destroy(ws_base_t *base);
 ///		  as the C library. 
 ///		  realloc(NULL, size) is the same as malloc(size).
 ///		  realloc(ptr, 0) is the same as free(ptr).
-///		  The must be threadsafe if you're using them from several threads.
+///		  They must be threadsafe if you're using them from several threads.
 ///
 /// @param[in]	malloc_replace 	The malloc replacement function.
 /// @param[in]	free_replace 	The free replacement function.
@@ -249,6 +249,17 @@ int ws_set_max_frame_size(ws_t ws, uint64_t max_frame_size);
 ///
 uint64_t ws_get_max_frame_size(ws_t ws);
 
+///
+/// Get the header for the current websocket frame being read.
+///
+/// @note This only makes sense to use in the frame callback functions.
+///
+/// @param[in]	ws 	The websocket session context.
+///
+/// @returns The header for the current websocket frame being read.
+///
+ws_header_t *ws_get_header(ws_t ws);
+
 // TODO: Add onmsg_begin, onmsg_frame, onmsg_end
 
 ///
@@ -270,6 +281,8 @@ void ws_set_onconnect_cb(ws_t ws, ws_connect_callback_f func, void *arg);
 /// @returns			0 on success.
 /// 
 void ws_set_onmsg_cb(ws_t ws, ws_msg_callback_f func, void *arg);
+
+
 
 ///
 /// Sets the on error callback function.
