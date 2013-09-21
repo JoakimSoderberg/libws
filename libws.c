@@ -888,4 +888,14 @@ int ws_clear_subprotocols(ws_t ws)
 	return 0;
 }
 
+#ifdef LIBWS_WITH_OPENSSL
+
+void ws_set_ssl_state(ws_t ws, libws_ssl_state_t ssl)
+{
+	assert(ws);
+	ws->use_ssl = ssl;
+}
+
+#endif // LIBWS_WITH_OPENSSL
+
 

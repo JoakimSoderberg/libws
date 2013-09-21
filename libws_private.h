@@ -84,6 +84,10 @@ typedef struct ws_s
 	struct evdns_base 		*dns_base;			///< Libevent DNS base.
 	struct bufferevent 		*bev;				///< Buffer event socket.
 
+	///
+	/// @defgroup Callbacks	Callback functions
+	/// @{
+	///
 	ws_msg_callback_f		msg_cb;				///< Callback for when a message is received on the websocket.
 	void 					*msg_arg;			///< The user supplied argument to pass to the ws_s#msg_cb callback.
 
@@ -122,9 +126,14 @@ typedef struct ws_s
 
 	ws_header_callback_f	header_cb;
 	void					*header_arg;
+	/// @}
 
 	void					*user_state;
 
+	///
+	/// @defgroup ConnectionVariables	Connection variables
+	/// @{
+	///
 	char 					*server;
 	char					*uri;
 	int						port;
@@ -134,23 +143,39 @@ typedef struct ws_s
 
 	char					**subprotocols;
 	size_t					num_subprotocols;
+	/// @}
 
 	int						binary_mode;
 
 	int						debug_level;
 
 	uint64_t				max_frame_size;		///< The max frame size to allow before chunking.
+
+	///
+	/// @defgroup FrameReceive Frame receive variables
+	/// @{
+	///
+	struct evbuffer			*msg;				///< Buffer that is used to build an incoming message.
 	uint64_t 				frame_data_recv;	///< The amount of bytes that have been read for the current frame.
-	int 					has_header;
+	int 					has_header;			///< Has the header been read yet?
 	ws_header_t				header;				///< Header that's being sent for the current p
+	/// @}
+	
+	///
+	/// @defgroup FrameSend Frame send variables
+	/// @{
+	///
 	uint64_t				frame_size;			///< The frame size of the frame currently being sent.
 	uint64_t				frame_data_sent;	///< The number of bytes sent so far of the current frame.
 	ws_send_state_t			send_state;			///< The state for sending data.
 	ws_no_copy_cleanup_f	no_copy_cleanup_cb;	///< If set, any data written to the websocket will be freed using this callback.
 	void 					*no_copy_extra;
+	/// @}
 
 	#ifdef LIBWS_WITH_OPENSSL
-
+	///
+	/// @defgroup OpenSSL OpenSSL variables
+	///
 	int 					use_ssl;
 	SSL 					*ssl;
 

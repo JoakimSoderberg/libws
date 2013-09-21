@@ -551,7 +551,7 @@ int ws_clear_subprotocols(ws_t ws);
 /// 
 /// @param[in]	ws 			The websocket session context.
 ///
-int ws_set_ssl_state(ws_t ws, libws_ssl_state_t ssl);
+void ws_set_ssl_state(ws_t ws, libws_ssl_state_t ssl);
 
 #endif // LIBWS_WITH_OPENSSL
 
