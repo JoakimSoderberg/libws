@@ -610,14 +610,68 @@ void ws_set_onconnect_cb(ws_t ws, ws_connect_callback_f func, void *arg)
 void ws_set_onmsg_cb(ws_t ws, ws_msg_callback_f func, void *arg)
 {
 	assert(ws);
-}
-
-void ws_set_onerr_cb(ws_t ws, ws_msg_callback_f func, void *arg)
-{
-	assert(ws);
 
 	ws->msg_cb = func;
 	ws->msg_arg = arg;
+}
+
+void ws_set_onmsg_begin_cb(ws_t ws, ws_msg_begin_callback_f func, void *arg)
+{
+	assert(ws);
+
+	ws->msg_begin_cb = func;
+	ws->msg_begin_arg = arg;
+}
+
+void ws_set_onmsg_frame_cb(ws_t ws, ws_msg_frame_callback_f func, void *arg)
+{
+	assert(ws);
+
+	ws->msg_frame_cb = func;
+	ws->msg_frame_arg = arg;
+}
+
+void ws_set_onmsg_end_cb(ws_t ws, ws_msg_end_callback_f func, void *arg)
+{
+	assert(ws);
+
+	ws->msg_end_cb = func;
+	ws->msg_end_arg = arg;
+}
+
+void ws_set_onmsg_frame_begin_cb(ws_t ws, ws_msg_frame_begin_callback_f func, 
+								void *arg)
+{
+	assert(ws);
+
+	ws->msg_frame_begin_cb = func;
+	ws->msg_frame_begin_arg = arg;
+}
+
+void ws_set_onmsg_frame_data_cb(ws_t ws, ws_msg_frame_data_callback_f func, 
+								void *arg)
+{
+	assert(ws);
+
+	ws->msg_frame_data_cb = func;
+	ws->msg_frame_data_arg = arg;
+}
+
+void ws_set_onmsg_frame_end_cb(ws_t ws, ws_msg_frame_end_callback_f func, 
+								void *arg)
+{
+	assert(ws);
+
+	ws->msg_frame_end_cb = func;
+	ws->msg_frame_end_arg = arg;
+}
+
+void ws_set_onerr_cb(ws_t ws, ws_err_callback_f func, void *arg)
+{
+	assert(ws);
+
+	ws->err_cb = func;
+	ws->err_arg = arg;
 }
 
 void ws_set_onclose_cb(ws_t ws, ws_close_callback_f func, void *arg)

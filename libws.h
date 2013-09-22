@@ -260,44 +260,152 @@ uint64_t ws_get_max_frame_size(ws_t ws);
 ///
 ws_header_t *ws_get_header(ws_t ws);
 
-// TODO: Add onmsg_begin, onmsg_frame, onmsg_end
-
 ///
 /// Sets the on connect callback function.
 ///
 /// @param[in]	ws 		The websocket session context.
+/// @param[in]	func 	The callback function.
 /// @param[in]	arg		User context passed to the callback.
 ///
 /// @returns			0 on success.
 /// 
 void ws_set_onconnect_cb(ws_t ws, ws_connect_callback_f func, void *arg);
 
+
 ///
-/// Sets the on msg callback function.
+/// Sets the message callback function. Once a full websocket message
+/// has been received and assembeled this function will be called.
+/// The message itself could have been split in several frames.
+///
+/// @ingroup MessageAPI Message based API
 ///
 /// @param[in]	ws 		The websocket session context.
+/// @param[in]	func 	The callback function.
 /// @param[in]	arg		User context passed to the callback.
 ///
 /// @returns			0 on success.
 /// 
 void ws_set_onmsg_cb(ws_t ws, ws_msg_callback_f func, void *arg);
 
+/// @defgroup FrameAPI Frame based API
+/// @{
 
+///
+/// Sets the message begin callback function. When the first frame of a new
+/// message is received, this function is called.
+///
+/// @see ws_get_header, ws_set_onmsg_frame_cb, ws_set_onmsg_end_cb
+///
+/// @param[in]	ws 		The websocket session context.
+/// @param[in]	func 	The callback function.
+/// @param[in]	arg		User context passed to the callback.
+///
+/// @returns			0 on success.
+/// 
+void ws_set_onmsg_begin_cb(ws_t ws, ws_msg_begin_callback_f func, void *arg);
+
+///
+/// Sets the message frame callback function. When a new frame in a message
+/// has been received, this function will be called.
+///
+/// @see ws_get_header, ws_set_onmsg_begin_cb, ws_set_onmsg_end_cb,
+///		 ws_set_onmsg_frame_begin_cb, ws_set_onmsg_frame_data_cb, 
+///		 ws_set_onmsg_frame_end_cb
+///	
+///
+/// @param[in]	ws 		The websocket session context.
+/// @param[in]	func 	The callback function.
+/// @param[in]	arg		User context passed to the callback.
+///
+/// @returns			0 on success.
+/// 
+void ws_set_onmsg_frame_cb(ws_t ws, ws_msg_frame_callback_f func, void *arg);
+
+///
+/// Sets the message end callback function. When a message has received its
+/// final frame, this function will be called.
+///
+/// @see ws_get_header, ws_set_onmsg_begin_cb, ws_set_onmsg_frame_cb
+///
+/// @param[in]	ws 		The websocket session context.
+/// @param[in]	func 	The callback function.
+/// @param[in]	arg		User context passed to the callback.
+///
+/// @returns			0 on success.
+/// 
+void ws_set_onmsg_end_cb(ws_t ws, ws_msg_end_callback_f func, void *arg);
+
+// TODO: Add a note about how overriding these functions will result in message not being assembled unless the default handlers are called from within the overriden versions.
+/// @defgroup StreamAPI Stream based API
+/// @{
+
+///
+/// Sets the message frame begin callback function. When the header of a new
+/// frame inside a message is received this function is called.
+///
+/// @see ws_get_header, ws_set_onmsg_frame_cb,
+///		 ws_set_onmsg_frame_data_cb, ws_set_onmsg_frame_end_cb
+///
+/// @param[in]	ws 		The websocket session context.
+/// @param[in]	func 	The callback function.
+/// @param[in]	arg		User context passed to the callback.
+///
+/// @returns			0 on success.
+/// 
+void ws_set_onmsg_frame_begin_cb(ws_t ws, ws_msg_frame_begin_callback_f func, 
+								void *arg);
+
+///
+/// Sets the message frame data callback function. When data within a frame
+/// is received this function is called.
+///
+/// @see ws_get_header, ws_set_onmsg_frame_cb,
+///		 ws_set_onmsg_frame_data_cb, ws_set_onmsg_frame_end_cb
+///
+/// @param[in]	ws 		The websocket session context.
+/// @param[in]	func 	The callback function.
+/// @param[in]	arg		User context passed to the callback.
+///
+/// @returns			0 on success.
+/// 
+void ws_set_onmsg_frame_data_cb(ws_t ws, ws_msg_frame_data_callback_f func, 
+								void *arg);
+
+///
+/// Sets the message frame end callback function. When all the data in a
+/// frame has been received, this function will be called.
+///
+/// @see ws_get_header, ws_set_onmsg_frame_cb,
+///		 ws_set_onmsg_frame_data_cb, ws_set_onmsg_frame_begin_cb
+///
+/// @param[in]	ws 		The websocket session context.
+/// @param[in]	func 	The callback function.
+/// @param[in]	arg		User context passed to the callback.
+///
+/// @returns			0 on success.
+/// 
+void ws_set_onmsg_frame_end_cb(ws_t ws, ws_msg_frame_end_callback_f func, 
+								void *arg);
+
+/// @}
+/// @}
 
 ///
 /// Sets the on error callback function.
 ///
 /// @param[in]	ws 		The websocket session context.
+/// @param[in]	func 	The callback function.
 /// @param[in]	arg		User context passed to the callback.
 ///
 /// @returns			0 on success.
 /// 
-void ws_set_onerr_cb(ws_t ws, ws_msg_callback_f func, void *arg);
+void ws_set_onerr_cb(ws_t ws, ws_err_callback_f func, void *arg);
 
 ///
 /// Sets the on close callback function.
 ///
 /// @param[in]	ws 		The websocket session context.
+/// @param[in]	func 	The callback function.
 /// @param[in]	arg		User context passed to the callback.
 ///
 /// @returns			0 on success.

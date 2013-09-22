@@ -398,6 +398,15 @@ int _ws_handle_frame_data(ws_t ws, char *buf, size_t len)
 	else
 	{
 		// TODO: Default callback.
+		// Adds the frame data to a frame_payload buffer
+		// that is passed to the frame_cb in the default
+		// callback for msg_frame_end_cb
+		// Since we're calling frame_cb from a callback
+		// we need to make sure we have an entire frame
+		// before we call it. The user might override
+		// the msg_frame_data_cb/msg_frame_end_cb
+		// so that no frame_data is collected. In that
+		// case we shouldn't run the frame_cb.
 	}
 
 	return 0;
@@ -446,6 +455,7 @@ void _ws_read_websocket(ws_t ws)
 	struct evbuffer *in = bufferevent_get_input(ws->bev);
 	assert(in);
 
+	// First read the websocket header.
 	if (!ws->has_header)
 	{
 		size_t header_len;
@@ -465,6 +475,7 @@ void _ws_read_websocket(ws_t ws)
 		{
 			case WS_PARSE_STATE_SUCCESS: 
 				ws->has_header = 1;
+
 				if (evbuffer_drain(in, bytes_read))
 				{
 					// TODO: Error! close
