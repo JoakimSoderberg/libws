@@ -311,6 +311,11 @@ static void _ws_event_callback(struct bufferevent *bev, short events, void *ptr)
 	}
 }
 
+int _ws_handle_control_frame(ws)
+{
+	return 0;
+}
+
 int _ws_handle_frame_begin(ws_t ws)
 {
 	assert(ws);
@@ -342,10 +347,25 @@ int _ws_handle_frame_begin(ws_t ws)
 		}
 
 		ws->in_msg = 1;
-		ws->msg_begin_cb(ws, ws->msg_begin_arg);
+
+		if (ws->msg_begin_cb)
+		{
+			ws->msg_begin_cb(ws, ws->msg_begin_arg);
+		}
+		else
+		{
+			// TODO: Default callback.
+		}
 	}
 
-	ws->msg_frame_begin_cb(ws, ws->msg_frame_begin_arg);
+	if (ws->msg_frame_begin_cb)
+	{
+		ws->msg_frame_begin_cb(ws, ws->msg_frame_begin_arg);
+	}
+	else
+	{
+		// TODO: Default callback.
+	}
 
 	return 0;
 }
@@ -354,7 +374,31 @@ int _ws_handle_frame_data(ws_t ws, char *buf, size_t len)
 {
 	assert(ws);
 
+	if (WS_OPCODE_IS_CONTROL(ws->header.opcode))
+	{
+		size_t total_len = (ws->ctrl_len + len);
 
+		if (total_len > WS_CONTROL_MAX_PAYLOAD_LEN)
+		{
+			LIBWS_LOG(LIBWS_ERR, "Control payload too big %u, only %u allowed",
+						total_len, WS_CONTROL_MAX_PAYLOAD_LEN);
+			len = WS_CONTROL_MAX_PAYLOAD_LEN - ws->ctrl_len;
+			// TODO: Protocol vilation error.
+		}
+
+		memcpy(&ws->ctrl_payload[ws->ctrl_len], buf, len);
+		
+		return 0;
+	}
+
+	if (ws->msg_frame_data_cb)
+	{
+		ws->msg_frame_data_cb(ws, buf, len, ws->msg_frame_data_arg);
+	}
+	else
+	{
+		// TODO: Default callback.
+	}
 
 	return 0;
 }
@@ -362,6 +406,34 @@ int _ws_handle_frame_data(ws_t ws, char *buf, size_t len)
 int _ws_handle_frame_end(ws_t ws)
 {
 	assert(ws);
+
+	if (WS_OPCODE_IS_CONTROL(ws->header.opcode))
+	{
+		return _ws_handle_control_frame(ws);
+	}
+
+	if (ws->msg_frame_end_cb)
+	{
+		ws->msg_frame_end_cb(ws, ws->msg_frame_end_arg);
+	}
+	else
+	{
+		// TODO: Default callback.
+	}
+
+	if (ws->header.fin)
+	{
+		if (ws->msg_end_cb)
+		{
+			ws->msg_end_cb(ws, ws->msg_end_arg);
+		}
+		else
+		{
+			// TODO: Default callback.
+		}
+
+		ws->in_msg = 0;
+	}
 
 	return 0;
 }
@@ -408,33 +480,44 @@ void _ws_read_websocket(ws_t ws)
 	}
 	else
 	{
-		char *buf = NULL;
-
 		// We're in a frame.
 		size_t recv_len = evbuffer_get_length(in);
 		size_t remaining = ws->header.payload_len - ws->frame_data_recv;
-		int bytes_read;
-		size_t i;
 
 		if (recv_len > remaining) 
 			recv_len = remaining;
 
-		buf = (char *)_ws_malloc(recv_len);
-
-		bytes_read = evbuffer_remove(in, buf, recv_len);
-
-		if (bytes_read != recv_len)
+		if (remaining == 0)
 		{
-			LIBWS_LOG(LIBWS_ERR, "Wanted to read %u but only got %d", 
-					recv_len, bytes_read);
+			_ws_handle_frame_end(ws);
 		}
-
-		if (ws->header.mask_bit)
+		else
 		{
-			ws_unmask_payload(ws->header.mask, buf, bytes_read);
-		}
+			int bytes_read;
+			char *buf = (char *)_ws_malloc(recv_len);
 
-		_ws_handle_frame_data(ws, buf, bytes_read);
+			bytes_read = evbuffer_remove(in, buf, recv_len);
+			ws->frame_data_recv += bytes_read;
+
+			if (bytes_read != recv_len)
+			{
+				LIBWS_LOG(LIBWS_ERR, "Wanted to read %u but only got %d", 
+						recv_len, bytes_read);
+			}
+
+			if (ws->header.mask_bit)
+			{
+				ws_unmask_payload(ws->header.mask, buf, bytes_read);
+			}
+
+			_ws_handle_frame_data(ws, buf, bytes_read);
+			_ws_free(buf);
+
+			if (ws->frame_data_recv == ws->header.payload_len)
+			{
+				_ws_handle_frame_end(ws);
+			}
+		}
 	}
 }
 

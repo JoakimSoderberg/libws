@@ -198,11 +198,13 @@ typedef struct ws_s
 	/// @defgroup FrameReceive Frame receive variables
 	/// @{
 	///
-	struct evbuffer			*msg;				///< Buffer that is used to build an incoming message.
+	struct evbuffer			*msg;				///< Buffer that is used to build an incoming message. 					
 	uint64_t 				frame_data_recv;	///< The amount of bytes that have been read for the current frame.
 	int 					has_header;			///< Has the websocket header been read yet?
 	ws_header_t				header;				///< Header for received websocket frame.
 	int 					in_msg;				///< Are we inside a message?
+	char 					ctrl_payload[WS_CONTROL_MAX_PAYLOAD_LEN];	///< Control frame payload.
+	size_t					ctrl_len;			///< Length of the control payload.
 	/// @}
 	
 	///
@@ -214,8 +216,6 @@ typedef struct ws_s
 	ws_send_state_t			send_state;			///< The state for sending data.
 	ws_no_copy_cleanup_f	no_copy_cleanup_cb;	///< If set, any data written to the websocket will be freed using this callback.
 	void 					*no_copy_extra;		///< User supplied argument for the ws_s#no_copy_cleanup_cb
-	
-	char 					ctrl_payload[WS_CONTROL_MAX_PAYLOAD_LEN];	///< Control frame payload.
 	/// @}
 
 	#ifdef LIBWS_WITH_OPENSSL
