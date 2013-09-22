@@ -320,6 +320,8 @@ int _ws_handle_frame_begin(ws_t ws)
 {
 	assert(ws);
 
+	ws->recv_frame_len = 0;
+
 	if (WS_OPCODE_IS_CONTROL(ws->header.opcode))
 	{
 		memset(ws->ctrl_payload, 0, sizeof(ws->ctrl_payload));
@@ -329,23 +331,6 @@ int _ws_handle_frame_begin(ws_t ws)
 	// Normal frame.
 	if (!ws->in_msg)
 	{
-		if (ws->msg)
-		{
-			if (evbuffer_get_length(ws->msg) != 0)
-			{
-				LIBWS_LOG(LIBWS_WARN, "Non-empty message buffer on new message");
-			}
-		
-			evbuffer_free(ws->msg);
-			ws->msg = NULL;
-		}
-
-		if (!(ws->msg = evbuffer_new()))
-		{
-			// TODO: Close connection. Exit program?
-			return -1;
-		}
-
 		ws->in_msg = 1;
 
 		if (ws->msg_begin_cb)
@@ -354,7 +339,7 @@ int _ws_handle_frame_begin(ws_t ws)
 		}
 		else
 		{
-			// TODO: Default callback.
+			ws_default_msg_begin_cb(ws, ws->msg_begin_arg);
 		}
 	}
 
@@ -364,7 +349,7 @@ int _ws_handle_frame_begin(ws_t ws)
 	}
 	else
 	{
-		// TODO: Default callback.
+		ws_default_msg_frame_begin_cb(ws, ws->msg_frame_begin_arg);
 	}
 
 	return 0;
@@ -383,7 +368,7 @@ int _ws_handle_frame_data(ws_t ws, char *buf, size_t len)
 			LIBWS_LOG(LIBWS_ERR, "Control payload too big %u, only %u allowed",
 						total_len, WS_CONTROL_MAX_PAYLOAD_LEN);
 			len = WS_CONTROL_MAX_PAYLOAD_LEN - ws->ctrl_len;
-			// TODO: Protocol vilation error.
+			// TODO: Protocol violation error.
 		}
 
 		memcpy(&ws->ctrl_payload[ws->ctrl_len], buf, len);
@@ -397,16 +382,7 @@ int _ws_handle_frame_data(ws_t ws, char *buf, size_t len)
 	}
 	else
 	{
-		// TODO: Default callback.
-		// Adds the frame data to a frame_payload buffer
-		// that is passed to the frame_cb in the default
-		// callback for msg_frame_end_cb
-		// Since we're calling frame_cb from a callback
-		// we need to make sure we have an entire frame
-		// before we call it. The user might override
-		// the msg_frame_data_cb/msg_frame_end_cb
-		// so that no frame_data is collected. In that
-		// case we shouldn't run the frame_cb.
+		ws_default_msg_frame_data_cb(ws, buf, len, ws->msg_frame_data_arg);
 	}
 
 	return 0;
@@ -427,7 +403,7 @@ int _ws_handle_frame_end(ws_t ws)
 	}
 	else
 	{
-		// TODO: Default callback.
+		ws_default_msg_frame_end_cb(ws, ws->msg_frame_end_arg);
 	}
 
 	if (ws->header.fin)
@@ -438,7 +414,7 @@ int _ws_handle_frame_end(ws_t ws)
 		}
 		else
 		{
-			// TODO: Default callback.
+			ws_default_msg_end_cb(ws, ws->msg_end_arg);
 		}
 
 		ws->in_msg = 0;
@@ -493,7 +469,7 @@ void _ws_read_websocket(ws_t ws)
 	{
 		// We're in a frame.
 		size_t recv_len = evbuffer_get_length(in);
-		size_t remaining = ws->header.payload_len - ws->frame_data_recv;
+		size_t remaining = ws->header.payload_len - ws->recv_frame_len;
 
 		if (recv_len > remaining) 
 			recv_len = remaining;
@@ -507,8 +483,9 @@ void _ws_read_websocket(ws_t ws)
 			int bytes_read;
 			char *buf = (char *)_ws_malloc(recv_len);
 
+			// TODO: Maybe we should only do evbuffer_pullup here instead and pass that pointer on instead.
 			bytes_read = evbuffer_remove(in, buf, recv_len);
-			ws->frame_data_recv += bytes_read;
+			ws->recv_frame_len += bytes_read;
 
 			if (bytes_read != recv_len)
 			{
@@ -524,7 +501,8 @@ void _ws_read_websocket(ws_t ws)
 			_ws_handle_frame_data(ws, buf, bytes_read);
 			_ws_free(buf);
 
-			if (ws->frame_data_recv == ws->header.payload_len)
+			// The entire frame has been received.
+			if (ws->recv_frame_len == ws->header.payload_len)
 			{
 				_ws_handle_frame_end(ws);
 			}

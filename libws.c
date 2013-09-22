@@ -4,6 +4,7 @@
 #include <event2/dns.h>
 #include <event2/event.h>
 #include <event2/bufferevent.h>
+#include <event2/buffer.h>
 
 #include <stdio.h>
 #include <sys/socket.h>
@@ -940,6 +941,106 @@ int ws_clear_subprotocols(ws_t ws)
 	ws->num_subprotocols = 0;
 
 	return 0;
+}
+
+void ws_default_msg_begin_cb(ws_t ws, void *arg)
+{
+	assert(ws);
+
+	if (ws->msg)
+	{
+		if (evbuffer_get_length(ws->msg) != 0)
+		{
+			LIBWS_LOG(LIBWS_WARN, "Non-empty message buffer on new message");
+		}
+	
+		evbuffer_free(ws->msg);
+		ws->msg = NULL;
+	}
+
+	if (!(ws->msg = evbuffer_new()))
+	{
+		// TODO: Close connection. Exit program?
+		return;
+	}
+}
+
+void ws_default_msg_frame_cb(ws_t ws, const char *payload, 
+							uint64_t len, void *arg)
+{
+	assert(ws);
+	
+	// Finally we append the frame payload to the message payload.
+	evbuffer_add_buffer(ws->msg, ws->frame_data);
+}
+
+void ws_default_msg_end_cb(ws_t ws, void *arg)
+{
+	assert(ws);
+	
+	if (ws->msg_cb)
+	{
+		size_t len = evbuffer_get_length(ws->msg);
+		const unsigned char *payload = evbuffer_pullup(ws->msg, len);
+		ws->msg_cb(ws, (char *)payload, len, 
+			(ws->header.opcode == WS_OPCODE_BINARY), ws->msg_arg);
+	}
+
+	evbuffer_free(ws->msg);
+	ws->msg = NULL;
+}
+
+void ws_default_msg_frame_begin_cb(ws_t ws, void *arg)
+{
+	assert(ws);
+
+	// Setup the frame payload buffer.
+	if (ws->frame_data)
+	{
+		if (evbuffer_get_length(ws->frame_data) != 0)
+		{
+			LIBWS_LOG(LIBWS_WARN, "Non-empty message buffer on new frame");
+		}
+
+		// TODO: Should we really free it? Not just do evbuffer_remove with a NULL dest?
+		evbuffer_free(ws->frame_data);
+		ws->frame_data = NULL;
+	}
+
+	if (!(ws->frame_data = evbuffer_new()))
+	{
+		// TODO: Close connection.
+		return;
+	}
+}
+
+void ws_default_msg_frame_data_cb(ws_t ws, const char *payload, 
+								uint64_t len, void *arg)
+{
+	assert(ws);
+	evbuffer_add(ws->frame_data, payload, len);
+}
+
+void ws_default_msg_frame_end_cb(ws_t ws, void *arg)
+{
+	assert(ws);
+
+	if (ws->msg_frame_cb)
+	{
+		size_t frame_len = evbuffer_get_length(ws->frame_data);
+		const unsigned char *payload = evbuffer_pullup(ws->frame_data, frame_len);
+		ws->msg_frame_cb(ws, (char *)payload, frame_len, arg);
+	}
+	else
+	{
+		// This will put the frame data in the message
+		// don't bother with passing any payload, 
+		// the internal buffers are used anyway.
+		ws_default_msg_frame_cb(ws, NULL, 0, arg);
+	}
+
+	evbuffer_free(ws->frame_data);
+	ws->frame_data = NULL;
 }
 
 #ifdef LIBWS_WITH_OPENSSL

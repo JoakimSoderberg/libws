@@ -291,6 +291,37 @@ void ws_set_onmsg_cb(ws_t ws, ws_msg_callback_f func, void *arg);
 /// @{
 
 ///
+/// Default callback for a message begin event. 
+///
+/// @note This should only be called from within a #ws_msg_begin_callback_f
+///		  set using #ws_set_onmsg_begin_cb.
+///
+/// @see ws_msg_begin_callback_f
+///
+void ws_default_msg_begin_cb(ws_t ws, void *arg);
+
+///
+/// Default callback for a message frame event. 
+///
+/// @note This should only be called from within a #ws_msg_frame_callback_f
+///		  set using #ws_set_onmsg_frame_cb.
+///
+/// @see ws_msg_frame_callback_f
+///
+void ws_default_msg_frame_cb(ws_t ws, const char *payload, 
+							uint64_t len, void *arg);
+
+///
+/// Default callback for a message frame event. 
+///
+/// @note This should only be called from within a #ws_msg_end_callback_f
+///		  set using #ws_set_onmsg_end_cb.
+///
+/// @see ws_msg_end_callback_f
+///
+void ws_default_msg_end_cb(ws_t ws, void *arg);
+
+///
 /// Sets the message begin callback function. When the first frame of a new
 /// message is received, this function is called.
 ///
@@ -338,6 +369,37 @@ void ws_set_onmsg_end_cb(ws_t ws, ws_msg_end_callback_f func, void *arg);
 // TODO: Add a note about how overriding these functions will result in message not being assembled unless the default handlers are called from within the overriden versions.
 /// @defgroup StreamAPI Stream based API
 /// @{
+
+///
+/// Default callback for a message frame begin event. 
+///
+/// @note This should only be called from within a #ws_msg_frame_begin_callback_f
+///		  set using #ws_set_onmsg_frame_begin_cb.
+///
+/// @see ws_msg_frame_begin_callback_f
+///
+void ws_default_msg_frame_begin_cb(ws_t ws, void *arg);
+
+///
+/// Default callback for a message frame data event. 
+///
+/// @note This should only be called from within a #ws_msg_frame_data_callback_f
+///		  set using #ws_set_onmsg_frame_data_cb.
+///
+/// @see ws_msg_frame_data_callback_f
+///
+void ws_default_msg_frame_data_cb(ws_t ws, const char *payload, 
+								uint64_t len, void *arg);
+
+///
+/// Default callback for a message frame end event. 
+///
+/// @note This should only be called from within a #ws_msg_frame_end_callback_f
+///		  set using #ws_set_onmsg_frame_end_cb.
+///
+/// @see ws_msg_frame_end_callback_f
+///
+void ws_default_msg_frame_end_cb(ws_t ws, void *arg);
 
 ///
 /// Sets the message frame begin callback function. When the header of a new

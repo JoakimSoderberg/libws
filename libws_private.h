@@ -103,23 +103,23 @@ typedef struct ws_s
 	ws_msg_callback_f		msg_cb;				///< Callback for when a message is received on the websocket.
 	void 					*msg_arg;			///< The user supplied argument to pass to the ws_s#msg_cb callback.
 
-	ws_msg_begin_callback_f msg_begin_cb;		///< 
-	void 					*msg_begin_arg;
+	ws_msg_begin_callback_f msg_begin_cb;		///< Callback for when a message begins.
+	void 					*msg_begin_arg;		///< User supplied argument for the ws_s#msg_begin_cb.
 
-	ws_msg_frame_callback_f msg_frame_cb;		///< 
-	void					*msg_frame_arg;
+	ws_msg_frame_callback_f msg_frame_cb;		///< Callback for when a frame in a message has arrived.
+	void					*msg_frame_arg;		///< User supplied argument for the ws_s#msg_frame_cb.
 	
-	ws_msg_end_callback_f 	msg_end_cb;			///<
-	void					*msg_end_arg;		///<
+	ws_msg_end_callback_f 	msg_end_cb;			///< Callback for when a message ends.
+	void					*msg_end_arg;		///< User supplied argument for the ws_s#msg_end_cb.
 
-	ws_msg_frame_begin_callback_f msg_frame_begin_cb; ///<
-	void					*msg_frame_begin_arg; ///<
+	ws_msg_frame_begin_callback_f msg_frame_begin_cb; ///< Callback for when a frame begins (when the header has been read).
+	void					*msg_frame_begin_arg; ///< User supplied argument for the ws_s#msg_frame_begin_cb
 
-	ws_msg_frame_data_callback_f msg_frame_data_cb; ///<
-	void					*msg_frame_data_arg; ///<
+	ws_msg_frame_data_callback_f msg_frame_data_cb; ///< Callback for when data in a frame is received.
+	void					*msg_frame_data_arg; ///< User supplied argument for the ws_s#msg_frame_data_cb.
 
-	ws_msg_frame_end_callback_f msg_frame_end_cb; ///<
-	void					*msg_frame_end_arg;	///<
+	ws_msg_frame_end_callback_f msg_frame_end_cb; ///< Callback for when a frame ends.
+	void					*msg_frame_end_arg;	///< User supplied argument for the ws_s#msg_frame_end_cb.
 
 	ws_err_callback_f 		err_cb;				///< Callback for when an error occurs on the websocket connection.
 	void					*err_arg;			///< The user supplied argument to pass to the ws_s#error_cb callback.
@@ -199,7 +199,8 @@ typedef struct ws_s
 	/// @{
 	///
 	struct evbuffer			*msg;				///< Buffer that is used to build an incoming message. 					
-	uint64_t 				frame_data_recv;	///< The amount of bytes that have been read for the current frame.
+	struct evbuffer			*frame_data;		///< Data for the current frame.
+	uint64_t 				recv_frame_len;		///< The amount of bytes that have been read for the current frame so far.
 	int 					has_header;			///< Has the websocket header been read yet?
 	ws_header_t				header;				///< Header for received websocket frame.
 	int 					in_msg;				///< Are we inside a message?
