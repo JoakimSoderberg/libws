@@ -24,6 +24,7 @@
 #include "libws_openssl.h"
 #endif
 #include "libws.h"
+#include "libws_handshake.h"
 
 void ws_set_memory_functions(ws_malloc_replacement_f malloc_replace,
 							 ws_free_replacement_f free_replace,
@@ -212,7 +213,13 @@ int ws_connect(ws_t ws, const char *server, int port, const char *uri)
 		goto fail;
 	}
 
-	// TODO: Add Websocket magic stuff to buf.
+	// Add the handshake to the send buffer, this will
+	// be sent as soon as we're connected.
+	if (_ws_send_http_upgrade(ws))
+	{
+		LIBWS_LOG(LIBWS_ERR, "Failed to assemble handshake");
+		return -1;
+	}
 	
 	if (bufferevent_socket_connect_hostname(ws->bev, 
 				ws->dns_base, AF_UNSPEC, ws->server, ws->port))

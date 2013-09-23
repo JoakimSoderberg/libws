@@ -50,7 +50,7 @@ typedef enum ws_header_flags_e
 	WS_HAS_VALID_UPGRADE_HEADER 	= (1 << 0),
 	WS_HAS_VALID_CONNECT_HEADER 	= (1 << 1),
 	WS_HAS_VALID_WS_ACCEPT_HEADER 	= (1 << 2),
-	WS_HAS_VALID_WS_EXT_HEADER 		= (1 << 3),
+	WS_HAS_VALID_WS_EXT_HEADER 		= (1 << 3)
 
 } ws_header_flags_t;
 

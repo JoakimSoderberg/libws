@@ -57,7 +57,7 @@ int _ws_send_http_upgrade(ws_t ws)
 
 	if (_ws_generate_handshake_key(ws))
 	{
-		LIBWS_LOG(LIBWS_ERR, "Failed to send HTTP upgrade handshake");
+		LIBWS_LOG(LIBWS_ERR, "Failed to generate handshake key");
 		return -1;
 	}
 
@@ -197,12 +197,28 @@ ws_parse_state_t _ws_read_http_status(ws_t ws,
 	return WS_PARSE_STATE_SUCCESS;
 }
 
+int _ws_validate_http_header(ws_t ws, 
+					const char *name, const char *val)
+{
+	assert(ws);
+	assert(name);
+	assert(val);
+
+	if (!strcasecmp("websocket", name))
+	{
+		// TODO: Save val.
+	}
+
+	return 0;	
+}
+
 ws_parse_state_t _ws_read_http_headers(ws_t ws, struct evbuffer *in)
 {
 	char *line;
 	char *header_name;
 	char *header_val;
 	size_t len;
+	ws_parse_state_t state;
 	assert(ws);
 	assert(in);
 
@@ -233,7 +249,9 @@ ws_parse_state_t _ws_read_http_headers(ws_t ws, struct evbuffer *in)
 			}
 		}
 
-
+		if (_ws_validate_http_header(ws, header_name, header_val))
+		{
+		}
 
 		_ws_free(line);
 		line = NULL;
@@ -260,6 +278,7 @@ ws_parse_state_t _ws_read_http_upgrade_response(ws_t ws)
 	assert(ws->bev);
 
 	in = bufferevent_get_input(ws->bev);
+	assert(in);
 
 	switch (ws->connect_state)
 	{
