@@ -14,6 +14,7 @@
 #include "libws_log.h"
 #include "libws_types.h"
 #include "libws_header.h"
+#include "libws_handshake.h"
 
 #include <sys/time.h>
 
@@ -44,15 +45,6 @@ typedef enum ws_connect_state_e
 	WS_CONNECT_STATE_PARSED_HEADERS,
 	WS_CONNECT_STATE_HANDSHAKE_COMPLETE
 } ws_connect_state_t;
-
-typedef enum ws_header_flags_e
-{
-	WS_HAS_VALID_UPGRADE_HEADER 	= (1 << 0),
-	WS_HAS_VALID_CONNECT_HEADER 	= (1 << 1),
-	WS_HAS_VALID_WS_ACCEPT_HEADER 	= (1 << 2),
-	WS_HAS_VALID_WS_EXT_HEADER 		= (1 << 3)
-
-} ws_header_flags_t;
 
 ///
 /// Global context for the library.
@@ -171,6 +163,7 @@ typedef struct ws_s
 
 	ws_header_callback_f	header_cb;
 	void					*header_arg;
+	ws_http_header_flags_t	http_header_flags;
 	/// @}
 
 	///

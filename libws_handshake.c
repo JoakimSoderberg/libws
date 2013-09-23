@@ -29,7 +29,8 @@ int _ws_generate_handshake_key(ws_t ws)
 		return -1;
 	}
 
-	ws->handshake_key_base64 = libws_base64((const void *)rand_key, sizeof(rand_key), &key_len);
+	ws->handshake_key_base64 = libws_base64((const void *)rand_key, 
+											sizeof(rand_key), &key_len);
 
 	if (!ws->handshake_key_base64)
 	{
@@ -197,16 +198,165 @@ ws_parse_state_t _ws_read_http_status(ws_t ws,
 	return WS_PARSE_STATE_SUCCESS;
 }
 
-int _ws_validate_http_header(ws_t ws, 
-					const char *name, const char *val)
+static int _ws_validate_http_header(ws_t ws, ws_http_header_flags_t flag,
+				const char *name, const char *val, 
+				const char *expected_name, const char *expected_val)
 {
 	assert(ws);
-	assert(name);
-	assert(val);
 
-	if (!strcasecmp("websocket", name))
+	if (!(ws->http_header_flags & flag) 
+		&& !strcasecmp(expected_name, name))
 	{
-		// TODO: Save val.
+		if (strcasecmp(expected_val, val))
+		{
+			LIBWS_LOG(LIBWS_ERR, "%s header must contain \"%s\" "
+								"but got \"%s\"", name, expected_val, val);
+			return -1;
+		}
+
+		ws->http_header_flags |= flag;
+	}
+
+	return 0;
+}
+
+int _ws_check_server_protocol_list(ws_t ws, const char *val)
+{
+	int ret = 0;
+	size_t i;
+	char *s = _ws_strdup(val);
+	char *v = s;
+	char *prot = NULL;
+	char *end = NULL;
+	size_t len;
+	int found = 0;
+	
+	while ((prot = strsep(&v, ",")) != NULL)
+	{
+		// Trim start.
+		prot += strspn(prot, " ");
+		
+		// Trim end.
+		ws_rtrim(prot);
+
+		found = 0;
+
+		for (i = 0; i < ws->num_subprotocols; i++)
+		{
+			if (!strcasecmp(ws->subprotocols[i], prot))
+			{
+				found = 1;
+			}
+		}
+
+		if (!found)
+		{
+			ret = -1;
+			break;
+		}
+	}
+
+	_ws_free(s);
+
+	return ret;
+}
+
+///
+/// Validates that a HTTP header is correct.
+///
+/// @param[in]	ws 		The websocket session context.
+/// @param[in]	name 	Header name.
+/// @param[in]	val 	Header value.
+///
+/// @returns If a required header has an incorrect value -1 is returned
+///			 which means that the connection must fail.
+///
+int _ws_validate_http_headers(ws_t ws, const char *name, const char *val)
+{
+	assert(ws);
+
+	// 1.  If the status code received from the server is not 101, the
+    //    client handles the response per HTTP [RFC2616] procedures.  In
+    //    particular, the client might perform authentication if it
+    //    receives a 401 status code; the server might redirect the client
+    //    using a 3xx status code (but clients are not required to follow
+    //    them), etc.  Otherwise, proceed as follows.
+
+	// 2. If the response lacks an |Upgrade| header field or the |Upgrade|
+	//    header field contains a value that is not an ASCII case-
+	//    insensitive match for the value "websocket", the client MUST
+	//    _Fail the WebSocket Connection_.
+	if (_ws_validate_http_header(ws, WS_HAS_VALID_UPGRADE_HEADER, name, val,
+							"Upgrade", "websocket"))
+	{
+		return -1;
+	}
+
+	// 3. If the response lacks a |Connection| header field or the
+	//    |Connection| header field doesn't contain a token that is an
+	//    ASCII case-insensitive match for the value "Upgrade", the client
+	//    MUST _Fail the WebSocket Connection_.
+	if (_ws_validate_http_header(ws, WS_HAS_VALID_CONNECTION_HEADER, name, val,
+							"Connection", "upgrade"))
+	{
+		return -1;
+	}
+
+	// 4. If the response lacks a |Sec-WebSocket-Accept| header field or
+	//    the |Sec-WebSocket-Accept| contains a value other than the
+	//    base64-encoded SHA-1 of the concatenation of the |Sec-WebSocket-
+	//    Key| (as a string, not base64-decoded) with the string "258EAFA5-
+	//    E914-47DA-95CA-C5AB0DC85B11" but ignoring any leading and
+	//    trailing whitespace, the client MUST _Fail the WebSocket
+	//    Connection_.
+	if (ws->http_header_flags & WS_HAS_VALID_CONNECTION_HEADER)
+	{
+		char accept_key[] = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
+		char key_hash[256];
+		strcpy(key_hash, ws->handshake_key_base64);
+		strcat(key_hash, accept_key);
+
+		if (_ws_validate_http_header(ws, WS_HAS_VALID_CONNECTION_HEADER, 
+								name, val, "Sec-WebSocket-Accept", key_hash))
+		{
+			return -1;
+		}
+	}
+
+	// 5.  If the response includes a |Sec-WebSocket-Extensions| header
+	//    field and this header field indicates the use of an extension
+	//    that was not present in the client's handshake (the server has
+	//    indicated an extension not requested by the client), the client
+	//    MUST _Fail the WebSocket Connection_.  (The parsing of this
+	//    header field to determine which extensions are requested is
+	//    discussed in Section 9.1.)
+	if (!strcasecmp("Sec-WebSocket-Extensions", name))
+	{
+		// TODO: Parse extension list here. Right now no extensions are supported, so fail by default.
+		LIBWS_LOG(LIBWS_ERR, "The server wants to use an extension we didn't "
+							 "request: %s", val);
+		// TODO: Set close reason here.
+		return -1;
+	}
+
+	// 6. If the response includes a |Sec-WebSocket-Protocol| header field
+	//    and this header field indicates the use of a subprotocol that was
+	//    not present in the client's handshake (the server has indicated a
+	//    subprotocol not requested by the client), the client MUST _Fail
+	//    the WebSocket Connection_.
+	if (!(ws->http_header_flags & WS_HAS_VALID_WS_PROTOCOL_HEADER))
+	{
+		if (!strcasecmp(name, "Sec-WebSocket-Protocol"))
+		{
+			if (_ws_check_server_protocol_list(ws, val))
+			{
+				LIBWS_LOG(LIBWS_ERR, "Server wanted to use a subprotocol we "
+									 "didn't request: %s", val);
+				return -1;
+			}
+		}
+
+		ws->http_header_flags |= WS_HAS_VALID_WS_PROTOCOL_HEADER;
 	}
 
 	return 0;	
@@ -221,6 +371,8 @@ ws_parse_state_t _ws_read_http_headers(ws_t ws, struct evbuffer *in)
 	ws_parse_state_t state;
 	assert(ws);
 	assert(in);
+
+	ws->http_header_flags = 0;
 
 	// TODO: Set a max header size to allow.
 
@@ -244,13 +396,16 @@ ws_parse_state_t _ws_read_http_headers(ws_t ws, struct evbuffer *in)
 		{
 			if (ws->header_cb(ws, header_name, header_val, ws->header_arg))
 			{
-				LIBWS_LOG(LIBWS_DEBUG, "User header callback cancelled handshake");
+				LIBWS_LOG(LIBWS_DEBUG, "User header callback cancelled "
+										"handshake");
+
 				return WS_PARSE_STATE_USER_ABORT;
 			}
 		}
 
-		if (_ws_validate_http_header(ws, header_name, header_val))
+		if (_ws_validate_http_headers(ws, header_name, header_val))
 		{
+			return WS_PARSE_STATE_ERROR;
 		}
 
 		_ws_free(line);
@@ -259,8 +414,6 @@ ws_parse_state_t _ws_read_http_headers(ws_t ws, struct evbuffer *in)
 
 	return WS_PARSE_STATE_NEED_MORE;
 }
-
-
 
 ws_parse_state_t _ws_read_http_upgrade_response(ws_t ws)
 {
@@ -319,51 +472,7 @@ ws_parse_state_t _ws_read_http_upgrade_response(ws_t ws)
 		}
 	}
 
-	
-
 	// TODO: Verify HTTP version / status. Redirect for instance?
-
-	// Read all headers.
-	
-
-	// 1.  If the status code received from the server is not 101, the
-    //    client handles the response per HTTP [RFC2616] procedures.  In
-    //    particular, the client might perform authentication if it
-    //    receives a 401 status code; the server might redirect the client
-    //    using a 3xx status code (but clients are not required to follow
-    //    them), etc.  Otherwise, proceed as follows.
-
-	// 2. If the response lacks an |Upgrade| header field or the |Upgrade|
-	//    header field contains a value that is not an ASCII case-
-	//    insensitive match for the value "websocket", the client MUST
-	//    _Fail the WebSocket Connection_.
-
-	// 3. If the response lacks a |Connection| header field or the
-	//    |Connection| header field doesn't contain a token that is an
-	//    ASCII case-insensitive match for the value "Upgrade", the client
-	//    MUST _Fail the WebSocket Connection_.
-
-	// 4. If the response lacks a |Sec-WebSocket-Accept| header field or
-	//    the |Sec-WebSocket-Accept| contains a value other than the
-	//    base64-encoded SHA-1 of the concatenation of the |Sec-WebSocket-
-	//    Key| (as a string, not base64-decoded) with the string "258EAFA5-
-	//    E914-47DA-95CA-C5AB0DC85B11" but ignoring any leading and
-	//    trailing whitespace, the client MUST _Fail the WebSocket
-	//    Connection_.
-
-	// 5.  If the response includes a |Sec-WebSocket-Extensions| header
-	//    field and this header field indicates the use of an extension
-	//    that was not present in the client's handshake (the server has
-	//    indicated an extension not requested by the client), the client
-	//    MUST _Fail the WebSocket Connection_.  (The parsing of this
-	//    header field to determine which extensions are requested is
-	//    discussed in Section 9.1.)
-
-	// 6. If the response includes a |Sec-WebSocket-Protocol| header field
-	//    and this header field indicates the use of a subprotocol that was
-	//    not present in the client's handshake (the server has indicated a
-	//    subprotocol not requested by the client), the client MUST _Fail
-	//    the WebSocket Connection_.
 
 	return WS_PARSE_STATE_SUCCESS;
 fail:
