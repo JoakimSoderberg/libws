@@ -39,15 +39,13 @@ int ws_global_init(ws_base_t *base)
 
 	assert(base);
 
-	if (!(*base = (ws_base_s *)_ws_malloc(sizeof(ws_base_s))))
+	if (!(*base = (ws_base_s *)_ws_calloc(1, sizeof(ws_base_s))))
 	{
 		LIBWS_LOG(LIBWS_CRIT, "Out of memory!");
 		return -1;
 	}
 
 	b = *base;
-
-	memset(b, 0, sizeof(ws_base_t));
 
 	#ifndef WIN32
 	if ((b->random_fd = open(WS_RANDOM_PATH, O_RDONLY)) < 0)
@@ -215,7 +213,7 @@ int ws_connect(ws_t ws, const char *server, int port, const char *uri)
 
 	// Add the handshake to the send buffer, this will
 	// be sent as soon as we're connected.
-	if (_ws_send_http_upgrade(ws))
+	if (_ws_send_handshake(ws))
 	{
 		LIBWS_LOG(LIBWS_ERR, "Failed to assemble handshake");
 		return -1;

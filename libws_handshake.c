@@ -22,7 +22,7 @@ int _ws_generate_handshake_key(ws_t ws)
 
 	// Randomize 16 bytes and base64 encode them for the
 	// Sec-WebSocket-Key field.
-	if (_ws_get_random_mask(ws, rand_key, sizeof(rand_key)))
+	if (_ws_get_random_mask(ws, rand_key, sizeof(rand_key)) < 0)
 	{
 		LIBWS_LOG(LIBWS_ERR, "Failed to get random byte sequence "
 							 "for Websocket upgrade handshake key");
@@ -41,7 +41,7 @@ int _ws_generate_handshake_key(ws_t ws)
 	return 0;
 }
 
-int _ws_send_http_upgrade(ws_t ws)
+int _ws_send_handshake(ws_t ws)
 {
 	struct evbuffer *out = NULL;
 	size_t key_len = 0;
@@ -261,6 +261,17 @@ int _ws_check_server_protocol_list(ws_t ws, const char *val)
 	return ret;
 }
 
+int _ws_calculate_key_hash(const char *handshake_key_base64, 
+							char *key_hash, size_t len)
+{
+	// TODO: Check return values.
+	char accept_key[] = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
+	strcpy(key_hash, handshake_key_base64);
+	strcat(key_hash, accept_key);
+
+	return 0;
+}
+
 ///
 /// Validates that a HTTP header is correct.
 ///
@@ -311,12 +322,15 @@ int _ws_validate_http_headers(ws_t ws, const char *name, const char *val)
 	//    Connection_.
 	if (ws->http_header_flags & WS_HAS_VALID_CONNECTION_HEADER)
 	{
-		char accept_key[] = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
 		char key_hash[256];
-		strcpy(key_hash, ws->handshake_key_base64);
-		strcat(key_hash, accept_key);
 
-		if (_ws_validate_http_header(ws, WS_HAS_VALID_CONNECTION_HEADER, 
+		if (_ws_calculate_key_hash(ws->handshake_key_base64, 
+								key_hash, sizeof(key_hash)))
+		{
+			return -1;
+		}
+
+		if (_ws_validate_http_header(ws, WS_HAS_VALID_WS_ACCEPT_HEADER, 
 								name, val, "Sec-WebSocket-Accept", key_hash))
 		{
 			return -1;
@@ -332,11 +346,16 @@ int _ws_validate_http_headers(ws_t ws, const char *name, const char *val)
 	//    discussed in Section 9.1.)
 	if (!strcasecmp("Sec-WebSocket-Extensions", name))
 	{
-		// TODO: Parse extension list here. Right now no extensions are supported, so fail by default.
-		LIBWS_LOG(LIBWS_ERR, "The server wants to use an extension we didn't "
-							 "request: %s", val);
-		// TODO: Set close reason here.
-		return -1;
+		if (val && strcasecmp("", val))
+		{
+			// TODO: Parse extension list here. Right now no extensions are supported, so fail by default.
+			LIBWS_LOG(LIBWS_ERR, "The server wants to use an extension "
+								 "we didn't request: %s", val);
+			// TODO: Set close reason here.
+			return -1;
+		}
+
+		ws->http_header_flags |= WS_HAS_VALID_WS_EXT_HEADER;
 	}
 
 	// 6. If the response includes a |Sec-WebSocket-Protocol| header field
@@ -346,7 +365,7 @@ int _ws_validate_http_headers(ws_t ws, const char *name, const char *val)
 	//    the WebSocket Connection_.
 	if (!(ws->http_header_flags & WS_HAS_VALID_WS_PROTOCOL_HEADER))
 	{
-		if (!strcasecmp(name, "Sec-WebSocket-Protocol"))
+		if (!strcasecmp("Sec-WebSocket-Protocol", name))
 		{
 			if (_ws_check_server_protocol_list(ws, val))
 			{
@@ -354,9 +373,9 @@ int _ws_validate_http_headers(ws_t ws, const char *name, const char *val)
 									 "didn't request: %s", val);
 				return -1;
 			}
-		}
 
-		ws->http_header_flags |= WS_HAS_VALID_WS_PROTOCOL_HEADER;
+			ws->http_header_flags |= WS_HAS_VALID_WS_PROTOCOL_HEADER;
+		}
 	}
 
 	return 0;	
@@ -381,6 +400,7 @@ ws_parse_state_t _ws_read_http_headers(ws_t ws, struct evbuffer *in)
 		// Check for end of HTTP response (empty line).
 		if (*line == '\0')
 		{
+			LIBWS_LOG(LIBWS_DEBUG2, "End of HTTP request");
 			return WS_PARSE_STATE_SUCCESS;
 		}
 
@@ -390,10 +410,15 @@ ws_parse_state_t _ws_read_http_headers(ws_t ws, struct evbuffer *in)
 								 "repsonse line: %s", line);
 			return WS_PARSE_STATE_ERROR;
 		}
+
+		LIBWS_LOG(LIBWS_DEBUG2, "%s: %s", 
+								header_name, header_val);
 		
 		// Let the user get the header.
 		if (ws->header_cb)
 		{
+			LIBWS_LOG(LIBWS_DEBUG2, "	Call header callback");
+
 			if (ws->header_cb(ws, header_name, header_val, ws->header_arg))
 			{
 				LIBWS_LOG(LIBWS_DEBUG, "User header callback cancelled "
@@ -405,8 +430,11 @@ ws_parse_state_t _ws_read_http_headers(ws_t ws, struct evbuffer *in)
 
 		if (_ws_validate_http_headers(ws, header_name, header_val))
 		{
+			LIBWS_LOG(LIBWS_ERR, "	invalid");
 			return WS_PARSE_STATE_ERROR;
 		}
+
+		LIBWS_LOG(LIBWS_DEBUG2, "	valid");
 
 		_ws_free(line);
 		line = NULL;
@@ -415,10 +443,8 @@ ws_parse_state_t _ws_read_http_headers(ws_t ws, struct evbuffer *in)
 	return WS_PARSE_STATE_NEED_MORE;
 }
 
-ws_parse_state_t _ws_read_http_upgrade_response(ws_t ws)
+ws_parse_state_t _ws_read_server_handshake_reply(ws_t ws, struct evbuffer *in)
 {
-	// Rename to _ws_read_handshake_reply
-	struct evbuffer *in;
 	size_t len;
 	char *line = NULL;
 	char *header_name = NULL;
@@ -428,9 +454,7 @@ ws_parse_state_t _ws_read_http_upgrade_response(ws_t ws)
 	int status_code;
 	ws_parse_state_t parse_state;
 	assert(ws);
-	assert(ws->bev);
-
-	in = bufferevent_get_input(ws->bev);
+	//assert(ws->bev);
 	assert(in);
 
 	switch (ws->connect_state)
@@ -451,11 +475,30 @@ ws_parse_state_t _ws_read_http_upgrade_response(ws_t ws)
 				return parse_state;
 			}
 
+			LIBWS_LOG(LIBWS_DEBUG, "HTTP/%d.%d %d", 
+					major_version, minor_version, status_code);
+
+			if ((major_version != 1) || (minor_version != 1))
+			{
+				LIBWS_LOG(LIBWS_ERR, "Got unsupported HTTP version %d.%d",
+										major_version, minor_version);
+				return WS_PARSE_STATE_ERROR;
+			}
+
+			if (status_code != HTTP_STATUS_SWITCHING_PROTOCOLS_101)
+			{
+				LIBWS_LOG(LIBWS_ERR, "Invalid HTTP status code (%d)", 
+									status_code);
+				return WS_PARSE_STATE_ERROR;
+			}
+
 			ws->connect_state = WS_CONNECT_STATE_PARSED_STATUS;
 			// Fall through.
 		} 
 		case WS_CONNECT_STATE_PARSED_STATUS:
 		{
+			LIBWS_LOG(LIBWS_DEBUG, "Reading headers");
+
 			// Read the HTTP headers.
 			if ((parse_state = _ws_read_http_headers(ws, in)) 
 				!= WS_PARSE_STATE_SUCCESS)
@@ -463,20 +506,47 @@ ws_parse_state_t _ws_read_http_upgrade_response(ws_t ws)
 				return parse_state;
 			}
 
+			LIBWS_LOG(LIBWS_DEBUG, "Successfully parsed HTTP headers");
+
 			ws->connect_state = WS_CONNECT_STATE_PARSED_HEADERS;
 			// Fall through.
 		}
 		case WS_CONNECT_STATE_PARSED_HEADERS:
 		{
-			// TODO: Finish parsing http headers.
+			ws_http_header_flags_t f = ws->http_header_flags;
+
+			if (!(f & WS_HAS_VALID_UPGRADE_HEADER))
+			{
+				LIBWS_LOG(LIBWS_ERR, "Missing Upgrade header");
+				return WS_PARSE_STATE_ERROR;
+			}
+
+			if (!(f & WS_HAS_VALID_CONNECTION_HEADER))
+			{
+				LIBWS_LOG(LIBWS_ERR, "Mssing Connection header");
+				return WS_PARSE_STATE_ERROR;
+			}
+			
+			if (!(f & WS_HAS_VALID_WS_ACCEPT_HEADER))
+			{
+				LIBWS_LOG(LIBWS_ERR, "Missing Sec-WebSocket-Accept header");
+				return WS_PARSE_STATE_ERROR;
+			}
+
+			if (!(f & WS_HAS_VALID_WS_PROTOCOL_HEADER))
+			{
+				if (ws->num_subprotocols > 0)
+				{
+					LIBWS_LOG(LIBWS_WARN, "Server did not reply to my "
+											"subprotocol request");
+				}
+			}
+
+			ws->connect_state = WS_CONNECT_STATE_HANDSHAKE_COMPLETE;
 		}
 	}
 
-	// TODO: Verify HTTP version / status. Redirect for instance?
-
 	return WS_PARSE_STATE_SUCCESS;
-fail:
-	return WS_PARSE_STATE_ERROR;
 }
 
 

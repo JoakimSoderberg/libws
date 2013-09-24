@@ -22,7 +22,7 @@ int do_test(ws_t ws, int valid, const char *val)
 	
 	if (valid)
 	{
-		libws_test_SUCCESS("Validate the valid list: "
+		libws_test_SUCCESS("Validated the valid list: "
 								"\"%s\"", val);
 		return 0;
 	}
@@ -37,10 +37,9 @@ int do_test(ws_t ws, int valid, const char *val)
 int TEST_ws_check_server_protocol_list(int argc, char *argv[])
 {
 	int ret = 0;
-	ws_base_t base;
-	ws_t ws;
+	ws_base_t base = NULL;
+	ws_t ws = NULL;
 	size_t i;
-	char **prots = NULL;
 	size_t count = 0;
 	char *protocols[] = {"arne", "weises", "julafton"};
 
@@ -53,18 +52,22 @@ int TEST_ws_check_server_protocol_list(int argc, char *argv[])
 	if (ws_init(&ws, base))
 	{
 		libws_test_FAILURE("Failed to init websocket state");
-		return -1;
+		ret = -1;
+		goto fail;
 	}
 
+	libws_test_STATUS("Adding subprotocols to ws instance.");
 	for (i = 0; i < sizeof(protocols) / sizeof(char *); i++)
 	{
 		if (ws_add_subprotocol(ws, protocols[i]))
 		{
 			libws_test_FAILURE("Failed to add sub protocols to ws_t");
-			return -1;
+			ret = -1;
+			goto fail;
 		}	
 	}
 
+	libws_test_STATUS("Start tests:");
 	ret |= do_test(ws, 1, "arne, weises, julafton");
 	ret |= do_test(ws, 1, "weises, ARNE, julafton");
 	ret |= do_test(ws, 1, "    arne   , julafton,     weiseS");
@@ -79,6 +82,7 @@ int TEST_ws_check_server_protocol_list(int argc, char *argv[])
 	ret |= do_test(ws, 0, "completely, wrong, arne");
 	ret |= do_test(ws, 0, "arne, fel, julafton");
 
+fail:
 	ws_destroy(&ws);
 	ws_global_destroy(&base);
 

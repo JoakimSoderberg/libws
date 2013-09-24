@@ -423,12 +423,10 @@ int _ws_handle_frame_end(ws_t ws)
 	return 0;
 }
 
-void _ws_read_websocket(ws_t ws)
+void _ws_read_websocket(ws_t ws, struct evbuffer *in)
 {
 	assert(ws);
 	assert(ws->bev);
-
-	struct evbuffer *in = bufferevent_get_input(ws->bev);
 	assert(in);
 
 	// First read the websocket header.
@@ -517,6 +515,7 @@ void _ws_read_websocket(ws_t ws)
 static void _ws_read_callback(struct bufferevent *bev, void *ptr)
 {
 	ws_t ws = (ws_t)ptr;
+	struct evbuffer *in;
 	assert(ws);
 	assert(bev);
 	assert(ws->bev == bev);
@@ -524,12 +523,14 @@ static void _ws_read_callback(struct bufferevent *bev, void *ptr)
 	if (ws->state != WS_STATE_CONNECTED)
 		return;
 
+	in = bufferevent_get_input(ws->bev);
+
 	if (ws->connect_state != WS_CONNECT_STATE_HANDSHAKE_COMPLETE)
 	{
 		// Complete the connection handshake.
 		ws_parse_state_t state;
 
-		switch ((state = _ws_read_http_upgrade_response(ws)))
+		switch ((state = _ws_read_server_handshake_reply(ws, in)))
 		{
 			case WS_PARSE_STATE_ERROR: break; // TODO: Close connection.
 			case WS_PARSE_STATE_NEED_MORE: return;
@@ -539,7 +540,7 @@ static void _ws_read_callback(struct bufferevent *bev, void *ptr)
 	else
 	{
 		// Connected and completed handshake we can now expect websocket data.
-		_ws_read_websocket(ws);
+		_ws_read_websocket(ws, in);
 	}
 }
 

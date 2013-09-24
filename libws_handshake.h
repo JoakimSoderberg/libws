@@ -3,8 +3,9 @@
 #define __LIBWS_HANDSHAKE_H__
 
 #include "libws.h"
+#include <event2/buffer.h>
 
-#define LIBWS_SEC_WEBSOCKET_ACCEPT_KEY "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
+#define HTTP_STATUS_SWITCHING_PROTOCOLS_101 101
 
 typedef enum ws_http_header_flags_e
 {
@@ -17,13 +18,16 @@ typedef enum ws_http_header_flags_e
 
 int _ws_generate_handshake_key(ws_t ws);
 
-int _ws_send_http_upgrade(ws_t ws);
+int _ws_send_handshake(ws_t ws);
 
 int _ws_parse_http_header(const char *line, char **header_name, char **header_val);
 
-int _ws_read_http_upgrade_response(ws_t ws);
+int _ws_read_server_handshake_reply(ws_t ws, struct evbuffer *in);
 
 int _ws_check_server_protocol_list(ws_t ws, const char *val);
+
+int _ws_calculate_key_hash(const char *handshake_key_base64, 
+							char *key_hash, size_t len);
 
 #endif // __LIBWS_HANDSHAKE_H__
 

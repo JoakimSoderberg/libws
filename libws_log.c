@@ -28,7 +28,7 @@ const char *ws_log_get_prio_str(int prio)
 	return "UNKNOWN";
 }
 
-void libws_default_log_cb(int prio, const char *file, 
+void ws_default_log_cb(int prio, const char *file, 
 	const char *func, int line, const char *fmt, va_list args)
 {
 	FILE *fd = stdout;
@@ -72,12 +72,12 @@ void libws_log(int prio, const char *file,
 	}
 }
 
-void libws_set_log_level(int prio)
+void ws_set_log_level(int prio)
 {
 	_ws_log_level = prio;
 }
 
-int libws_get_log_level()
+int ws_get_log_level()
 {
 	return _ws_log_level;
 }

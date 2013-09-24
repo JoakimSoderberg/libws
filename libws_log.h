@@ -42,8 +42,8 @@ void libws_log(int prio, const char *file,
 #define LIBWS_LOG_MASK(priority) (1 << (priority))
 #define LIBWS_LOG_UPTO(priority) ((priority) | ((priority) - 1))
 
-void libws_set_log_level(int prio);
-int libws_get_log_level();
+void ws_set_log_level(int prio);
+int ws_get_log_level();
 
 typedef void (*ws_log_callback_f)(int prio, const 
 				char *file, const char *func, int line, 
@@ -51,7 +51,7 @@ typedef void (*ws_log_callback_f)(int prio, const
 
 void ws_set_log_cb(ws_log_callback_f func);
 
-void libws_default_log_cb(int prio, const char *file, 
+void ws_default_log_cb(int prio, const char *file, 
 	const char *func, int line, const char *fmt, va_list args);
 
 const char *ws_log_get_prio_str(int prio);
