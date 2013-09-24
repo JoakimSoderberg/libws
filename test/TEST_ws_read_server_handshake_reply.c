@@ -10,14 +10,14 @@ int show_result_status(const char *msg,
 {
 	if (state != expected)
 	{
-		libws_test_FAILURE("%s: Incorrect state %s, expected %s", msg, 
+		libws_test_FAILURE("%s: Incorrect state \"%s\", expected \"%s\"", msg, 
 					ws_parse_state_to_string(state), 
 					ws_parse_state_to_string(expected));
 		return -1;
 	}
 	else
 	{
-		libws_test_SUCCESS("%s: State %s as expected", msg, 
+		libws_test_SUCCESS("%s: State \"%s\" as expected", msg, 
 							ws_parse_state_to_string(state));
 		return 0;
 	}

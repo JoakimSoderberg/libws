@@ -200,13 +200,20 @@ ws_parse_state_t _ws_read_http_status(ws_t ws,
 
 static int _ws_validate_http_header(ws_t ws, ws_http_header_flags_t flag,
 				const char *name, const char *val, 
-				const char *expected_name, const char *expected_val)
+				const char *expected_name, const char *expected_val,
+				int must_appear_only_once)
 {
 	assert(ws);
 
-	if (!(ws->http_header_flags & flag) 
-		&& !strcasecmp(expected_name, name))
+	if (!strcasecmp(expected_name, name))
 	{
+		if (must_appear_only_once && (ws->http_header_flags & flag))
+		{
+			LIBWS_LOG(LIBWS_ERR, "%s must only appear once", 
+								expected_name);
+			return -1;
+		}
+
 		if (strcasecmp(expected_val, val))
 		{
 			LIBWS_LOG(LIBWS_ERR, "%s header must contain \"%s\" "
@@ -245,6 +252,8 @@ int _ws_check_server_protocol_list(ws_t ws, const char *val)
 		{
 			if (!strcasecmp(ws->subprotocols[i], prot))
 			{
+				// TODO: Add subprotocol to negotiated list of sub protocols.
+				// TODO: Maybe give the user a list of these in the connection callback?
 				found = 1;
 			}
 		}
@@ -298,7 +307,7 @@ int _ws_validate_http_headers(ws_t ws, const char *name, const char *val)
 	//    insensitive match for the value "websocket", the client MUST
 	//    _Fail the WebSocket Connection_.
 	if (_ws_validate_http_header(ws, WS_HAS_VALID_UPGRADE_HEADER, name, val,
-							"Upgrade", "websocket"))
+							"Upgrade", "websocket", 1))
 	{
 		return -1;
 	}
@@ -308,7 +317,7 @@ int _ws_validate_http_headers(ws_t ws, const char *name, const char *val)
 	//    ASCII case-insensitive match for the value "Upgrade", the client
 	//    MUST _Fail the WebSocket Connection_.
 	if (_ws_validate_http_header(ws, WS_HAS_VALID_CONNECTION_HEADER, name, val,
-							"Connection", "upgrade"))
+							"Connection", "upgrade", 1))
 	{
 		return -1;
 	}
@@ -320,7 +329,6 @@ int _ws_validate_http_headers(ws_t ws, const char *name, const char *val)
 	//    E914-47DA-95CA-C5AB0DC85B11" but ignoring any leading and
 	//    trailing whitespace, the client MUST _Fail the WebSocket
 	//    Connection_.
-	if (ws->http_header_flags & WS_HAS_VALID_CONNECTION_HEADER)
 	{
 		char key_hash[256];
 
@@ -331,7 +339,7 @@ int _ws_validate_http_headers(ws_t ws, const char *name, const char *val)
 		}
 
 		if (_ws_validate_http_header(ws, WS_HAS_VALID_WS_ACCEPT_HEADER, 
-								name, val, "Sec-WebSocket-Accept", key_hash))
+								name, val, "Sec-WebSocket-Accept", key_hash, 1))
 		{
 			return -1;
 		}
@@ -344,9 +352,39 @@ int _ws_validate_http_headers(ws_t ws, const char *name, const char *val)
 	//    MUST _Fail the WebSocket Connection_.  (The parsing of this
 	//    header field to determine which extensions are requested is
 	//    discussed in Section 9.1.)
+	//
+	// Note that like other HTTP header fields, this header field MAY be
+    // split or combined across multiple lines.  Ergo, the following are
+    // equivalent:
+    // 
+    //      Sec-WebSocket-Extensions: foo
+    //      Sec-WebSocket-Extensions: bar; baz=2
+    // 
+    // is exactly equivalent to
+	// 
+    //      Sec-WebSocket-Extensions: foo, bar; baz=2
+    // 
+    // Note that the order of extensions is significant.  Any interactions
+   	// between multiple extensions MAY be defined in the documents defining
+   	// the extensions.  In the absence of such definitions, the
+   	// interpretation is that the header fields listed by the client in its
+   	// request represent a preference of the header fields it wishes to use,
+   	// with the first options listed being most preferable.  The extensions
+   	// listed by the server in response represent the extensions actually in
+   	// use for the connection.  Should the extensions modify the data and/or
+   	// framing, the order of operations on the data should be assumed to be
+   	// the same as the order in which the extensions are listed in the
+   	// server's response in the opening handshake.
+   	//
 	if (!strcasecmp("Sec-WebSocket-Extensions", name))
 	{
-		if (val && strcasecmp("", val))
+		//
+	   	// The |Sec-WebSocket-Extensions| header field MAY appear multiple times
+		// in an HTTP request (which is logically the same as a single
+		// |Sec-WebSocket-Extensions| header field that contains all values.
+		// However, the |Sec-WebSocket-Extensions| header field MUST NOT appear
+		// more than once in an HTTP response.
+	   	//
 		{
 			// TODO: Parse extension list here. Right now no extensions are supported, so fail by default.
 			LIBWS_LOG(LIBWS_ERR, "The server wants to use an extension "
@@ -363,19 +401,32 @@ int _ws_validate_http_headers(ws_t ws, const char *name, const char *val)
 	//    not present in the client's handshake (the server has indicated a
 	//    subprotocol not requested by the client), the client MUST _Fail
 	//    the WebSocket Connection_.
-	if (!(ws->http_header_flags & WS_HAS_VALID_WS_PROTOCOL_HEADER))
+	if (!strcasecmp("Sec-WebSocket-Protocol", name))
 	{
-		if (!strcasecmp("Sec-WebSocket-Protocol", name))
+	   	// The |Sec-WebSocket-Protocol| header field MAY appear multiple times
+		// in an HTTP request (which is logically the same as a single
+		// |Sec-WebSocket-Protocol| header field that contains all values).
+		// However, the |Sec-WebSocket-Protocol| header field MUST NOT appear
+		// more than once in an HTTP response.
+		if (ws->http_header_flags & WS_HAS_VALID_WS_PROTOCOL_HEADER)
 		{
-			if (_ws_check_server_protocol_list(ws, val))
-			{
-				LIBWS_LOG(LIBWS_ERR, "Server wanted to use a subprotocol we "
-									 "didn't request: %s", val);
-				return -1;
-			}
+			LIBWS_LOG(LIBWS_ERR, "Got more than one \"Sec-WebSocket-Protocol\""
+								 " header in HTTP response");
 
-			ws->http_header_flags |= WS_HAS_VALID_WS_PROTOCOL_HEADER;
+			ws->http_header_flags &= ~WS_HAS_VALID_WS_PROTOCOL_HEADER;
+			return -1;
 		}
+
+		if (_ws_check_server_protocol_list(ws, val))
+		{
+			LIBWS_LOG(LIBWS_ERR, "Server wanted to use a subprotocol we "
+								 "didn't request: %s", val);
+
+			ws->http_header_flags &= ~WS_HAS_VALID_WS_PROTOCOL_HEADER;
+			return -1;
+		}
+
+		ws->http_header_flags |= WS_HAS_VALID_WS_PROTOCOL_HEADER;
 	}
 
 	return 0;	
@@ -466,7 +517,7 @@ ws_parse_state_t _ws_read_server_handshake_reply(ws_t ws, struct evbuffer *in)
 		case WS_CONNECT_STATE_SENT_REQ:
 		{
 			ws->http_header_flags = 0;
-			
+
 			// Parse status line HTTP/1.1 200 OK...
 			if ((parse_state = _ws_read_http_status(ws, in, 
 							&major_version, &minor_version, &status_code)) 
