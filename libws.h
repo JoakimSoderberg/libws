@@ -738,6 +738,15 @@ void ws_set_ssl_state(ws_t ws, libws_ssl_state_t ssl);
 
 #endif // LIBWS_WITH_OPENSSL
 
+///
+/// Convert a parse state enum value into a readable string.
+///
+/// @param[in]	state 	The state.
+///
+/// @returns A string representation of the state enum value.
+///
+const char *ws_parse_state_to_string(ws_parse_state_t state);
+
 #endif // __LIBWS_H__
 
 

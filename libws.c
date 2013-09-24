@@ -1058,4 +1058,14 @@ void ws_set_ssl_state(ws_t ws, libws_ssl_state_t ssl)
 
 #endif // LIBWS_WITH_OPENSSL
 
-
+const char *ws_parse_state_to_string(ws_parse_state_t state)
+{
+	switch (state)
+	{
+		case WS_PARSE_STATE_ERROR: return "Error";
+		case WS_PARSE_STATE_SUCCESS: return "Success";
+		case WS_PARSE_STATE_NEED_MORE: return "Need more";
+		case WS_PARSE_STATE_USER_ABORT: return "User abort";
+		default: return "Unknown";
+	}
+}
