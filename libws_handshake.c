@@ -391,8 +391,6 @@ ws_parse_state_t _ws_read_http_headers(ws_t ws, struct evbuffer *in)
 	assert(ws);
 	assert(in);
 
-	ws->http_header_flags = 0;
-
 	// TODO: Set a max header size to allow.
 
 	while ((line = evbuffer_readln(in, &len, EVBUFFER_EOL_CRLF)) != NULL)
@@ -467,6 +465,8 @@ ws_parse_state_t _ws_read_server_handshake_reply(ws_t ws, struct evbuffer *in)
 		}
 		case WS_CONNECT_STATE_SENT_REQ:
 		{
+			ws->http_header_flags = 0;
+			
 			// Parse status line HTTP/1.1 200 OK...
 			if ((parse_state = _ws_read_http_status(ws, in, 
 							&major_version, &minor_version, &status_code)) 
