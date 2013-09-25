@@ -127,6 +127,8 @@ int TEST_rfc_examples(int argc, char *argv[])
 	size_t header_len;
 	ws_header_t *h = NULL;
 
+	libws_test_HEADLINE("TEST_rfc_examples");
+
 	// 
 	// o  A single-frame unmasked text message
 	// 

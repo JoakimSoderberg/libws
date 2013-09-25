@@ -74,6 +74,8 @@ int TEST_ws_get_subprotocols(int argc, char **argv)
 	char **prots = NULL;
 	size_t count = 0;
 
+	libws_test_HEADLINE("TEST_ws_get_subprotocols");
+
 	if (ws_global_init(&base))
 	{
 		libws_test_FAILURE("Failed to init global state");

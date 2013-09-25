@@ -5,7 +5,7 @@
 #include "libws_log.h"
 #include <event2/buffer.h>
 
-int show_result_status(const char *msg,
+static int show_result_status(const char *msg,
 						ws_parse_state_t state, ws_parse_state_t expected)
 {
 	if (state != expected)
@@ -22,6 +22,20 @@ int show_result_status(const char *msg,
 		return 0;
 	}
 }
+static int run_header_test(const char *msg, ws_t ws, struct evbuffer *in, 
+							ws_parse_state_t expected)
+{
+	ws_parse_state_t state;
+
+	// Print the HTTP reponse we're testing.
+	if (libws_test_verbose())
+	{
+		libws_test_STATUS("%s", evbuffer_pullup(in, evbuffer_get_length(in)));
+	}
+
+	state = _ws_read_server_handshake_reply(ws, in);
+	return show_result_status(msg, state, expected);
+}
 
 int TEST_ws_read_server_handshake_reply(int argc, char *argv[])
 {
@@ -32,8 +46,8 @@ int TEST_ws_read_server_handshake_reply(int argc, char *argv[])
 	struct evbuffer *in = evbuffer_new();
 	ws_parse_state_t state;
 
-	ws_set_log_cb(ws_default_log_cb);
-	ws_set_log_level(-1);
+	libws_test_HEADLINE("TEST_ws_read_server_handshake_reply");
+	if (libws_test_init(argc, argv)) return -1;
 
 	if (!in)
 	{
@@ -96,12 +110,9 @@ int TEST_ws_read_server_handshake_reply(int argc, char *argv[])
 							"Sec-WebSocket-Accept: %s\r\n"
 							"Sec-WebSocket-Protocol: echo\r\n"
 							"\r\n", key_hash);
-
-		libws_test_STATUS("%s", evbuffer_pullup(in, evbuffer_get_length(in)));
-
-		state = _ws_read_server_handshake_reply(ws, in);
-		ret |= show_result_status("  Valid full response", state, 
-								WS_PARSE_STATE_SUCCESS);
+	
+		ret |= run_header_test("  Valid full response", ws, in, 
+							WS_PARSE_STATE_SUCCESS);
 	}
 
 	libws_test_STATUS("Test valid partial response:");
@@ -114,13 +125,9 @@ int TEST_ws_read_server_handshake_reply(int argc, char *argv[])
 							"Upgrade: websocket\r\n"
 							"Connection: upg");
 
-		libws_test_STATUS("	 Parse part 1:\n%s", 
-							evbuffer_pullup(in, evbuffer_get_length(in)));
-
-		state = _ws_read_server_handshake_reply(ws, in);
-		ret |= show_result_status("  Valid partial response, part 1", state, 
-								WS_PARSE_STATE_NEED_MORE);
-
+		libws_test_STATUS("	 Parse part 1:");
+		ret |= run_header_test("  Valid partial response, part 1", ws, in, 
+							WS_PARSE_STATE_NEED_MORE);
 		// Part 2.
 		evbuffer_add_printf(in,
 							"rade\r\n"
@@ -128,12 +135,25 @@ int TEST_ws_read_server_handshake_reply(int argc, char *argv[])
 							"Sec-WebSocket-Protocol: echo\r\n"
 							"\r\n", key_hash);
 
-		libws_test_STATUS("	 Parse part 2:\n%s", 
-							evbuffer_pullup(in, evbuffer_get_length(in)));
+		libws_test_STATUS("	 Parse part 2:");
+		ret |= run_header_test("  Valid partial response, part 2", ws, in, 
+							WS_PARSE_STATE_SUCCESS);
+	}
 
-		state = _ws_read_server_handshake_reply(ws, in);
-		ret |= show_result_status("  Valid partial response, part 2", state, 
-								WS_PARSE_STATE_SUCCESS); 
+	libws_test_STATUS("Test invalid HTTP version:");
+	{
+		// Emulate having sent a request.
+		ws->connect_state = WS_CONNECT_STATE_SENT_REQ;
+		evbuffer_add_printf(in, 
+							"HTTP/1.0 101\r\n"
+							"Upgrade: websocket\r\n"
+							"Connection: upgrade\r\n"
+							"Sec-WebSocket-Accept: %s\r\n"
+							"Sec-WebSocket-Protocol: echo\r\n"
+							"\r\n", key_hash);
+		
+		ret |= run_header_test("Invalid HTTP version response", ws, in, 
+						WS_PARSE_STATE_ERROR);
 	}
 
 fail:

@@ -273,10 +273,24 @@ int _ws_check_server_protocol_list(ws_t ws, const char *val)
 int _ws_calculate_key_hash(const char *handshake_key_base64, 
 							char *key_hash, size_t len)
 {
-	// TODO: Check return values.
+	char key_hash_sha1[20]; // SHA1, 160 bits = 20 bytes.
+	char *key_hash_sha1_base64;
+	int base64_len;
 	char accept_key[] = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
 	strcpy(key_hash, handshake_key_base64);
 	strcat(key_hash, accept_key);
+	
+	SHA1((unsigned char *)key_hash, 
+		strlen(key_hash), (unsigned char *)key_hash_sha1);
+
+	key_hash_sha1_base64 = libws_base64((const void *)key_hash_sha1, 
+									sizeof(key_hash_sha1), &base64_len);
+
+	if (!key_hash_sha1_base64)
+		return -1;
+
+	strcpy(key_hash, key_hash_sha1_base64);
+	free(key_hash_sha1_base64);
 
 	return 0;
 }
@@ -531,7 +545,8 @@ ws_parse_state_t _ws_read_server_handshake_reply(ws_t ws, struct evbuffer *in)
 
 			if ((major_version != 1) || (minor_version != 1))
 			{
-				LIBWS_LOG(LIBWS_ERR, "Got unsupported HTTP version %d.%d",
+				LIBWS_LOG(LIBWS_ERR, "Server using unsupported HTTP "
+									 "version %d.%d",
 										major_version, minor_version);
 				return WS_PARSE_STATE_ERROR;
 			}

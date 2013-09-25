@@ -2,13 +2,55 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>
+#include <string.h>
 #ifdef WIN32
 #include <io.h>
 #endif
 #include "libws_test_helpers.h"
+#include "libws_log.h"
+
+static int verbose;
+static int log_on;
+
+int libws_test_verbose()
+{
+	return verbose;
+}
+
+int libws_test_log_on()
+{
+	return log_on;
+}
+
+int libws_test_init(int argc, char **argv)
+{
+	libws_test_parse_cmdline(argc, argv);
+
+	if (log_on)
+	{
+		ws_set_log_cb(ws_default_log_cb);
+		ws_set_log_level(-1);
+	}
+
+	return 0;
+}
 
 int libws_test_parse_cmdline(int argc, char **argv)
 {
+	int i;
+
+	for (i = 0; i < argc; i++)
+	{
+		if (!strcmp(argv[i], "--verbose"))
+		{
+			verbose = 1;
+		}
+		else if (!strcmp(argv[i], "--log"))
+		{
+			log_on = 1;
+		}
+	}
+
 	return 0;
 }
 
@@ -17,6 +59,9 @@ enum libws_test_color_e
 	NORMAL,
 	GREEN,
 	RED,
+	YELLOW,
+	CYAN,
+	MAGNETA,
 	BRIGHT,
 	STATUS
 };
@@ -36,6 +81,9 @@ void libws_test_vprintf(FILE *target, enum libws_test_color_e test_color, const 
 		case NORMAL: break;
 		case GREEN: color = (FOREGROUND_GREEN | FOREGROUND_INTENSITY); break;
 		case RED: color = (FOREGROUND_RED | FOREGROUND_INTENSITY); break;
+		case YELLOW: color = (FOREGROUND_YELLOW | FOREGROUND_INTENSITY); break;
+		case CYAN: color = (FOREGROUND_BLUE | FOREGROUND_GREEN | FOREGROUND_INTENSITY); break;
+		case MAGNETA: color =  (FOREGROUND_RED | FOREGROUND_BLUE | FOREGROUND_INTENSITY); break;
 		case BRIGHT: color = (FOREGROUND_INTENSITY | FOREGROUND_BLUE | FOREGROUND_GREEN | FOREGROUND_RED); break;
 		case STATUS: color = FOREGROUND_INTENSITY; break;
 	}
@@ -73,6 +121,9 @@ void libws_test_vprintf(FILE *target, enum libws_test_color_e test_color, const 
 		case NORMAL: break;
 		case GREEN: fprintf(target, ANSI_COLOR_LIGHT_GREEN);  break;
 		case RED:	fprintf(target, ANSI_COLOR_LIGHT_RED); break;
+		case YELLOW: fprintf(target, ANSI_COLOR_YELLOW); break;
+		case CYAN: fprintf(target, ANSI_COLOR_LIGHT_CYAN); break;
+		case MAGNETA: fprintf(target, ANSI_COLOR_LIGHT_MAGNETA); break;
 		case BRIGHT: fprintf(target, ANSI_COLOR_WHITE); break;
 		case STATUS: fprintf(target, ANSI_COLOR_DARK_GRAY); break;
 	}
@@ -146,5 +197,40 @@ void libws_test_STATUS(const char *fmt, ...)
 	va_end(args);
 }
 
+void libws_test_SKIPPED(const char *fmt, ...)
+{
+	va_list args;
+	va_start(args, fmt);
+	
+	libws_test_printf(stderr, BRIGHT, "[");
+	libws_test_printf(stderr, YELLOW, "SKIPPED");
+	libws_test_printf(stderr, BRIGHT, "] ");
+	vfprintf(stderr, fmt, args);
+	fprintf(stderr, "\n");
+
+	va_end(args);
+}
+
+void libws_test_HEADLINE(const char *headline)
+{
+	#define MAX_HEADLINE_WIDTH 80
+	size_t i;
+	size_t len = strlen(headline);
+	size_t start = (MAX_HEADLINE_WIDTH - len) / 2;
+
+	for (i = 0; i < (start - 1); i++)
+	{
+		libws_test_printf(stdout, BRIGHT, "=");
+	}
+
+	libws_test_printf(stdout, MAGNETA, " %s ", headline);
+
+	for (i = start + len + 1; i < MAX_HEADLINE_WIDTH; i++)
+	{
+		libws_test_printf(stdout, BRIGHT, "=");
+	}
+
+	fprintf(stdout, "\n");
+}
 
 

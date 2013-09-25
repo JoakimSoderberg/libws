@@ -12,6 +12,8 @@ int TEST_ws_parse_http_header(int argc, char **argv)
 	char *header_name;
 	char *header_val;
 
+	libws_test_HEADLINE("TEST_ws_parse_http_header");
+
 	libws_test_STATUS("Parse header \"%s\"", line);
 
 	if (_ws_parse_http_header(line, &header_name, &header_val))
