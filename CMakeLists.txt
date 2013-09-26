@@ -10,6 +10,7 @@ option(LIBWS_WITH_TESTS "Build test suite" ON)
 option(LIBWS_WITH_OPENSSL "Compile with OpenSSL support" ON)
 option(LIBWS_WITH_LOG "Compile with logging support" ON)
 option(LIBWS_COVERAGE "(GCC Only! Requires gcov/lcov to be installed). Include target for doing coverage analysis for the test suite. Note that -DCMAKE_BUILD_TYPE=Debug must be set" OFF)
+option(LIBWS_WITH_MEMCHECK "Run valgrind on tests" ON)
 
 set(PROJECT_VERSION ${PROJECT_MAJOR_VERSION}.${PROJECT_MINOR_VERSION}.${PROJECT_PATCH_VERSION})
 set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/CMakeModules)
@@ -17,6 +18,11 @@ set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/CMakeModules)
 include(CheckFunctionExists)
 include(CheckIncludeFiles)
 include(CheckTypeSize)
+
+# Set some nicer output dirs.
+SET(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/bin)
+SET(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/lib)
+SET(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/lib)
 
 # Aim for C89 with C++ style comments.
 set(CMAKE_CXX_FLAGS "-Wimplicit-function-declaration")

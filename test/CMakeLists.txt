@@ -67,6 +67,17 @@ foreach (test_driver ${LIBWS_TESTS_NAME} ${LIBWS_TESTS_ALL_NAME})
 	target_link_libraries(${test_driver} ws ${LIBWS_LIB_LIST})
 endforeach()
 
+if (LIBWS_WITH_MEMCHECK)
+	find_program(VALGRIND_PROGRAM NAMES valgrind)
+	
+	if (NOT EXISTS ${VALGRIND_PROGRAM})
+		message(WARNING "Valgrind not found! Tests will be run without memory check. Turn this warning off by installing valgrind or settings -DLIBWS_WITH_MEMCHECK=0")
+		set(LIBWS_WITH_MEMCHECK 0)
+	else()
+		message("Found valgrind: ${VALGRIND_PROGRAM}")
+	endif()	
+endif()
+
 ##
 ## Add all the tests to CTest.
 ##
@@ -74,9 +85,17 @@ endforeach()
 	foreach (test_name ${TEST_SRCS_NO_EXT})
 		# Add a test with the filename we just got
 		# And call the driver with the test as an argument.
-		add_test(${test_name} ${EXECUTABLE_OUTPUT_PATH}/${LIBWS_TESTS_NAME} ${test_name})
+
+		if (NOT LIBWS_WITH_MEMCHECK)
+			add_test(${test_name} ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${LIBWS_TESTS_NAME} ${test_name})
+		else()
+			add_test(${test_name}_memchk ${VALGRIND_PROGRAM} --error-exitcode=5 --leak-check=full ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${LIBWS_TESTS_NAME} ${test_name})
+		endif()
 	endforeach()
 
 # Just make some nice source groups for IDEs.
 source_group("Test Files" FILES ${TEST_SRCS})
 source_group("Test Drivers" FILES ${TEST_DRIVERS})
+
+# Enable "make check" like GNU autotools.
+add_custom_target(check COMMAND ${CMAKE_CTEST_COMMAND} DEPENDS ${LIBWS_TESTS_NAME})
