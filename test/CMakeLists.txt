@@ -28,27 +28,19 @@ foreach (test ${TEST_SRCS})
 	list(APPEND TEST_SRCS_NO_EXT ${TName})
 endforeach()
 
+# The normal test driver doesn't have an option to run all tests at once
+# When checking test coverage we want that...
+include(GenerateAllTestsDriver)
+generate_run_all_tests_driver(RUN_ALL_TESTS_SRCS 	# Name of driver (list of the sources).
+	${LIBWS_TESTS_ALL_NAME}.c						# Name of the generated driver source.
+	"${TEST_SRCS}"									# Test sources to include in the driver.
+	)
+
+list(APPEND TEST_DRIVERS ${LIBWS_TESTS_ALL_NAME}.c)
+
 # Coverage using gcov (gcc only).
 if (LIBWS_COVERAGE)
 	if(CMAKE_COMPILER_IS_GNUCXX OR "${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
-		include(GenerateAllTestsDriver)
-
-		# The normal test driver doesn't have an option to run all tests at once
-		# When checking test coverage we want that...
-		generate_run_all_tests_driver(RUN_ALL_TESTS_SRCS 	# Name of driver (list of the sources).
-			${LIBWS_TESTS_ALL_NAME}.c						# Name of the generated driver source.
-			"${TEST_SRCS}"									# Test sources to include in the driver.
-			)
-
-		list(APPEND TEST_DRIVERS ${LIBWS_TESTS_ALL_NAME}.c)
-
-		add_executable(${LIBWS_TESTS_ALL_NAME} 
-					${RUN_ALL_TESTS_SRCS} 
-					libws_test_helpers.c)
-
-		add_dependencies(${LIBWS_TESTS_ALL_NAME}  ${LIBWS_DEP_LIST})
-		target_link_libraries(${LIBWS_TESTS_ALL_NAME} ws ${LIBWS_LIB_LIST})
-
 		include(CodeCoverage)
 		setup_target_for_coverage(
 			coverage 						# Coverage make target.
@@ -60,13 +52,20 @@ endif()
 
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}")
 
+# Test drivers.
 add_executable(${LIBWS_TESTS_NAME}
 				${LIBWS_TESTS_SRCS}
 				libws_test_helpers.c)
 
-# Add test dependencies.	
-add_dependencies(${LIBWS_TESTS_NAME} ${LIBWS_DEP_LIST})
-target_link_libraries(${LIBWS_TESTS_NAME} ws ${LIBWS_LIB_LIST})
+add_executable(${LIBWS_TESTS_ALL_NAME} 
+			${RUN_ALL_TESTS_SRCS} 
+			libws_test_helpers.c)
+
+# Add test dependencies.
+foreach (test_driver ${LIBWS_TESTS_NAME} ${LIBWS_TESTS_ALL_NAME})
+	add_dependencies(${test_driver} ${LIBWS_DEP_LIST})
+	target_link_libraries(${test_driver} ws ${LIBWS_LIB_LIST})
+endforeach()
 
 ##
 ## Add all the tests to CTest.
