@@ -448,11 +448,11 @@ int _ws_validate_http_headers(ws_t ws, const char *name, const char *val)
 
 ws_parse_state_t _ws_read_http_headers(ws_t ws, struct evbuffer *in)
 {
-	char *line;
-	char *header_name;
-	char *header_val;
+	char *line = NULL;
+	char *header_name = NULL;
+	char *header_val = NULL;
+	ws_parse_state_t state = WS_PARSE_STATE_NEED_MORE;
 	size_t len;
-	ws_parse_state_t state;
 	assert(ws);
 	assert(in);
 
@@ -464,18 +464,20 @@ ws_parse_state_t _ws_read_http_headers(ws_t ws, struct evbuffer *in)
 		if (*line == '\0')
 		{
 			LIBWS_LOG(LIBWS_DEBUG2, "End of HTTP request");
-			return WS_PARSE_STATE_SUCCESS;
+			state = WS_PARSE_STATE_SUCCESS;
+			goto bail;		
 		}
 
 		if (_ws_parse_http_header(line, &header_name, &header_val))
 		{
 			LIBWS_LOG(LIBWS_ERR, "Failed to parse HTTP upgrade "
 								 "repsonse line: %s", line);
-			return WS_PARSE_STATE_ERROR;
+			
+			state = WS_PARSE_STATE_ERROR;
+			goto bail;
 		}
 
-		LIBWS_LOG(LIBWS_DEBUG2, "%s: %s", 
-								header_name, header_val);
+		LIBWS_LOG(LIBWS_DEBUG2, "%s: %s", header_name, header_val);
 		
 		// Let the user get the header.
 		if (ws->header_cb)
@@ -486,24 +488,42 @@ ws_parse_state_t _ws_read_http_headers(ws_t ws, struct evbuffer *in)
 			{
 				LIBWS_LOG(LIBWS_DEBUG, "User header callback cancelled "
 										"handshake");
-
-				return WS_PARSE_STATE_USER_ABORT;
+				state = WS_PARSE_STATE_USER_ABORT;
+				goto bail;
 			}
 		}
 
 		if (_ws_validate_http_headers(ws, header_name, header_val))
 		{
 			LIBWS_LOG(LIBWS_ERR, "	invalid");
-			return WS_PARSE_STATE_ERROR;
+			state = WS_PARSE_STATE_ERROR;
+			goto bail;
 		}
 
 		LIBWS_LOG(LIBWS_DEBUG2, "	valid");
 
 		_ws_free(line);
 		line = NULL;
+		
+		if (header_name) 
+		{
+			_ws_free(header_name);
+			header_name = NULL;
+		}
+
+		if (header_val)
+		{
+			_ws_free(header_val);
+			header_val = NULL;
+		}
 	}
 
-	return WS_PARSE_STATE_NEED_MORE;
+bail:
+	if (line) _ws_free(line);
+	if (header_name) _ws_free(header_name);
+	if (header_val) _ws_free(header_val);
+
+	return state;
 }
 
 ws_parse_state_t _ws_read_server_handshake_reply(ws_t ws, struct evbuffer *in)

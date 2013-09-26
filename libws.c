@@ -151,17 +151,17 @@ void ws_destroy(ws_t *ws)
 
 	// TODO: Destroy timeout events here as well? (Does Libevent do this automatically?)
 
-	if (w->base)
-	{
-		event_base_free(w->base);
-		w->base = NULL;
-	}
-
 	if (w->dns_base)
 	{
 		evdns_base_free(w->dns_base, 1);
 		w->dns_base = NULL;
 	}	
+
+	if (w->base)
+	{
+		event_base_free(w->base);
+		w->base = NULL;
+	}
 
 	if (w->origin)
 	{

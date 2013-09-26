@@ -157,6 +157,7 @@ int TEST_ws_read_server_handshake_reply(int argc, char *argv[])
 	}
 
 fail:
+	evbuffer_free(in);
 	ws_destroy(&ws);
 	ws_global_destroy(&base);
 
