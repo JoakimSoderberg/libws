@@ -464,8 +464,20 @@ ws_parse_state_t _ws_read_http_headers(ws_t ws, struct evbuffer *in)
 		if (*line == '\0')
 		{
 			LIBWS_LOG(LIBWS_DEBUG2, "End of HTTP request");
-			state = WS_PARSE_STATE_SUCCESS;
-			goto bail;		
+
+			if (ws->connect_state != WS_CONNECT_STATE_HANDSHAKE_COMPLETE)
+			{
+				LIBWS_LOG(LIBWS_ERR, "Got end of HTTP request before "
+									 "getting required websocket headers");
+
+				state = WS_PARSE_STATE_ERROR;
+			}
+			else
+			{
+				state = WS_PARSE_STATE_SUCCESS;	
+			}
+			
+			break;	
 		}
 
 		if (_ws_parse_http_header(line, &header_name, &header_val))
@@ -474,7 +486,7 @@ ws_parse_state_t _ws_read_http_headers(ws_t ws, struct evbuffer *in)
 								 "repsonse line: %s", line);
 			
 			state = WS_PARSE_STATE_ERROR;
-			goto bail;
+			break;
 		}
 
 		LIBWS_LOG(LIBWS_DEBUG2, "%s: %s", header_name, header_val);
@@ -489,7 +501,7 @@ ws_parse_state_t _ws_read_http_headers(ws_t ws, struct evbuffer *in)
 				LIBWS_LOG(LIBWS_DEBUG, "User header callback cancelled "
 										"handshake");
 				state = WS_PARSE_STATE_USER_ABORT;
-				goto bail;
+				break;
 			}
 		}
 
@@ -497,7 +509,7 @@ ws_parse_state_t _ws_read_http_headers(ws_t ws, struct evbuffer *in)
 		{
 			LIBWS_LOG(LIBWS_ERR, "	invalid");
 			state = WS_PARSE_STATE_ERROR;
-			goto bail;
+			break;
 		}
 
 		LIBWS_LOG(LIBWS_DEBUG2, "	valid");
@@ -518,7 +530,6 @@ ws_parse_state_t _ws_read_http_headers(ws_t ws, struct evbuffer *in)
 		}
 	}
 
-bail:
 	if (line) _ws_free(line);
 	if (header_name) _ws_free(header_name);
 	if (header_val) _ws_free(header_val);
