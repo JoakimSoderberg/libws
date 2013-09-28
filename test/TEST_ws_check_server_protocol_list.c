@@ -2,7 +2,7 @@
 #include "libws_test_helpers.h"
 #include "libws_handshake.h"
 
-int do_test(ws_t ws, int valid, const char *val)
+static int do_test(ws_t ws, int valid, const char *val)
 {
 	if (_ws_check_server_protocol_list(ws, val))
 	{
@@ -42,6 +42,8 @@ int TEST_ws_check_server_protocol_list(int argc, char *argv[])
 	size_t i;
 	size_t count = 0;
 	char *protocols[] = {"arne", "weises", "julafton"};
+
+	if (libws_test_init(argc, argv)) return -1;
 
 	if (ws_global_init(&base))
 	{

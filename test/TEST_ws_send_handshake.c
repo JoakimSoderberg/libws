@@ -16,12 +16,12 @@ static int do_test(ws_t ws, struct evbuffer *out, int success_expected)
 		if (success_expected)
 		{
 			libws_test_FAILURE("Failed to send handshake");
+			return -1;
 		}
 		else
 		{
 			libws_test_SUCCESS("Failed to send handshake as expected");
 		}
-		return -1;
 	}
 	else
 	{
@@ -32,6 +32,7 @@ static int do_test(ws_t ws, struct evbuffer *out, int success_expected)
 		else
 		{
 			libws_test_FAILURE("Failed to send handshake");
+			return -1;
 		}
 	}
 

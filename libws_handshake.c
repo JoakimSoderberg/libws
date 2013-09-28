@@ -18,7 +18,10 @@ int _ws_generate_handshake_key(ws_t ws)
 	assert(ws);
 
 	if (ws->handshake_key_base64)
+	{
 		_ws_free(ws->handshake_key_base64);
+		ws->handshake_key_base64 = NULL;
+	}
 
 	// Randomize 16 bytes and base64 encode them for the
 	// Sec-WebSocket-Key field.

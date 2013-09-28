@@ -76,7 +76,11 @@ void ws_global_destroy(ws_base_t *base)
 	b = *base;
 
 	#ifndef WIN32
-	close(b->random_fd);
+	if (close(b->random_fd))
+	{
+		LIBWS_LOG(LIBWS_ERR, "Failed to close random source: %s (%d)", 
+							strerror(errno), errno);
+	}
 	#endif
 
 	#ifdef LIBWS_WITH_OPENSSL

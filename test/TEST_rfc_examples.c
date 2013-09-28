@@ -59,7 +59,7 @@ int do_unpack_test(char *buf, size_t buflen,
 				libws_test_FAILURE("\tUser abort");
 				break;
 		}
-		ret = -1;
+		ret |= -1;
 	}
 
 	if (compare_headers(expected_header, &header))
@@ -96,12 +96,13 @@ int do_unpack_test(char *buf, size_t buflen,
 				break;
 			default:
 				libws_test_FAILURE("Unexpected opcode %d", header.opcode);
-				ret = -1;
+				ret |= -1;
 				break;
 		}
 	}
 	else
 	{
+		ret |= -1;
 		switch (header.opcode)
 		{
 			case WS_OPCODE_TEXT:

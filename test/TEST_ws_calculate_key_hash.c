@@ -27,6 +27,7 @@ int TEST_ws_calculate_key_hash(int argc, char *argv[])
 	{
 		libws_test_FAILURE("Expected %s but got %s", 
 						expected_key_hash, key_hash);
+		ret |= -1;
 	}
 	else
 	{

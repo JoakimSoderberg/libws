@@ -100,6 +100,7 @@ int TEST_ws_parse_http_header(int argc, char **argv)
 		else
 		{
 			libws_test_FAILURE("Success parsing HTTP status with NULL input");
+			ret |= -1;
 		}
 
 		if (_ws_parse_http_status("HTTP/1.1 abc", &http_major_version,
@@ -110,6 +111,7 @@ int TEST_ws_parse_http_header(int argc, char **argv)
 		else
 		{
 			libws_test_FAILURE("Success parsing HTTP status with NULL input");
+			ret |= -1;
 		}
 	}
 
@@ -131,6 +133,7 @@ int TEST_ws_parse_http_header(int argc, char **argv)
 		{
 			libws_test_FAILURE("Did not fail on NULL memory allocation "
 								"after %d allocations", i);
+			ret |= -1;
 		}
 	}
 
