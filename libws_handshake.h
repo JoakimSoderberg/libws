@@ -18,9 +18,9 @@ typedef enum ws_http_header_flags_e
 
 int _ws_generate_handshake_key(ws_t ws);
 
-int _ws_send_handshake(ws_t ws);
+int _ws_send_handshake(ws_t ws, struct evbuffer *out);
 
-int _ws_parse_http_header(const char *line, char **header_name, char **header_val);
+int _ws_parse_http_header(char *line, char **header_name, char **header_val);
 
 int _ws_read_server_handshake_reply(ws_t ws, struct evbuffer *in);
 

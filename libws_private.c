@@ -107,11 +107,14 @@ char *_ws_strdup(const char *str)
 			return memcpy(p, str, len + 1);
 		}
 	}
-	#ifdef WIN32
-	return _strdup(str);
-	#else
-	return strdup(str);
-	#endif
+	else
+	{	
+		#ifdef WIN32
+		return _strdup(str);
+		#else
+		return strdup(str);
+		#endif
+	}
 fail:
 	errno = ENOMEM;
 	return NULL;

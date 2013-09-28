@@ -41,20 +41,17 @@ int _ws_generate_handshake_key(ws_t ws)
 	return 0;
 }
 
-int _ws_send_handshake(ws_t ws)
+int _ws_send_handshake(ws_t ws, struct evbuffer *out)
 {
-	struct evbuffer *out = NULL;
 	size_t key_len = 0;
 	size_t i;
 	assert(ws);
-	assert(ws->bev);
+	assert(out);
 
 	if (!ws->server)
 	{
 		return -1;
 	}
-
-	out = bufferevent_get_output(ws->bev);
 
 	if (_ws_generate_handshake_key(ws))
 	{
@@ -97,13 +94,14 @@ int _ws_send_handshake(ws_t ws)
 	return 0;
 }
 
-int _ws_parse_http_header(const char *line, char **header_name, 
+int _ws_parse_http_header(char *line, char **header_name, 
 						char **header_val)
 {
 	int ret = 0;
-	const char *start = line;
-	char *end;
-	size_t len;
+ 	char *start = line;
+ 	char *end;
+ 	size_t len;
+	char *l;
 
 	assert(header_name);
 	assert(header_val);
@@ -114,7 +112,6 @@ int _ws_parse_http_header(const char *line, char **header_name,
 	if (!line)
 		return -1;
 
-	// TODO: Replace with strsep instead.
 	if (!(end = strchr(line, ':')))
 		return -1;
 
@@ -128,14 +125,15 @@ int _ws_parse_http_header(const char *line, char **header_name,
 	(*header_name)[len] = '\0';
 
 	end++;
-	// TODO: Replace with strspn instead end += strspn(end, " \t");
-	while ((*end == ' ') || (*end == '\t')) end++;
-	*header_val = _ws_strdup(end);
-
-	// TODO: Trim the right side of header value as well.
+	*header_val = _ws_strdup(end + strspn(end, " \t"));
 
 	if (!(*header_val))
+	{
+		ret = -1;
 		goto fail;
+	}
+
+	ws_rtrim(*header_val);
 
 	return ret;
 fail:
@@ -464,19 +462,7 @@ ws_parse_state_t _ws_read_http_headers(ws_t ws, struct evbuffer *in)
 		if (*line == '\0')
 		{
 			LIBWS_LOG(LIBWS_DEBUG2, "End of HTTP request");
-
-			if (ws->connect_state != WS_CONNECT_STATE_HANDSHAKE_COMPLETE)
-			{
-				LIBWS_LOG(LIBWS_ERR, "Got end of HTTP request before "
-									 "getting required websocket headers");
-
-				state = WS_PARSE_STATE_ERROR;
-			}
-			else
-			{
-				state = WS_PARSE_STATE_SUCCESS;	
-			}
-			
+			state = WS_PARSE_STATE_SUCCESS;
 			break;	
 		}
 
@@ -516,7 +502,7 @@ ws_parse_state_t _ws_read_http_headers(ws_t ws, struct evbuffer *in)
 
 		_ws_free(line);
 		line = NULL;
-		
+
 		if (header_name) 
 		{
 			_ws_free(header_name);
@@ -548,7 +534,6 @@ ws_parse_state_t _ws_read_server_handshake_reply(ws_t ws, struct evbuffer *in)
 	int status_code;
 	ws_parse_state_t parse_state;
 	assert(ws);
-	//assert(ws->bev);
 	assert(in);
 
 	switch (ws->connect_state)
@@ -611,6 +596,7 @@ ws_parse_state_t _ws_read_server_handshake_reply(ws_t ws, struct evbuffer *in)
 		case WS_CONNECT_STATE_PARSED_HEADERS:
 		{
 			ws_http_header_flags_t f = ws->http_header_flags;
+			LIBWS_LOG(LIBWS_DEBUG, "Checking if we have all required headers:");
 
 			if (!(f & WS_HAS_VALID_UPGRADE_HEADER))
 			{
@@ -620,7 +606,7 @@ ws_parse_state_t _ws_read_server_handshake_reply(ws_t ws, struct evbuffer *in)
 
 			if (!(f & WS_HAS_VALID_CONNECTION_HEADER))
 			{
-				LIBWS_LOG(LIBWS_ERR, "Mssing Connection header");
+				LIBWS_LOG(LIBWS_ERR, "Missing Connection header");
 				return WS_PARSE_STATE_ERROR;
 			}
 			
@@ -639,6 +625,7 @@ ws_parse_state_t _ws_read_server_handshake_reply(ws_t ws, struct evbuffer *in)
 				}
 			}
 
+			LIBWS_LOG(LIBWS_DEBUG, "Handshake complete");
 			ws->connect_state = WS_CONNECT_STATE_HANDSHAKE_COMPLETE;
 		}
 	}

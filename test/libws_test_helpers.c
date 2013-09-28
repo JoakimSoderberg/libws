@@ -233,4 +233,43 @@ void libws_test_HEADLINE(const char *headline)
 	fprintf(stdout, "\n");
 }
 
+static int malloc_fail_count;
+static int malloc_current;
+static int realloc_fail_count;
+static int realloc_current;
+
+void libws_test_set_malloc_fail_count(int count)
+{
+	malloc_current = 0;
+	malloc_fail_count = count;
+}
+
+void *libws_test_malloc(size_t sz)
+{
+	malloc_current++;
+
+	if ((malloc_fail_count > 0)
+		&& (malloc_current >= malloc_fail_count))
+		return NULL;
+
+	return malloc(sz);
+}
+
+void libws_test_set_realloc_fail_count(int count)
+{
+	realloc_current = 0;
+	realloc_fail_count = count;
+}
+
+void *libws_test_realloc(void *ptr, size_t sz)
+{	
+	realloc_current++;
+
+	if ((realloc_fail_count > 0)
+		&& (realloc_current >= realloc_fail_count))
+		return NULL;
+
+	return realloc(ptr, sz);
+}
+
 

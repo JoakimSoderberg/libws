@@ -185,6 +185,7 @@ void ws_destroy(ws_t *ws)
 int ws_connect(ws_t ws, const char *server, int port, const char *uri)
 {
 	int ret = 0;
+	struct evbuffer *out = NULL;
 	assert(ws);
 	assert(ws->base);
 
@@ -211,9 +212,11 @@ int ws_connect(ws_t ws, const char *server, int port, const char *uri)
 		goto fail;
 	}
 
+	out = bufferevent_get_output(ws->bev);
+
 	// Add the handshake to the send buffer, this will
 	// be sent as soon as we're connected.
-	if (_ws_send_handshake(ws))
+	if (_ws_send_handshake(ws, out))
 	{
 		LIBWS_LOG(LIBWS_ERR, "Failed to assemble handshake");
 		return -1;

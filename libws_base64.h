@@ -33,6 +33,8 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <libws.h>
+#include <libws_private.h>
 
 const static char* b64="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/" ;
 
@@ -81,7 +83,7 @@ char* libws_base64( const void* binaryData, int len, int *flen )
   int pad = ((modulusLen&1)<<1) + ((modulusLen&2)>>1) ; // 2 gives 1 and 1 gives 2, but 0 gives 0.
   
   *flen = 4*(len + pad)/3 ;
-  res = (char*) malloc( *flen + 1 ) ; // and one for the null
+  res = (char*) _ws_malloc( *flen + 1 ) ; // and one for the null
   if( !res )
   {
     return 0;
@@ -134,7 +136,7 @@ unsigned char* libws_unbase64( const char* ascii, int len, int *flen )
   if( safeAsciiPtr[ len-2 ]=='=' )  ++pad ;
   
   *flen = 3*len/4 - pad ;
-  bin = (unsigned char*)malloc( *flen ) ;
+  bin = (unsigned char*)_ws_malloc( *flen ) ;
   if( !bin )
   {
     return 0;
