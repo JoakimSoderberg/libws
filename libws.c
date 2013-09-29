@@ -56,6 +56,21 @@ int ws_global_init(ws_base_t *base)
 	}
 	#endif
 
+	// Create Libevent context.
+	{
+		if (!(b->ev_base = event_base_new()))
+		{
+			LIBWS_LOG(LIBWS_CRIT, "Out of memory!");
+			goto fail;
+		}
+
+		if (!(b->dns_base = evdns_base_new(b->ev_base, 1)))
+		{
+			LIBWS_LOG(LIBWS_CRIT, "Out of memory!");
+			goto fail;
+		}
+	}
+
 	#ifdef LIBWS_WITH_OPENSSL
 	if (_ws_global_openssl_init(b))
 	{
@@ -65,6 +80,14 @@ int ws_global_init(ws_base_t *base)
 	#endif
 
 	return 0;
+fail:
+	if (b->ev_base)
+	{
+		event_base_free(b->ev_base);
+		b->ev_base = NULL;
+	}
+
+	return -1;
 }
 
 void ws_global_destroy(ws_base_t *base)
@@ -86,6 +109,18 @@ void ws_global_destroy(ws_base_t *base)
 	#ifdef LIBWS_WITH_OPENSSL
 	_ws_global_openssl_destroy(b);
 	#endif
+
+	if (b->dns_base)
+	{
+		evdns_base_free(b->dns_base, 1);
+		b->dns_base = NULL;
+	}	
+
+	if (b->ev_base)
+	{
+		event_base_free(b->ev_base);
+		b->ev_base = NULL;
+	}
 
 	_ws_free(*base);
 	*base = NULL;
@@ -111,31 +146,9 @@ int ws_init(ws_t *ws, ws_base_t ws_base)
 
 	w->ws_base = ws_base;
 
-	// TODO: Move this to global init instead?
-	// Create Libevent context.
-	{
-		if (!(w->base = event_base_new()))
-		{
-			LIBWS_LOG(LIBWS_CRIT, "Out of memory!");
-			goto fail;
-		}
-
-		if (!(w->dns_base = evdns_base_new(w->base, 1)))
-		{
-			LIBWS_LOG(LIBWS_CRIT, "Out of memory!");
-			goto fail;
-		}
-	}
+	w->state = WS_STATE_DISCONNECTED;
 
 	return 0;
-fail:
-	if (w->base)
-	{
-		event_base_free(w->base);
-		w->base = NULL;
-	}
-
-	return -1;
 }
 
 void ws_destroy(ws_t *ws)
@@ -154,18 +167,6 @@ void ws_destroy(ws_t *ws)
 	}
 
 	// TODO: Destroy timeout events here as well? (Does Libevent do this automatically?)
-
-	if (w->dns_base)
-	{
-		evdns_base_free(w->dns_base, 1);
-		w->dns_base = NULL;
-	}	
-
-	if (w->base)
-	{
-		event_base_free(w->base);
-		w->base = NULL;
-	}
 
 	if (w->origin)
 	{
@@ -186,12 +187,19 @@ void ws_destroy(ws_t *ws)
 	*ws = NULL;
 }
 
+ws_base_t ws_get_base(ws_t ws)
+{
+	assert(ws);
+	return ws->ws_base;
+}
+
 int ws_connect(ws_t ws, const char *server, int port, const char *uri)
 {
 	int ret = 0;
 	struct evbuffer *out = NULL;
 	assert(ws);
-	assert(ws->base);
+
+	LIBWS_LOG(LIBWS_DEBUG, "Connect start");
 
 	if (ws->state != WS_STATE_DISCONNECTED)
 	{
@@ -227,7 +235,7 @@ int ws_connect(ws_t ws, const char *server, int port, const char *uri)
 	}
 	
 	if (bufferevent_socket_connect_hostname(ws->bev, 
-				ws->dns_base, AF_UNSPEC, ws->server, ws->port))
+				ws->ws_base->dns_base, AF_UNSPEC, ws->server, ws->port))
 	{
 		LIBWS_LOG(LIBWS_ERR, "Failed to create connect event");
 		ret = -1;
@@ -279,6 +287,47 @@ int ws_close(ws_t ws)
 	return 0;
 }
 
+int ws_base_service(ws_base_t base)
+{
+	assert(base);
+
+	if (event_base_loop(base->ev_base, EVLOOP_NONBLOCK))
+	{
+		LIBWS_LOG(LIBWS_ERR, "Failed to feed event loop");
+		return -1;
+	}
+
+	return 0;
+}
+
+int ws_base_service_blocking(ws_base_t base)
+{
+	int ret;
+	assert(base);
+
+	ret = event_base_dispatch(base->ev_base);
+
+	return ret;
+}
+
+int ws_base_quit(ws_base_t base, int let_running_events_complete)
+{
+	int ret;
+	assert(base);
+
+	if (let_running_events_complete)
+	{
+		ret = event_base_loopexit(base->ev_base, NULL);
+	}
+	else
+	{
+		ret = event_base_loopbreak(base->ev_base);
+	}
+
+	return 0;
+}
+
+#if 0
 int ws_service(ws_t ws)
 {
 	assert(ws);
@@ -328,6 +377,7 @@ int ws_quit(ws_t ws, int let_running_events_complete)
 
 	return ret;
 }
+#endif
 
 char *ws_get_uri(ws_t ws, char *buf, size_t bufsize)
 {
@@ -391,7 +441,6 @@ void *ws_get_user_state(ws_t ws)
 	if (__ws__->state != WS_STATE_CONNECTED) \
 	{ \
 		LIBWS_LOG(LIBWS_ERR, "Not connected on " err_msg); \
-		return -1; \
 	} 
 
 int ws_msg_begin(ws_t ws)

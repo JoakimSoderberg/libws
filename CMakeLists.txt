@@ -120,6 +120,8 @@ add_library(ws STATIC
 add_dependencies(ws ${LIBWS_DEP_LIST})
 target_link_libraries(ws ${LIBWS_LIB_LIST})
 
+add_subdirectory(examples/echo_client)
+
 if (LIBWS_WITH_TESTS)
 	ENABLE_TESTING()
 	add_subdirectory(test)

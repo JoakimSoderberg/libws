@@ -141,6 +141,7 @@ static void _ws_connected_event(struct bufferevent *bev, short events, void *arg
 
 	evtimer_del(ws->connect_timeout_event);
 
+	// TODO: Move this to when the handshake is complete.
 	if (ws->connect_cb)
 	{
 		ws->connect_cb(ws, ws->connect_arg);
@@ -193,7 +194,7 @@ static int _ws_setup_timeout_event(ws_t ws, event_callback_fn func,
 		*ev = NULL;
 	}
 
-	if (!(*ev = evtimer_new(ws->base, 
+	if (!(*ev = evtimer_new(ws->ws_base->ev_base, 
 			_ws_connection_timeout_event, (void *)ws)))
 	{
 		LIBWS_LOG(LIBWS_ERR, "Failed to create timeout evet");
@@ -564,6 +565,8 @@ int _ws_create_bufferevent_socket(ws_t ws)
 {
 	assert(ws);
 
+	LIBWS_LOG(LIBWS_DEBUG, "Create bufferevent socket");
+
 	#ifdef LIBWS_WITH_OPENSSL
 	if (ws->use_ssl)
 	{
@@ -575,7 +578,7 @@ int _ws_create_bufferevent_socket(ws_t ws)
 	else
 	#endif // LIBWS_WITH_OPENSSL
 	{
-		if (!(ws->bev = bufferevent_socket_new(ws->base, -1, 
+		if (!(ws->bev = bufferevent_socket_new(ws->ws_base->ev_base, -1, 
 										BEV_OPT_CLOSE_ON_FREE)))
 		{
 			LIBWS_LOG(LIBWS_ERR, "Failed to create socket");
@@ -616,10 +619,11 @@ int _ws_send_data(ws_t ws, char *msg, uint64_t len, int no_copy)
 	// TODO: We supply a len of uint64_t, evbuffer_add uses size_t...
 	assert(ws);
 
+	/*
 	if (ws->state != WS_STATE_CONNECTED)
 	{
 		return -1;
-	}
+	}*/
 
 	if (!ws->bev)
 	{

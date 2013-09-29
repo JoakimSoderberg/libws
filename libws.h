@@ -61,9 +61,19 @@ int ws_init(ws_t *ws, ws_base_t base);
 ///
 /// Destroys a Websocket connecton context.
 ///
-/// @param[in]	ws 	The context.
+/// @param[in]	ws 	The websocket context.
 ///
 void ws_destroy(ws_t *ws);
+
+///
+/// Gets the websocket base context that the given websocket 
+/// session belongs to.
+///
+/// @param[in]	ws 	The websocket context.
+/// 
+/// @returns A websocket base context.
+///
+ws_base_t ws_get_base(ws_t ws);
 
 ///
 /// Connects to a Websocket on a specified server.
@@ -86,6 +96,37 @@ int ws_connect(ws_t ws, const char *server, int port, const char *uri);
 ///
 int ws_close(ws_t ws);
 
+///
+/// Service the websocket base context. This needs to be done
+/// periodically to keep the websocket connections running.
+///
+/// @param[in] base The websocket base context.
+///
+/// @returns 0 on success.
+///
+int ws_base_service(ws_base_t base);
+
+///
+/// Service the websocket base context blocking the current thread
+/// until #ws_base_quit is called from one of the callbacks.
+///
+/// @param[in] base The websocket base context.
+///
+/// @returns 0 on success.
+///
+int ws_base_service_blocking(ws_base_t base);
+
+///
+/// Quits the given websocket event loop.
+///
+/// @param[in] base 						The websocket base context.
+/// @param[in] let_running_events_complete	Let any pending events run.
+///
+/// @returns 0 on success.
+///
+int ws_base_quit(ws_base_t base, int let_running_events_complete);
+
+#if 0
 ///
 /// Services the Websocket connection.
 ///
@@ -116,6 +157,7 @@ int ws_service_until_quit(ws_t ws);
 /// @returns		0 on success.
 ///
 int ws_quit(ws_t ws, int let_running_events_complete);
+#endif
 
 ///
 /// Send a websocket message.

@@ -87,7 +87,7 @@ int _ws_create_bufferevent_openssl_socket(ws_t ws)
 	assert(ws->ws_base->ssl_ctx);
 	assert(ws->ssl);
 
-	if (!(ws->bev = bufferevent_openssl_socket_new(ws->base, -1, 
+	if (!(ws->bev = bufferevent_openssl_socket_new(ws->ws_base->ev_base, -1, 
 			ws->ssl, BUFFEREVENT_SSL_CONNECTING, BEV_OPT_CLOSE_ON_FREE)))
 	{
 		LIBWS_LOG(LIBWS_ERR, "Failed to create SSL socket");

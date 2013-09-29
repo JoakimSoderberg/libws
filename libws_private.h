@@ -55,6 +55,9 @@ typedef struct ws_base_s
 	int random_fd;
 	#endif
 
+	struct event_base		*ev_base;			///< Libevent event base.
+	struct evdns_base 		*dns_base;			///< Libevent DNS base.
+
 	#ifdef LIBWS_WITH_OPENSSL
 
 	SSL_CTX *ssl_ctx;
@@ -82,9 +85,6 @@ typedef struct ws_s
 	/// @defgroup LibeventVariables Libevent Variables
 	/// @{
 	///
-	// TODO: Move the bases into the ws_base_t instead?
-	struct event_base		*base;				///< Libevent event base.
-	struct evdns_base 		*dns_base;			///< Libevent DNS base.
 	struct bufferevent 		*bev;				///< Buffer event socket.
 	/// @}
 
