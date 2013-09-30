@@ -395,13 +395,14 @@ void ws_mask_payload(uint32_t mask, char *msg, uint64_t len)
 {
 	size_t i;
 	uint8_t *m = (uint8_t *)&mask;
+	uint8_t *p = (uint8_t *)msg;
 	
 	if (!msg || !len)
 		return;
 
 	for (i = 0; i < len; i++)
 	{
-		msg[i] = msg[i] ^ m[i % 4];
+		p[i] ^= m[i % 4];
 	}
 }
 
@@ -531,8 +532,11 @@ int ws_msg_frame_data_send(ws_t ws, char *data, uint64_t datalen)
 		return -1;
 	}
 
-	// TODO: Don't touch original buffer as an option?	
-	ws_mask_payload(ws->header.mask, data, datalen);
+	// TODO: Don't touch original buffer as an option?
+	if (ws->header.mask_bit)
+	{	
+		ws_mask_payload(ws->header.mask, data, datalen);
+	}
 	
 	if (_ws_send_data(ws, data, datalen, 1))
 	{
