@@ -51,10 +51,14 @@ int _ws_send_handshake(ws_t ws, struct evbuffer *out)
 	assert(ws);
 	assert(out);
 
+	LIBWS_LOG(LIBWS_DEBUG, "Start sending websocket handshake");
+
 	if (!ws->server)
 	{
 		return -1;
 	}
+
+	LIBWS_LOG(LIBWS_DEBUG, "Generate handshake key");
 
 	if (_ws_generate_handshake_key(ws))
 	{
@@ -89,6 +93,12 @@ int _ws_send_handshake(ws_t ws, struct evbuffer *out)
 			evbuffer_add_printf(out, ", %s", ws->subprotocols[i]);
 		}
 	}
+	
+	evbuffer_add_printf(out, "\r\n");
+
+	ws->connect_state = WS_CONNECT_STATE_SENT_REQ;
+
+	LIBWS_LOG(LIBWS_DEBUG, "%s", evbuffer_pullup(out, evbuffer_get_length(out)));
 
 	// TODO: Sec-WebSocket-Extensions
 
@@ -539,12 +549,14 @@ ws_parse_state_t _ws_read_server_handshake_reply(ws_t ws, struct evbuffer *in)
 	assert(ws);
 	assert(in);
 
+	LIBWS_LOG(LIBWS_DEBUG, "Reading server handshake reply");
+
 	switch (ws->connect_state)
 	{
 		default: 
 		{
-			LIBWS_LOG(LIBWS_ERR, "Incorrect connect state in HTTP upgrade "
-								 "response handler");
+			LIBWS_LOG(LIBWS_ERR, "Incorrect connect state in server handshake "
+								 "response handler %d", ws->connect_state);
 			return WS_PARSE_STATE_ERROR; 
 		}
 		case WS_CONNECT_STATE_SENT_REQ:

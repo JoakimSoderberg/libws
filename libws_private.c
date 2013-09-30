@@ -141,10 +141,12 @@ static void _ws_connected_event(struct bufferevent *bev, short events, void *arg
 
 	evtimer_del(ws->connect_timeout_event);
 
-	// TODO: Move this to when the handshake is complete.
-	if (ws->connect_cb)
+	// Add the handshake to the send buffer, this will
+	// be sent as soon as we're connected.
+	if (_ws_send_handshake(ws, bufferevent_get_output(ws->bev)))
 	{
-		ws->connect_cb(ws, ws->connect_arg);
+		LIBWS_LOG(LIBWS_ERR, "Failed to assemble handshake");
+		return;
 	}
 }
 
@@ -275,15 +277,22 @@ static void _ws_error_event(struct bufferevent *bev, short events, ws_t ws)
 		err_msg = evutil_gai_strerror(err);
 
 		LIBWS_LOG(LIBWS_ERR, "DNS error %d: %s", err, err_msg);
+	}
+	else
+	{
+		err = EVUTIL_SOCKET_ERROR();
+		err_msg = evutil_socket_error_to_string(err);
 
-		if (ws->err_cb)
-		{
-			ws->err_cb(ws, err, err_msg, ws->err_arg);
-		}
-		else
-		{
-			ws_close(ws);
-		}
+		LIBWS_LOG(LIBWS_ERR, "%s (%d)", err_msg, err);
+	}
+
+	if (ws->err_cb)
+	{
+		ws->err_cb(ws, err, err_msg, ws->err_arg);
+	}
+	else
+	{
+		ws_close(ws);
 	}
 }
 
@@ -524,8 +533,7 @@ static void _ws_read_callback(struct bufferevent *bev, void *ptr)
 	assert(bev);
 	assert(ws->bev == bev);
 
-	if (ws->state != WS_STATE_CONNECTED)
-		return;
+	LIBWS_LOG(LIBWS_DEBUG, "Read callback");
 
 	in = bufferevent_get_input(ws->bev);
 
@@ -538,7 +546,18 @@ static void _ws_read_callback(struct bufferevent *bev, void *ptr)
 		{
 			case WS_PARSE_STATE_ERROR: break; // TODO: Close connection.
 			case WS_PARSE_STATE_NEED_MORE: return;
-			case WS_PARSE_STATE_SUCCESS: return;
+			case WS_PARSE_STATE_SUCCESS:
+
+				ws->state = WS_STATE_CONNECTED;
+
+				if (ws->connect_cb)
+				{
+					LIBWS_LOG(LIBWS_DEBUG, "Calling connect callback");
+
+					ws->connect_cb(ws, ws->connect_arg);
+				}
+				
+				return;
 		}
 	}
 	else
@@ -558,7 +577,7 @@ static void _ws_write_callback(struct bufferevent *bev, void *ptr)
 	assert(ws);
 	assert(bev);
 
-
+	LIBWS_LOG(LIBWS_DEBUG, "Write callback");
 }
 
 int _ws_create_bufferevent_socket(ws_t ws)

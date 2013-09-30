@@ -225,14 +225,6 @@ int ws_connect(ws_t ws, const char *server, int port, const char *uri)
 	}
 
 	out = bufferevent_get_output(ws->bev);
-
-	// Add the handshake to the send buffer, this will
-	// be sent as soon as we're connected.
-	if (_ws_send_handshake(ws, out))
-	{
-		LIBWS_LOG(LIBWS_ERR, "Failed to assemble handshake");
-		return -1;
-	}
 	
 	if (bufferevent_socket_connect_hostname(ws->bev, 
 				ws->ws_base->dns_base, AF_UNSPEC, ws->server, ws->port))
@@ -441,12 +433,15 @@ void *ws_get_user_state(ws_t ws)
 	if (__ws__->state != WS_STATE_CONNECTED) \
 	{ \
 		LIBWS_LOG(LIBWS_ERR, "Not connected on " err_msg); \
+		return -1; \
 	} 
 
 int ws_msg_begin(ws_t ws)
 {
 	assert(ws);
 	_WS_MUST_BE_CONNECTED(ws, "message begin");
+
+	LIBWS_LOG(LIBWS_DEBUG, "Message begin");
 
 	if (ws->send_state != WS_SEND_STATE_NONE)
 	{
@@ -470,6 +465,8 @@ int ws_msg_frame_data_begin(ws_t ws, uint64_t datalen)
 
 	assert(ws);
 	_WS_MUST_BE_CONNECTED(ws, "frame data begin");
+
+	LIBWS_LOG(LIBWS_DEBUG, "Message frame data begin");
 
 	if ((ws->send_state != WS_SEND_STATE_MESSAGE_BEGIN)
 	 && (ws->send_state != WS_SEND_STATE_IN_MESSAGE))
@@ -526,6 +523,8 @@ int ws_msg_frame_data_send(ws_t ws, char *data, uint64_t datalen)
 	assert(ws);
 	_WS_MUST_BE_CONNECTED(ws, "frame data send");
 
+	LIBWS_LOG(LIBWS_DEBUG, "Message frame data send");
+
 	if (ws->send_state != WS_SEND_STATE_IN_MESSAGE)
 	{
 		LIBWS_LOG(LIBWS_ERR, "Incorrect send state in frame data send");
@@ -550,6 +549,8 @@ int ws_msg_frame_send(ws_t ws, char *frame_data, uint64_t datalen)
 	assert(frame_data || (!frame_data && (datalen == 0)));
 	_WS_MUST_BE_CONNECTED(ws, "message frame send");
 
+	LIBWS_LOG(LIBWS_DEBUG, "Message frame send");
+
 	if ((ws->send_state != WS_SEND_STATE_MESSAGE_BEGIN)
 	 && (ws->send_state != WS_SEND_STATE_IN_MESSAGE))
 	{
@@ -571,10 +572,32 @@ int ws_msg_frame_send(ws_t ws, char *frame_data, uint64_t datalen)
 	return 0;
 }
 
+#if 0
+int _ws_msg_send_raw_frame(ws_t ws, ws_header_t *header, 
+							const char *msg, uint64_t len)
+{
+	uint8_t header_buf[WS_HDR_MAX_SIZE];
+	size_t header_len = 0;
+	assert(ws);
+
+	ws_pack_header(&ws->header, header_buf, sizeof(header_buf), &header_len);
+	
+	if (_ws_send_data(ws, (char *)header_buf, (uint64_t)header_len, 0))
+	{
+		LIBWS_LOG(LIBWS_ERR, "Failed to send frame header");
+		return -1;
+	}
+
+	return 0;
+}
+#endif
+
 int ws_msg_end(ws_t ws)
 {
 	assert(ws);
 	_WS_MUST_BE_CONNECTED(ws, "message end");
+
+	LIBWS_LOG(LIBWS_DEBUG, "Message end");
 
 	if (ws->send_state != WS_SEND_STATE_IN_MESSAGE)
 	{
