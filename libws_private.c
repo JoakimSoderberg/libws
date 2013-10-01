@@ -142,7 +142,6 @@ static void _ws_connected_event(struct bufferevent *bev, short events, void *arg
 	if (ws->connect_timeout_event)
 	{
 		LIBWS_LOG(LIBWS_DEBUG, "Freeing connect timeout event");
-		//evtimer_del(ws->connect_timeout_event);
 		event_free(ws->connect_timeout_event);
 		ws->connect_timeout_event = NULL;
 	}
@@ -200,7 +199,7 @@ static int _ws_setup_timeout_event(ws_t ws, event_callback_fn func,
 
 	if (*ev)
 	{
-		evtimer_del(*ev);
+		evtimer_free(*ev);
 		*ev = NULL;
 	}
 
@@ -214,7 +213,7 @@ static int _ws_setup_timeout_event(ws_t ws, event_callback_fn func,
 	if (evtimer_add(*ev, tv))
 	{
 		LIBWS_LOG(LIBWS_ERR, "Failed to add timeout event");
-		evtimer_del(*ev);
+		evtimer_free(*ev);
 		*ev = NULL;
 		return -1;
 	}
@@ -318,7 +317,10 @@ static void _ws_event_callback(struct bufferevent *bev, short events, void *ptr)
 
 int _ws_handle_control_frame(ws_t ws)
 {
+	assert(ws);
 	LIBWS_LOG(LIBWS_DEBUG2, "Control frame");
+
+
 
 	return 0;
 }
@@ -369,6 +371,7 @@ int _ws_handle_frame_begin(ws_t ws)
 
 int _ws_handle_frame_data(ws_t ws, char *buf, size_t len)
 {
+	int ret = 0;
 	assert(ws);
 
 	if (WS_OPCODE_IS_CONTROL(ws->header.opcode))
@@ -380,12 +383,13 @@ int _ws_handle_frame_data(ws_t ws, char *buf, size_t len)
 			LIBWS_LOG(LIBWS_ERR, "Control payload too big %u, only %u allowed",
 						total_len, WS_CONTROL_MAX_PAYLOAD_LEN);
 			len = WS_CONTROL_MAX_PAYLOAD_LEN - ws->ctrl_len;
-			// TODO: Protocol violation error.
+			// TODO: Set protocol violation error status here. (This will then be handled in the read callback)
+			ret = -1;
 		}
 
 		memcpy(&ws->ctrl_payload[ws->ctrl_len], buf, len);
 		
-		return 0;
+		return ret;
 	}
 
 	if (ws->msg_frame_data_cb)
@@ -397,7 +401,7 @@ int _ws_handle_frame_data(ws_t ws, char *buf, size_t len)
 		ws_default_msg_frame_data_cb(ws, buf, len, ws->msg_frame_data_arg);
 	}
 
-	return 0;
+	return ret;
 }
 
 int _ws_handle_frame_end(ws_t ws)
@@ -482,7 +486,7 @@ void _ws_read_websocket(ws_t ws, struct evbuffer *in)
 			}
 			case WS_PARSE_STATE_NEED_MORE: return;
 			case WS_PARSE_STATE_ERROR:
-				// TODO: raise error callback. Or close?
+				// TODO: raise error callback with websocket error.
 				break;
 		}
 
@@ -524,18 +528,26 @@ void _ws_read_websocket(ws_t ws, struct evbuffer *in)
 				ws_unmask_payload(ws->header.mask, buf, bytes_read);
 			}
 
-			LIBWS_LOG(LIBWS_DEBUG2, "Read %u bytes (%u total) out of the %u "
-					"payload", bytes_read, ws->recv_frame_len, 
+			LIBWS_LOG(LIBWS_DEBUG2, "Read %u bytes of the %u total. "
+					"Expecting %u payload bytes", 
+					bytes_read, ws->recv_frame_len, 
 					ws->header.payload_len);
 
-			_ws_handle_frame_data(ws, buf, bytes_read);
-			_ws_free(buf);
-
-			// The entire frame has been received.
-			if (ws->recv_frame_len == ws->header.payload_len)
+			if (_ws_handle_frame_data(ws, buf, bytes_read))
 			{
-				_ws_handle_frame_end(ws);
+				// TODO: Raise protocol error via error cb.
+				// TODO: Close connection.
 			}
+			else
+			{
+				// The entire frame has been received.
+				if (ws->recv_frame_len == ws->header.payload_len)
+				{
+					_ws_handle_frame_end(ws);
+				}
+			}
+
+			_ws_free(buf);
 		}
 	}
 }
