@@ -173,6 +173,12 @@ void ws_destroy(ws_t *ws)
 		_ws_free(w->origin);
 	}
 
+	if (w->connect_timeout_event)
+	{
+		evtimer_del(w->connect_timeout_event);
+		w->connect_timeout_event = NULL;
+	}
+
 	ws_clear_subprotocols(w);
 
 	if (w->handshake_key_base64) _ws_free(w->handshake_key_base64);
@@ -576,26 +582,6 @@ int ws_msg_frame_send(ws_t ws, char *frame_data, uint64_t datalen)
 	return 0;
 }
 
-#if 0
-int _ws_msg_send_raw_frame(ws_t ws, ws_header_t *header, 
-							const char *msg, uint64_t len)
-{
-	uint8_t header_buf[WS_HDR_MAX_SIZE];
-	size_t header_len = 0;
-	assert(ws);
-
-	ws_pack_header(&ws->header, header_buf, sizeof(header_buf), &header_len);
-	
-	if (_ws_send_data(ws, (char *)header_buf, (uint64_t)header_len, 0))
-	{
-		LIBWS_LOG(LIBWS_ERR, "Failed to send frame header");
-		return -1;
-	}
-
-	return 0;
-}
-#endif
-
 int ws_msg_end(ws_t ws)
 {
 	assert(ws);
@@ -628,6 +614,8 @@ int ws_send_msg(ws_t ws, char *msg, uint64_t len)
 	uint64_t frame_len;
 	assert(ws);
 	_WS_MUST_BE_CONNECTED(ws, "send message");
+
+	// TODO: Use _ws_send_frame_raw if we're not fragmenting the message.
 
 	if (ws_msg_begin(ws))
 	{
@@ -790,7 +778,8 @@ int ws_set_origin(ws_t ws, const char *origin)
 	return 0;
 }
 
-void ws_onping_default_cb(ws_t ws, const char *msg, uint64_t len, int binary, void *arg)
+void ws_onping_default_cb(ws_t ws, const char *msg, uint64_t len, 
+						int binary, void *arg)
 {
 	assert(ws);
 
@@ -805,7 +794,8 @@ void ws_set_onping_cb(ws_t ws, ws_msg_callback_f func, void *arg)
 	ws->ping_arg = arg;
 }
 
-void ws_onpong_default_cb(ws_t ws, const char *msg, uint64_t len, int binary, void *arg)
+void ws_onpong_default_cb(ws_t ws, const char *msg, uint64_t len, 
+						int binary, void *arg)
 {
 	assert(ws);
 

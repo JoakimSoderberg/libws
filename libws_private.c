@@ -139,7 +139,11 @@ static void _ws_connected_event(struct bufferevent *bev, short events, void *arg
 	char buf[1024];
 	LIBWS_LOG(LIBWS_DEBUG, "Connected to %s", ws_get_uri(ws, buf, sizeof(buf)));
 
-	evtimer_del(ws->connect_timeout_event);
+	if (ws->connect_timeout_event)
+	{
+		evtimer_del(ws->connect_timeout_event);
+		ws->connect_timeout_event = NULL;
+	}
 
 	// Add the handshake to the send buffer, this will
 	// be sent as soon as we're connected.
@@ -199,7 +203,7 @@ static int _ws_setup_timeout_event(ws_t ws, event_callback_fn func,
 	if (!(*ev = evtimer_new(ws->ws_base->ev_base, 
 			_ws_connection_timeout_event, (void *)ws)))
 	{
-		LIBWS_LOG(LIBWS_ERR, "Failed to create timeout evet");
+		LIBWS_LOG(LIBWS_ERR, "Failed to create timeout event");
 		return -1;
 	}
 
@@ -232,23 +236,6 @@ int _ws_setup_connection_timeout(ws_t ws)
 
 	return _ws_setup_timeout_event(ws, _ws_connection_timeout_event, 
 									&ws->connect_timeout_event, &tv);
-	/*
-	if (!(ws->connect_timeout_event = evtimer_new(ws->base, 
-			_ws_connection_timeout_event, ws)))
-	{
-		LIBWS_LOG(LIBWS_ERR, "Failed to create connect timeout evet");
-		return -1;
-	}
-
-	if (evtimer_add(ws->connect_timeout_event, &tv))
-	{
-		evtimer_del(ws->connect_timeout_event);
-		LIBWS_LOG(LIBWS_ERR, "Failed to create connection timeout event");
-		return -1;
-	}
-
-	return 0;
-	*/
 }
 
 static void _ws_eof_event(struct bufferevent *bev, short events, ws_t ws)
