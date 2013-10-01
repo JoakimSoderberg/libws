@@ -324,8 +324,10 @@ static void _ws_event_callback(struct bufferevent *bev, short events, void *ptr)
 	}
 }
 
-int _ws_handle_control_frame(ws)
+int _ws_handle_control_frame(ws_t ws)
 {
+	LIBWS_LOG(LIBWS_DEBUG2, "Control frame");
+
 	return 0;
 }
 
@@ -333,10 +335,13 @@ int _ws_handle_frame_begin(ws_t ws)
 {
 	assert(ws);
 
+	LIBWS_LOG(LIBWS_DEBUG2, "Frame begin");
+
 	ws->recv_frame_len = 0;
 
 	if (WS_OPCODE_IS_CONTROL(ws->header.opcode))
 	{
+		LIBWS_LOG(LIBWS_DEBUG, "  Control frame");
 		memset(ws->ctrl_payload, 0, sizeof(ws->ctrl_payload));
 		return 0;
 	}
@@ -348,6 +353,7 @@ int _ws_handle_frame_begin(ws_t ws)
 
 		if (ws->msg_begin_cb)
 		{
+			LIBWS_LOG(LIBWS_DEBUG, "Call message begin callback");
 			ws->msg_begin_cb(ws, ws->msg_begin_arg);
 		}
 		else
@@ -358,6 +364,7 @@ int _ws_handle_frame_begin(ws_t ws)
 
 	if (ws->msg_frame_begin_cb)
 	{
+		LIBWS_LOG(LIBWS_DEBUG, "Call frame begin callback");
 		ws->msg_frame_begin_cb(ws, ws->msg_frame_begin_arg);
 	}
 	else
@@ -442,6 +449,8 @@ void _ws_read_websocket(ws_t ws, struct evbuffer *in)
 	assert(ws->bev);
 	assert(in);
 
+	LIBWS_LOG(LIBWS_DEBUG2, "Read websocket data");
+
 	// First read the websocket header.
 	if (!ws->has_header)
 	{
@@ -449,6 +458,8 @@ void _ws_read_websocket(ws_t ws, struct evbuffer *in)
 		ev_ssize_t bytes_read;
 		char header_buf[WS_HDR_MAX_SIZE];
 		ws_parse_state_t state;
+
+		LIBWS_LOG(LIBWS_DEBUG2, "Read websocket header");
 
 		bytes_read = evbuffer_copyout(in, (void *)header_buf, 
 										sizeof(header_buf));
@@ -461,13 +472,22 @@ void _ws_read_websocket(ws_t ws, struct evbuffer *in)
 		switch (state)
 		{
 			case WS_PARSE_STATE_SUCCESS: 
+			{
+				ws_header_t *h = &ws->header;
 				ws->has_header = 1;
 
-				if (evbuffer_drain(in, bytes_read))
+				LIBWS_LOG(LIBWS_DEBUG2, "Got header:\n"
+					"fin = %d, rsv = {%d,%d,%d}, mask_bit = %d, opcode = %d, "
+					"mask = %x, len = %d", 
+					h->fin, h->rsv1, h->rsv2, h->rsv3, h->mask_bit, 
+					h->opcode, h->mask, h->payload_len);
+
+				if (evbuffer_drain(in, header_len))
 				{
 					// TODO: Error! close
 				}
 				break;
+			}
 			case WS_PARSE_STATE_NEED_MORE: return;
 			case WS_PARSE_STATE_ERROR:
 				// TODO: raise error callback. Or close?
@@ -476,11 +496,14 @@ void _ws_read_websocket(ws_t ws, struct evbuffer *in)
 
 		_ws_handle_frame_begin(ws);
 	}
-	else
+	
+	if (ws->has_header)
 	{
 		// We're in a frame.
 		size_t recv_len = evbuffer_get_length(in);
 		size_t remaining = ws->header.payload_len - ws->recv_frame_len;
+
+		LIBWS_LOG(LIBWS_DEBUG2, "In frame");
 
 		if (recv_len > remaining) 
 			recv_len = remaining;
@@ -508,6 +531,10 @@ void _ws_read_websocket(ws_t ws, struct evbuffer *in)
 			{
 				ws_unmask_payload(ws->header.mask, buf, bytes_read);
 			}
+
+			LIBWS_LOG(LIBWS_DEBUG2, "Read %u bytes (%u total) out of the %u "
+					"payload", bytes_read, ws->recv_frame_len, 
+					ws->header.payload_len);
 
 			_ws_handle_frame_data(ws, buf, bytes_read);
 			_ws_free(buf);
@@ -542,22 +569,24 @@ static void _ws_read_callback(struct bufferevent *bev, void *ptr)
 		// Complete the connection handshake.
 		ws_parse_state_t state;
 
+		LIBWS_LOG(LIBWS_DEBUG, "Look for handshake reply");
+
 		switch ((state = _ws_read_server_handshake_reply(ws, in)))
 		{
 			case WS_PARSE_STATE_ERROR: break; // TODO: Close connection.
 			case WS_PARSE_STATE_NEED_MORE: return;
 			case WS_PARSE_STATE_SUCCESS:
-
+			{
 				ws->state = WS_STATE_CONNECTED;
 
 				if (ws->connect_cb)
 				{
 					LIBWS_LOG(LIBWS_DEBUG, "Calling connect callback");
-
 					ws->connect_cb(ws, ws->connect_arg);
 				}
 				
 				return;
+			}
 		}
 	}
 	else

@@ -1035,6 +1035,9 @@ void ws_default_msg_begin_cb(ws_t ws, void *arg)
 {
 	assert(ws);
 
+	LIBWS_LOG(LIBWS_TRACE, "Default message begin callback "
+							"(setup message buffer)");
+
 	if (ws->msg)
 	{
 		if (evbuffer_get_length(ws->msg) != 0)
@@ -1057,6 +1060,9 @@ void ws_default_msg_frame_cb(ws_t ws, const char *payload,
 							uint64_t len, void *arg)
 {
 	assert(ws);
+
+	LIBWS_LOG(LIBWS_TRACE, "Default message frame callback "
+							"(append data to message)");
 	
 	// Finally we append the frame payload to the message payload.
 	evbuffer_add_buffer(ws->msg, ws->frame_data);
@@ -1064,14 +1070,30 @@ void ws_default_msg_frame_cb(ws_t ws, const char *payload,
 
 void ws_default_msg_end_cb(ws_t ws, void *arg)
 {
+	size_t len;
+	const unsigned char *payload;
 	assert(ws);
+
+	LIBWS_LOG(LIBWS_TRACE, "Default message end callback "
+							"(Calls the on message callback)");
 	
+	// Finalize the message by adding a null char.
+	evbuffer_add_printf(ws->msg, "");
+
+	len = evbuffer_get_length(ws->msg);
+		payload = evbuffer_pullup(ws->msg, len);
+		
+	LIBWS_LOG(LIBWS_DEBUG2, "Message received: %s", payload);
+
 	if (ws->msg_cb)
 	{
-		size_t len = evbuffer_get_length(ws->msg);
-		const unsigned char *payload = evbuffer_pullup(ws->msg, len);
-		ws->msg_cb(ws, (char *)payload, len, 
+		LIBWS_LOG(LIBWS_DEBUG, "Calling message callback");
+		ws->msg_cb(ws, (const char *)payload, len, 
 			(ws->header.opcode == WS_OPCODE_BINARY), ws->msg_arg);
+	}
+	else
+	{
+		LIBWS_LOG(LIBWS_DEBUG, "No message callback set, drop message");
 	}
 
 	evbuffer_free(ws->msg);
@@ -1081,6 +1103,9 @@ void ws_default_msg_end_cb(ws_t ws, void *arg)
 void ws_default_msg_frame_begin_cb(ws_t ws, void *arg)
 {
 	assert(ws);
+
+	LIBWS_LOG(LIBWS_TRACE, "Default message frame begin callback "
+							"(Sets up the frame data buffer)");
 
 	// Setup the frame payload buffer.
 	if (ws->frame_data)
@@ -1106,6 +1131,10 @@ void ws_default_msg_frame_data_cb(ws_t ws, const char *payload,
 								uint64_t len, void *arg)
 {
 	assert(ws);
+
+	LIBWS_LOG(LIBWS_TRACE, "Default message frame data callback "
+							"(Append data to frame data buffer)");
+
 	evbuffer_add(ws->frame_data, payload, len);
 }
 
@@ -1113,10 +1142,15 @@ void ws_default_msg_frame_end_cb(ws_t ws, void *arg)
 {
 	assert(ws);
 
+	LIBWS_LOG(LIBWS_TRACE, "Default message frame end callback "
+							"(Calls the message frame callback)");
+
 	if (ws->msg_frame_cb)
 	{
 		size_t frame_len = evbuffer_get_length(ws->frame_data);
 		const unsigned char *payload = evbuffer_pullup(ws->frame_data, frame_len);
+		
+		LIBWS_LOG(LIBWS_DEBUG, "Calling message frame callback");
 		ws->msg_frame_cb(ws, (char *)payload, frame_len, arg);
 	}
 	else

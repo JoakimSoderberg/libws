@@ -162,7 +162,7 @@ static void _ws_pack_header_rest(ws_header_t *h, uint8_t *b, size_t len, size_t 
 	if (h->mask_bit)
 	{
 		uint32_t *mask_ptr = (uint32_t *)&b[*header_len];
-		*mask_ptr = htonl(h->mask);
+		*mask_ptr = (h->mask);
 		*header_len += 4;
 	}
 }
