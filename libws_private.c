@@ -141,7 +141,9 @@ static void _ws_connected_event(struct bufferevent *bev, short events, void *arg
 
 	if (ws->connect_timeout_event)
 	{
-		evtimer_del(ws->connect_timeout_event);
+		LIBWS_LOG(LIBWS_DEBUG, "Freeing connect timeout event");
+		//evtimer_del(ws->connect_timeout_event);
+		event_free(ws->connect_timeout_event);
 		ws->connect_timeout_event = NULL;
 	}
 
@@ -194,6 +196,8 @@ static int _ws_setup_timeout_event(ws_t ws, event_callback_fn func,
 	assert(func);
 	assert(tv);
 
+	LIBWS_LOG(LIBWS_TRACE, "Setting up new timeout event");
+
 	if (*ev)
 	{
 		evtimer_del(*ev);
@@ -201,7 +205,7 @@ static int _ws_setup_timeout_event(ws_t ws, event_callback_fn func,
 	}
 
 	if (!(*ev = evtimer_new(ws->ws_base->ev_base, 
-			_ws_connection_timeout_event, (void *)ws)))
+							func, (void *)ws)))
 	{
 		LIBWS_LOG(LIBWS_ERR, "Failed to create timeout event");
 		return -1;
@@ -209,8 +213,9 @@ static int _ws_setup_timeout_event(ws_t ws, event_callback_fn func,
 
 	if (evtimer_add(*ev, tv))
 	{
-		evtimer_del(*ev);
 		LIBWS_LOG(LIBWS_ERR, "Failed to add timeout event");
+		evtimer_del(*ev);
+		*ev = NULL;
 		return -1;
 	}
 

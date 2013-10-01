@@ -166,16 +166,16 @@ void ws_destroy(ws_t *ws)
 		w->bev = NULL;
 	}
 
-	// TODO: Destroy timeout events here as well? (Does Libevent do this automatically?)
-
 	if (w->origin)
 	{
 		_ws_free(w->origin);
 	}
 
+	// TODO: Destroy all timeout events here.
 	if (w->connect_timeout_event)
 	{
-		evtimer_del(w->connect_timeout_event);
+		LIBWS_LOG(LIBWS_DEBUG, "Freeing connect timeout event");
+		event_free(w->connect_timeout_event);
 		w->connect_timeout_event = NULL;
 	}
 
@@ -245,6 +245,7 @@ int ws_connect(ws_t ws, const char *server, int port, const char *uri)
 	// Setup a timeout event for the connection attempt.
 	if (_ws_setup_connection_timeout(ws))
 	{
+		LIBWS_LOG(LIBWS_ERR, "Failed to setup connection timeout event");
 		ret = -1;
 		goto fail;
 	}
