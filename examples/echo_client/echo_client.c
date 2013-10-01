@@ -10,7 +10,7 @@ void onmsg(ws_t ws, const char *msg, uint64_t len, int binary, void *arg)
 {
 	printf("Message: \"%s\"\n", msg);
 
-	//ws_send_m
+	ws_base_quit(ws_get_base(ws), 1);
 }
 
 void onconnect(ws_t ws, void *arg)
