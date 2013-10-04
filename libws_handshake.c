@@ -584,6 +584,8 @@ ws_parse_state_t _ws_read_server_handshake_reply(ws_t ws, struct evbuffer *in)
 
 			if (status_code != HTTP_STATUS_SWITCHING_PROTOCOLS_101)
 			{
+				// TODO: This must not be invalid. Could be a redirect for instance (add callback for this, so the user can decide to follow it... and also add auto follow support).
+
 				LIBWS_LOG(LIBWS_ERR, "Invalid HTTP status code (%d)", 
 									status_code);
 				return WS_PARSE_STATE_ERROR;

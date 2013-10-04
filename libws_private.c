@@ -317,10 +317,38 @@ static void _ws_event_callback(struct bufferevent *bev, short events, void *ptr)
 
 int _ws_handle_control_frame(ws_t ws)
 {
+	ws_header_t *h;
 	assert(ws);
-	LIBWS_LOG(LIBWS_DEBUG2, "Control frame");
+	LIBWS_LOG(LIBWS_TRACE, "Control frame");
 
+	h = &ws->header;
 
+	assert(WS_OPCODE_IS_CONTROL(h->opcode));
+
+	if (h->opcode == WS_OPCODE_CLOSE_0X8)
+	{
+		// The Close frame MAY contain a body (the "Application data" portion of
+   		// the frame) that indicates a reason for closing.
+		// If there is a body, the first two bytes of
+		// the body MUST be a 2-byte unsigned integer (in network byte order)
+		// representing a status code
+		if (ws->ctrl_len > 0)
+		{
+			size_t i = 0;
+			uint16_t status_code;
+
+			if (ws->ctrl_len < 2)
+			{
+				LIBWS_LOG(LIBWS_ERR, "Close frame application data lacking "
+									 "status code");
+				return -1;
+			}
+
+			status_code = ntohs(*((uint16_t *)ws->ctrl_payload));
+			i += 2;
+			// TODO: Rest of payload is the "reason", read this.
+		}
+	}
 
 	return 0;
 }
@@ -329,7 +357,7 @@ int _ws_handle_frame_begin(ws_t ws)
 {
 	assert(ws);
 
-	LIBWS_LOG(LIBWS_DEBUG2, "Frame begin");
+	LIBWS_LOG(LIBWS_TRACE, "Frame begin");
 
 	ws->recv_frame_len = 0;
 
@@ -382,12 +410,15 @@ int _ws_handle_frame_data(ws_t ws, char *buf, size_t len)
 		{
 			LIBWS_LOG(LIBWS_ERR, "Control payload too big %u, only %u allowed",
 						total_len, WS_CONTROL_MAX_PAYLOAD_LEN);
+			
+			// Copy the remaining data into the buf.
 			len = WS_CONTROL_MAX_PAYLOAD_LEN - ws->ctrl_len;
 			// TODO: Set protocol violation error status here. (This will then be handled in the read callback)
 			ret = -1;
 		}
 
 		memcpy(&ws->ctrl_payload[ws->ctrl_len], buf, len);
+		ws->ctrl_len += len;
 		
 		return ret;
 	}
