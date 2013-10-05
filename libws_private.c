@@ -344,9 +344,29 @@ int _ws_handle_control_frame(ws_t ws)
 				return -1;
 			}
 
+			// TODO: Unmask data.
+
 			status_code = ntohs(*((uint16_t *)ws->ctrl_payload));
 			i += 2;
 			// TODO: Rest of payload is the "reason", read this.
+
+			// If an endpoint receives a Close frame and did not previously send a
+			// Close frame, the endpoint MUST send a Close frame in response.  (When
+			// sending a Close frame in response, the endpoint typically echos the
+			// status code it received.)  It SHOULD do so as soon as practical.  An
+			// endpoint MAY delay sending a Close frame until its current message is
+			// sent (for instance, if the majority of a fragmented message is
+			// already sent, an endpoint MAY send the remaining fragments before
+			// sending a Close frame).  However, there is no guarantee that the
+			// endpoint that has already sent a Close frame will continue to process
+			// data.
+			// TODO: Add this stuff for real.
+			// if (!ws->received_close)
+			// {
+			// 	_ws_send_close(ws, status, reason);
+			// }
+
+			// TODO: Close connection.
 		}
 	}
 
