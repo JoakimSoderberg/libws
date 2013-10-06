@@ -199,7 +199,7 @@ static int _ws_setup_timeout_event(ws_t ws, event_callback_fn func,
 
 	if (*ev)
 	{
-		evtimer_free(*ev);
+		event_free(*ev);
 		*ev = NULL;
 	}
 
@@ -213,7 +213,7 @@ static int _ws_setup_timeout_event(ws_t ws, event_callback_fn func,
 	if (evtimer_add(*ev, tv))
 	{
 		LIBWS_LOG(LIBWS_ERR, "Failed to add timeout event");
-		evtimer_free(*ev);
+		event_free(*ev);
 		*ev = NULL;
 		return -1;
 	}
@@ -344,11 +344,15 @@ int _ws_handle_control_frame(ws_t ws)
 				return -1;
 			}
 
-			// TODO: Unmask data.
+			if (h->mask_bit)
+			{
+				ws_unmask_payload(h->mask, ws->ctrl_payload, ws->ctrl_len);
+			}
 
 			status_code = ntohs(*((uint16_t *)ws->ctrl_payload));
 			i += 2;
 			// TODO: Rest of payload is the "reason", read this.
+
 
 			// If an endpoint receives a Close frame and did not previously send a
 			// Close frame, the endpoint MUST send a Close frame in response.  (When
@@ -361,11 +365,12 @@ int _ws_handle_control_frame(ws_t ws)
 			// endpoint that has already sent a Close frame will continue to process
 			// data.
 			// TODO: Add this stuff for real.
-			// if (!ws->received_close)
-			// {
+			if (!ws->received_close)
+			{
 			// 	_ws_send_close(ws, status, reason);
-			// }
+			}
 
+			// TODO: Call close callback.
 			// TODO: Close connection.
 		}
 	}
@@ -722,12 +727,6 @@ int _ws_send_data(ws_t ws, char *msg, uint64_t len, int no_copy)
 	// TODO: We supply a len of uint64_t, evbuffer_add uses size_t...
 	assert(ws);
 
-	/*
-	if (ws->state != WS_STATE_CONNECTED)
-	{
-		return -1;
-	}*/
-
 	if (!ws->bev)
 	{
 		LIBWS_LOG(LIBWS_ERR, "Null bufferevent on send");
@@ -779,13 +778,13 @@ int _ws_send_frame_raw(ws_t ws, ws_opcode_t opcode, char *data, uint64_t datalen
 	}
 
 	// All control frames MUST have a payload length of 125 bytes or less
-   	// and MUST NOT be fragmented.
-   	if (WS_OPCODE_IS_CONTROL(opcode) && (datalen > 125))
-   	{
-   		LIBWS_LOG(LIBWS_ERR, "Control frame payload cannot be "
-   							 "larger than 125 bytes");
-   		return -1;
-   	}
+	// and MUST NOT be fragmented.
+	if (WS_OPCODE_IS_CONTROL(opcode) && (datalen > 125))
+	{
+		LIBWS_LOG(LIBWS_ERR, "Control frame payload cannot be "
+							 "larger than 125 bytes");
+		return -1;
+	}
 
 	// Pack and send header.
 	{
@@ -830,6 +829,14 @@ int _ws_send_frame_raw(ws_t ws, ws_opcode_t opcode, char *data, uint64_t datalen
 			return -1;
 		}
 	}
+
+	return 0;
+}
+
+int _ws_send_close(ws_t ws, ws_close_status_t status_code, 
+					const char *reason, size_t reason_len)
+{
+	assert(ws);
 
 	return 0;
 }

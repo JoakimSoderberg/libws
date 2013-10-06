@@ -199,6 +199,7 @@ typedef struct ws_s
 	int 					in_msg;				///< Are we inside a message?
 	char 					ctrl_payload[WS_CONTROL_MAX_PAYLOAD_LEN];	///< Control frame payload.
 	size_t					ctrl_len;			///< Length of the control payload.
+	int 					received_close;		///< Did we receive a close frame?
 	/// @}
 	
 	///

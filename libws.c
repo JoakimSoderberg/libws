@@ -222,6 +222,8 @@ int ws_connect(ws_t ws, const char *server, int port, const char *uri)
 	ws->server = _ws_strdup(server);
 	ws->uri = _ws_strdup(uri);
 	ws->port = port;
+	ws->received_close = 0;
+	ws->in_msg = 0;
 
 	if (_ws_create_bufferevent_socket(ws))
 	{
@@ -459,7 +461,7 @@ int ws_msg_begin(ws_t ws)
 	memset(&ws->header, 0, sizeof(ws_header_t));
 	// FIN, RSVx bits are 0.
 	ws->header.opcode = ws->binary_mode ? 
-						WS_OPCODE_BINARY : WS_OPCODE_TEXT;
+						WS_OPCODE_BINARY_0X2 : WS_OPCODE_TEXT_0X1;
 
 	ws->send_state = WS_SEND_STATE_MESSAGE_BEGIN;
 	
@@ -504,15 +506,15 @@ int ws_msg_frame_data_begin(ws_t ws, uint64_t datalen)
 	if (ws->send_state == WS_SEND_STATE_MESSAGE_BEGIN)
 	{
 		// Opcode will be set to either TEXT or BINARY here.
-		assert((ws->header.opcode == WS_OPCODE_TEXT) 
-			|| (ws->header.opcode == WS_OPCODE_BINARY));
+		assert((ws->header.opcode == WS_OPCODE_TEXT_0X1) 
+			|| (ws->header.opcode == WS_OPCODE_BINARY_0X2));
 
 		ws->send_state = WS_SEND_STATE_IN_MESSAGE;
 	}
 	else
 	{
 		// We've already sent frames.
-		ws->header.opcode = WS_OPCODE_CONTINUATION;
+		ws->header.opcode = WS_OPCODE_CONTINUATION_0X0;
 	}
 
 	ws_pack_header(&ws->header, header_buf, sizeof(header_buf), &header_len);
@@ -894,7 +896,7 @@ int ws_send_ping_ex(ws_t ws, char *msg, size_t len)
 {
 	assert(ws);
 
-	if (_ws_send_frame_raw(ws, WS_OPCODE_PING, msg, (uint64_t)len))
+	if (_ws_send_frame_raw(ws, WS_OPCODE_PING_0X9, msg, (uint64_t)len))
 	{
 		return -1;
 	}
@@ -917,7 +919,7 @@ int ws_send_pong(ws_t ws, char *msg, size_t len)
 {
 	assert(ws);
 
-	if (_ws_send_frame_raw(ws, WS_OPCODE_PONG, msg, (uint64_t)len))
+	if (_ws_send_frame_raw(ws, WS_OPCODE_PONG_0XA, msg, (uint64_t)len))
 	{
 		return -1;
 	}
@@ -1080,7 +1082,7 @@ void ws_default_msg_end_cb(ws_t ws, void *arg)
 	{
 		LIBWS_LOG(LIBWS_DEBUG, "Calling message callback");
 		ws->msg_cb(ws, (const char *)payload, len, 
-			(ws->header.opcode == WS_OPCODE_BINARY), ws->msg_arg);
+			(ws->header.opcode == WS_OPCODE_BINARY_0X2), ws->msg_arg);
 	}
 	else
 	{

@@ -79,19 +79,19 @@ int do_unpack_test(char *buf, size_t buflen,
 	{
 		switch (header.opcode)
 		{
-			case WS_OPCODE_TEXT: 
+			case WS_OPCODE_TEXT_0X1: 
 				libws_test_SUCCESS("Payload as expected: [text] \"%s\"", payload);
 				break;
-			case WS_OPCODE_BINARY:
+			case WS_OPCODE_BINARY_0X2:
 				libws_test_SUCCESS("Payload as expected: [binary] %u bytes", header.payload_len);
 				break;
-			case WS_OPCODE_PING:
+			case WS_OPCODE_PING_0X9:
 				libws_test_SUCCESS("Payload as expected: [ping] %u bytes", header.payload_len);
 				break;
-			case WS_OPCODE_PONG:
+			case WS_OPCODE_PONG_0XA:
 				libws_test_SUCCESS("Payload as expected: [pong] %u bytes", header.payload_len);
 				break;
-			case WS_OPCODE_CONTINUATION:
+			case WS_OPCODE_CONTINUATION_0X0:
 				libws_test_SUCCESS("Payload as expected. [continuation] \"%s\"", payload);
 				break;
 			default:
@@ -105,7 +105,7 @@ int do_unpack_test(char *buf, size_t buflen,
 		ret |= -1;
 		switch (header.opcode)
 		{
-			case WS_OPCODE_TEXT:
+			case WS_OPCODE_TEXT_0X1:
 				libws_test_FAILURE("Invalid payload: \"%s\", expected: \"%s\"", 
 									payload, expected_payload);
 				break;
@@ -145,7 +145,7 @@ int TEST_rfc_examples(int argc, char *argv[])
 		h->rsv1 = 0;
 		h->rsv2 = 0;
 		h->rsv3 = 0;
-		h->opcode = WS_OPCODE_TEXT;
+		h->opcode = WS_OPCODE_TEXT_0X1;
 		h->mask_bit = 0;
 		h->payload_len = (uint64_t)strlen("Hello");
 		h->mask = 0;
@@ -171,7 +171,7 @@ int TEST_rfc_examples(int argc, char *argv[])
 		h->rsv1 = 0;
 		h->rsv2 = 0;
 		h->rsv3 = 0;
-		h->opcode = WS_OPCODE_TEXT;
+		h->opcode = WS_OPCODE_TEXT_0X1;
 		h->mask_bit = 1;
 		h->payload_len = (uint64_t)strlen("Hello");
 		h->mask = (*((uint32_t *)&single_frame_masked[2]));
@@ -200,7 +200,7 @@ int TEST_rfc_examples(int argc, char *argv[])
 		h->rsv1 = 0;
 		h->rsv2 = 0;
 		h->rsv3 = 0;
-		h->opcode = WS_OPCODE_TEXT;
+		h->opcode = WS_OPCODE_TEXT_0X1;
 		h->mask_bit = 0;
 		h->payload_len = (uint64_t)strlen("Hel");
 		h->mask = 0;
@@ -217,7 +217,7 @@ int TEST_rfc_examples(int argc, char *argv[])
 		h->rsv1 = 0;
 		h->rsv2 = 0;
 		h->rsv3 = 0;
-		h->opcode = WS_OPCODE_CONTINUATION;
+		h->opcode = WS_OPCODE_CONTINUATION_0X0;
 		h->mask_bit = 0;
 		h->payload_len = (uint64_t)strlen("lo");
 		h->mask = 0;
@@ -248,7 +248,7 @@ int TEST_rfc_examples(int argc, char *argv[])
 		h->rsv1 = 0;
 		h->rsv2 = 0;
 		h->rsv3 = 0;
-		h->opcode = WS_OPCODE_PING;
+		h->opcode = WS_OPCODE_PING_0X9;
 		h->mask_bit = 0;
 		h->payload_len = (uint64_t)strlen("Hello");
 		h->mask = 0;
@@ -265,7 +265,7 @@ int TEST_rfc_examples(int argc, char *argv[])
 		h->rsv1 = 0;
 		h->rsv2 = 0;
 		h->rsv3 = 0;
-		h->opcode = WS_OPCODE_PONG;
+		h->opcode = WS_OPCODE_PONG_0XA;
 		h->mask_bit = 1;
 		h->payload_len = (uint64_t)strlen("Hello");
 		h->mask = (*((uint32_t *)&masked_pong_response[2]));
@@ -299,7 +299,7 @@ int TEST_rfc_examples(int argc, char *argv[])
 		h->rsv1 = 0;
 		h->rsv2 = 0;
 		h->rsv3 = 0;
-		h->opcode = WS_OPCODE_BINARY;
+		h->opcode = WS_OPCODE_BINARY_0X2;
 		h->mask_bit = 0;
 		h->payload_len = (uint64_t)256;
 		h->mask = 0;
@@ -331,7 +331,7 @@ int TEST_rfc_examples(int argc, char *argv[])
 		h->rsv1 = 0;
 		h->rsv2 = 0;
 		h->rsv3 = 0;
-		h->opcode = WS_OPCODE_BINARY;
+		h->opcode = WS_OPCODE_BINARY_0X2;
 		h->mask_bit = 0;
 		h->payload_len = (uint64_t)65536;
 		h->mask = 0;
