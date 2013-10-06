@@ -197,9 +197,14 @@ typedef struct ws_s
 	int 					has_header;			///< Has the websocket header been read yet?
 	ws_header_t				header;				///< Header for received websocket frame.
 	int 					in_msg;				///< Are we inside a message?
-	char 					ctrl_payload[WS_CONTROL_MAX_PAYLOAD_LEN];	///< Control frame payload.
+	char 					ctrl_payload[WS_CONTROL_MAX_PAYLOAD_LEN]; ///< Control frame payload.
 	size_t					ctrl_len;			///< Length of the control payload.
 	int 					received_close;		///< Did we receive a close frame?
+	int 					sent_close;			///< Have we sent a close frame?
+	struct event			*close_timeout_event; ///< Timeout even for waiting for a close reply.
+	ws_close_status_t 		server_close_status; ///< The Close status the server sent.
+	char 					*server_reason;		///< Server close reason data.
+	size_t 					server_reason_len;	///< Server close reason length.
 	/// @}
 	
 	///
@@ -279,6 +284,33 @@ int _ws_send_data(ws_t ws, char *msg, uint64_t len, int no_copy);
 /// @returns			0 on success.
 ///
 int _ws_send_frame_raw(ws_t ws, ws_opcode_t opcode, char *data, uint64_t datalen);
+
+///
+/// Sends a close frame.
+///
+/// @param[in]	ws 			The websocket context.
+/// @param[in] status_code 	The status code to send.
+/// @param[in] reason 		The reason data.
+/// @param[in] reason_len	The length of the #reason buffer. Must not be larger than 123 bytes.
+///
+/// @returns			0 on success.
+///
+int _ws_send_close(ws_t ws, ws_close_status_t status_code, 
+					const char *reason, size_t reason_len);
+
+///
+/// Closes the socket for the underlying TCP session used for the websocket.
+///
+/// @param[in]	ws 			The websocket context.
+///
+void _ws_shutdown(ws_t ws);
+
+///
+/// Timeout callback function for when we have sent the close frame to the
+/// server. If this times out, we will initiate an unclean shutdown since
+/// the servern hasn't initiated the TCP close.
+///
+void _ws_close_timeout_cb(evutil_socket_t fd, short what, void *arg);
 
 ///
 /// Randomizes the contents of #buf. This is used for generating

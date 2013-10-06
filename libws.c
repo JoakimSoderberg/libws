@@ -146,7 +146,7 @@ int ws_init(ws_t *ws, ws_base_t ws_base)
 
 	w->ws_base = ws_base;
 
-	w->state = WS_STATE_DISCONNECTED;
+	w->state = WS_STATE_CLOSED_CLEANLY;
 
 	return 0;
 }
@@ -159,6 +159,8 @@ void ws_destroy(ws_t *ws)
 		return; 
 
 	w = *ws;
+
+	// TODO: If connected, send close frame with status WS_CLOSE_STATUS_GOING_AWAY_1001
 
 	if (w->bev)
 	{
@@ -177,6 +179,12 @@ void ws_destroy(ws_t *ws)
 		LIBWS_LOG(LIBWS_DEBUG, "Freeing connect timeout event");
 		event_free(w->connect_timeout_event);
 		w->connect_timeout_event = NULL;
+	}
+
+	if (w->close_timeout_event)
+	{
+		event_free(w->close_timeout_event);
+		w->close_timeout_event = NULL;
 	}
 
 	ws_clear_subprotocols(w);
@@ -207,9 +215,10 @@ int ws_connect(ws_t ws, const char *server, int port, const char *uri)
 
 	LIBWS_LOG(LIBWS_DEBUG, "Connect start");
 
-	if (ws->state != WS_STATE_DISCONNECTED)
+	if ((ws->state != WS_STATE_CLOSED_CLEANLY)
+	 && (ws->state != WS_STATE_CLOSED_UNCLEANLY))
 	{
-		LIBWS_LOG(LIBWS_ERR, "Already connected");
+		LIBWS_LOG(LIBWS_ERR, "Already connected or connecting");
 		return -1;
 	}
 
@@ -219,10 +228,15 @@ int ws_connect(ws_t ws, const char *server, int port, const char *uri)
 		return -1;
 	}
 
+	if (ws->server) _ws_free(ws->server);
 	ws->server = _ws_strdup(server);
+
+	if (ws->uri) _ws_free(ws->uri);
 	ws->uri = _ws_strdup(uri);
+
 	ws->port = port;
 	ws->received_close = 0;
+	ws->sent_close = 0;
 	ws->in_msg = 0;
 
 	if (_ws_create_bufferevent_socket(ws))
@@ -260,32 +274,98 @@ fail:
 	return -1;
 }
 
-int ws_close(ws_t ws)
+int ws_close_with_status_reason(ws_t ws, ws_close_status_t status, 
+							const char *reason, size_t reason_len)
 {
+	struct timeval tv;
 	assert(ws);
 
-	ws->state = WS_STATE_DISCONNECTING;
+	LIBWS_LOG(LIBWS_TRACE, "Sending close frame");
 
-	// TODO: Send a websocket ending handshake.
+	ws->state = WS_STATE_CLOSING;
 
-	#ifdef LIBWS_WITH_OPENSSL
-	_ws_openssl_close(ws);
-	#endif
-
-	if (ws->bev)
+	// The underlying TCP connection, in most normal cases, SHOULD be closed
+	// first by the server, so that it holds the TIME_WAIT state and not the
+	// client (as this would prevent it from re-opening the connection for 2
+	// maximum segment lifetimes (2MSL), while there is no corresponding
+	// server impact as a TIME_WAIT connection is immediately reopened upon
+	// a new SYN with a higher seq number).  In abnormal cases (such as not
+	// having received a TCP Close from the server after a reasonable amount
+	// of time) a client MAY initiate the TCP Close.  As such, when a server
+	// is instructed to _Close the WebSocket Connection_ it SHOULD initiate
+	// a TCP Close immediately, and when a client is instructed to do the
+	// same, it SHOULD wait for a TCP Close from the server. 
+	
+	// Send a websocket close frame to the server.
+	if (!ws->sent_close)
 	{
-		bufferevent_free(ws->bev);
-		ws->bev = NULL;
+		if (_ws_send_close(ws, status, reason, reason_len))
+		{
+			LIBWS_LOG(LIBWS_ERR, "Failed to send close frame");
+			goto fail;
+		}
 	}
 
-	if (ws->close_cb)
+	ws->sent_close = 1;
+
+	// Give the server time to initiate the closing of the
+	// TCP session. Otherwise we'll force an unclean shutdown
+	// ourselves.
+	if (ws->close_timeout_event) event_free(ws->close_timeout_event);
+
+	if (!(ws->close_timeout_event = evtimer_new(ws->ws_base->ev_base, 
+									_ws_close_timeout_cb, (void *)ws)))
 	{
-		// TODO: Make up some reasons for closing :D
-		int reason = 0;
-		ws->close_cb(ws, reason, ws->close_arg);
+		LIBWS_LOG(LIBWS_ERR, "Failed to create close timeout event");
+		goto fail;
+	}
+
+	tv.tv_sec = 3; // TODO: Let the user set this.
+	tv.tv_usec = 0;
+
+	if (evtimer_add(ws->close_timeout_event, &tv))
+	{
+		LIBWS_LOG(LIBWS_ERR, "Failed to add close timeout event");
+		goto fail;
 	}
 
 	return 0;
+
+fail:
+
+	// If we fail to send the close frame, we do a TCP close
+	// right away (unclean websocket close).
+
+	if (ws->close_timeout_event)
+	{
+		event_free(ws->close_timeout_event);
+		ws->close_timeout_event = NULL;
+	}
+
+	LIBWS_LOG(LIBWS_ERR, "Failed to send close frame, "
+						 "forcing unclean close");
+	
+	_ws_shutdown(ws);
+
+	if (ws->close_cb)
+	{
+		char reason[] = "Problem sending close frame";
+		ws->close_cb(ws, WS_CLOSE_STATUS_ABNORMAL_1006, 
+					reason, sizeof(reason), ws->close_arg);
+	}
+
+	return -1;
+}
+
+int ws_close_with_status(ws_t ws, ws_close_status_t status)
+{
+	return ws_close_with_status_reason(ws, status, NULL, 0);
+}
+
+int ws_close(ws_t ws)
+{
+	return ws_close_with_status_reason(ws, 
+			WS_CLOSE_STATUS_NORMAL_1000, NULL, 0);
 }
 
 int ws_base_service(ws_base_t base)

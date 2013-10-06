@@ -18,8 +18,10 @@ typedef struct ws_base_s *ws_base_t;
 typedef enum ws_state_e
 {
 	WS_STATE_DNS_LOOKUP,
-	WS_STATE_DISCONNECTING,
-	WS_STATE_DISCONNECTED,
+	WS_STATE_CLOSING,
+	WS_STATE_CLOSING_UNCLEANLY,
+	WS_STATE_CLOSED_CLEANLY,
+	WS_STATE_CLOSED_UNCLEANLY,
 	WS_STATE_CONNECTING,
 	WS_STATE_CONNECTED
 } ws_state_t;
@@ -54,7 +56,7 @@ typedef void (*ws_msg_frame_data_callback_f)(ws_t ws, const char *payload, uint6
 typedef void (*ws_msg_frame_end_callback_f)(ws_t ws, void *arg);
 
 typedef void (*ws_err_callback_f)(ws_t ws, int errcode, const char *errmsg, void *arg);
-typedef void (*ws_close_callback_f)(ws_t ws, int reason, void *arg);
+typedef void (*ws_close_callback_f)(ws_t ws, ws_close_status_t status, const char *reason, size_t reason_len, void *arg);
 typedef void (*ws_connect_callback_f)(ws_t ws, void *arg);
 typedef void (*ws_timeout_callback_f)(ws_t ws, struct timeval timeout, void *arg);
 typedef void (*ws_no_copy_cleanup_f)(ws_t ws, const void *data, uint64_t datalen, void *extra);

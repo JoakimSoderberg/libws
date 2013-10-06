@@ -88,13 +88,30 @@ ws_base_t ws_get_base(ws_t ws);
 int ws_connect(ws_t ws, const char *server, int port, const char *uri);
 
 ///
-/// Closes the websocket connection.
+/// Closes the websocket connection with the "1000 normal closure" status.
+///
+/// @see ws_close_with_status, ws_close_with_status_reason
 ///
 /// @param ws 	The websocket context to close.
 ///
 /// @returns 0 on success. -1 on failure.
 ///
 int ws_close(ws_t ws);
+
+///
+/// Closes the websocket connection, with a specified status code.
+///
+/// @see ws_close, ws_close_with_status_reason
+///
+/// @param[in] ws 		Websocket context.
+/// @param[in] status 	Status code.
+///
+/// @returns 0 on success. -1 on failure.
+///
+int ws_close_with_status(ws_t ws, ws_close_status_t status);
+
+int ws_close_with_status_reason(ws_t ws, ws_close_status_t status, 
+				const char *reason, size_t reason_len);
 
 ///
 /// Service the websocket base context. This needs to be done

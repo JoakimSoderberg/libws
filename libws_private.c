@@ -242,24 +242,33 @@ int _ws_setup_connection_timeout(ws_t ws)
 									&ws->connect_timeout_event, &tv);
 }
 
-static void _ws_eof_event(struct bufferevent *bev, short events, ws_t ws)
+static void _ws_eof_event(struct bufferevent *bev, short events, void *ptr)
 {
+	ws_t ws = (ws_t)ptr;
+	assert(ws);
+
 	if (ws->close_cb)
 	{
-		// TODO: Pass a reason.
-		ws->close_cb(ws, 0, ws->close_arg);
+		if (ws->received_close)
+		{
+			ws->close_cb(ws, 
+				ws->server_close_status,
+				ws->server_reason,
+				ws->server_reason_len,
+				ws->close_arg);
+		}
 	}
 
-	if (ws_close(ws))
-	{
-		LIBWS_LOG(LIBWS_ERR, "Error on websocket quit");
-	}
+	_ws_shutdown(ws);
 }
 
-static void _ws_error_event(struct bufferevent *bev, short events, ws_t ws)
+static void _ws_error_event(struct bufferevent *bev, short events, void *ptr)
 {
 	const char *err_msg;
 	int err;
+	ws_t ws = (ws_t)ptr;
+	assert(ws);
+
 	LIBWS_LOG(LIBWS_DEBUG, "Error raised");
 
 	if (ws->state == WS_STATE_DNS_LOOKUP)
@@ -277,6 +286,7 @@ static void _ws_error_event(struct bufferevent *bev, short events, ws_t ws)
 		LIBWS_LOG(LIBWS_ERR, "%s (%d)", err_msg, err);
 	}
 
+	// TODO: Should there even be an erro callback?
 	if (ws->err_cb)
 	{
 		ws->err_cb(ws, err, err_msg, ws->err_arg);
@@ -327,6 +337,13 @@ int _ws_handle_control_frame(ws_t ws)
 
 	if (h->opcode == WS_OPCODE_CLOSE_0X8)
 	{
+		ws->server_close_status = (uint16_t)WS_CLOSE_STATUS_NORMAL_1000;
+		ws->server_reason = NULL;
+		ws->server_reason_len = 0;
+
+		ws->state = WS_STATE_CLOSING;
+		ws->received_close = 1;
+
 		// The Close frame MAY contain a body (the "Application data" portion of
    		// the frame) that indicates a reason for closing.
 		// If there is a body, the first two bytes of
@@ -334,44 +351,43 @@ int _ws_handle_control_frame(ws_t ws)
 		// representing a status code
 		if (ws->ctrl_len > 0)
 		{
-			size_t i = 0;
-			uint16_t status_code;
-
 			if (ws->ctrl_len < 2)
 			{
 				LIBWS_LOG(LIBWS_ERR, "Close frame application data lacking "
 									 "status code");
-				return -1;
+				// TODO: We should shutdown immediately here.
 			}
-
-			if (h->mask_bit)
+			else
 			{
-				ws_unmask_payload(h->mask, ws->ctrl_payload, ws->ctrl_len);
+				// Read status and reason.
+				if (h->mask_bit)
+				{
+					ws_unmask_payload(h->mask, ws->ctrl_payload, ws->ctrl_len);
+				}
+
+				ws->server_close_status = 
+					(ws_close_status_t)ntohs(*((uint16_t *)ws->ctrl_payload));
+				ws->server_reason = &ws->ctrl_payload[2];
+				ws->server_reason_len = ws->ctrl_len - 2;
 			}
+		}
 
-			status_code = ntohs(*((uint16_t *)ws->ctrl_payload));
-			i += 2;
-			// TODO: Rest of payload is the "reason", read this.
-
-
-			// If an endpoint receives a Close frame and did not previously send a
-			// Close frame, the endpoint MUST send a Close frame in response.  (When
-			// sending a Close frame in response, the endpoint typically echos the
-			// status code it received.)  It SHOULD do so as soon as practical.  An
-			// endpoint MAY delay sending a Close frame until its current message is
-			// sent (for instance, if the majority of a fragmented message is
-			// already sent, an endpoint MAY send the remaining fragments before
-			// sending a Close frame).  However, there is no guarantee that the
-			// endpoint that has already sent a Close frame will continue to process
-			// data.
-			// TODO: Add this stuff for real.
-			if (!ws->received_close)
-			{
-			// 	_ws_send_close(ws, status, reason);
-			}
-
-			// TODO: Call close callback.
-			// TODO: Close connection.
+		// If an endpoint receives a Close frame and did not previously send a
+		// Close frame, the endpoint MUST send a Close frame in response.  (When
+		// sending a Close frame in response, the endpoint typically echos the
+		// status code it received.)  It SHOULD do so as soon as practical.  An
+		// endpoint MAY delay sending a Close frame until its current message is
+		// sent (for instance, if the majority of a fragmented message is
+		// already sent, an endpoint MAY send the remaining fragments before
+		// sending a Close frame).  However, there is no guarantee that the
+		// endpoint that has already sent a Close frame will continue to process
+		// data.
+		if (!ws->sent_close)
+		{
+			ws_close_with_status_reason(ws, 
+				ws->server_close_status, 
+				ws->server_reason, 
+				ws->server_reason_len);
 		}
 	}
 
@@ -833,10 +849,83 @@ int _ws_send_frame_raw(ws_t ws, ws_opcode_t opcode, char *data, uint64_t datalen
 	return 0;
 }
 
+void _ws_shutdown(ws_t ws)
+{
+	assert(ws);
+
+	LIBWS_LOG(LIBWS_TRACE, "Websocket shutdown");
+
+	#ifdef LIBWS_WITH_OPENSSL
+	_ws_openssl_close(ws);
+	#endif
+
+	if (ws->bev)
+	{
+		bufferevent_free(ws->bev);
+		ws->bev = NULL;
+	}
+}
+
+void _ws_close_timeout_cb(evutil_socket_t fd, short what, void *arg)
+{
+	ws_t ws = (ws_t)arg;
+	assert(ws);
+
+	LIBWS_LOG(LIBWS_TRACE, "Close timeout");
+
+	// This callback should only ever be called after sending a close frame.
+	assert(ws->sent_close);
+
+	// We sent a close frame to the server but it hasn't initiated
+	// the TCP close.
+	if (ws->received_close)
+	{
+		LIBWS_LOG(LIBWS_ERR, "Timeout! Server sent a Websocket close frame "
+							 "but did not close the TCP session");
+	}
+	else
+	{
+		LIBWS_LOG(LIBWS_ERR, "Timeout! Server did not reply to Websocket "
+							 "close frame");
+	}
+
+	LIBWS_LOG(LIBWS_ERR, "Initiating an unclean close");
+
+	_ws_shutdown(ws);
+}
+
 int _ws_send_close(ws_t ws, ws_close_status_t status_code, 
 					const char *reason, size_t reason_len)
 {
+	char close_payload[WS_CONTROL_MAX_PAYLOAD_LEN];
 	assert(ws);
+
+	if (WS_IS_CLOSE_STATUS_NOT_USED(status_code))
+	{
+		LIBWS_LOG(LIBWS_ERR, "Invalid websocket close status code. "
+							 "Must be between 1000 and 4999. %u given", 
+							 (uint16_t)status_code);
+		return -1;
+	}
+
+	// (Status code is a uint16_t == 2 bytes)
+	if ((reason_len + 2) >= WS_CONTROL_MAX_PAYLOAD_LEN)
+	{
+		LIBWS_LOG(LIBWS_ERR, "Close reason too big to fit max control "
+							 "frame payload size %u + 2 byte status (max %d)", 
+							 reason_len, WS_CONTROL_MAX_PAYLOAD_LEN);
+		return -1;
+	}	
+
+	*((uint16_t *)close_payload) = htons((uint16_t)status_code);
+	memcpy(&close_payload[2], reason, reason_len);
+
+	if (_ws_send_frame_raw(ws, WS_OPCODE_CLOSE_0X8, 
+							close_payload, reason_len + 2))
+	{
+		LIBWS_LOG(LIBWS_ERR, "Failed to send close frame");
+		return -1;
+	}
 
 	return 0;
 }
@@ -876,6 +965,4 @@ void _ws_set_timeouts(ws_t ws)
 
 	bufferevent_set_timeouts(ws->bev, &ws->recv_timeout, &ws->send_timeout);
 }
-
-
 
