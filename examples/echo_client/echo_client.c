@@ -9,7 +9,13 @@
 void onmsg(ws_t ws, const char *msg, uint64_t len, int binary, void *arg)
 {
 	printf("Message: \"%s\"\n", msg);
+	ws_close(ws);
+}
 
+void onclose(ws_t ws, ws_close_status_t status,
+			const char *reason, size_t reason_len, void *arg)
+{
+	printf("Closing");
 	ws_base_quit(ws_get_base(ws), 1);
 }
 
@@ -47,6 +53,7 @@ int main(int argc, char **argv)
 
 	ws_set_onmsg_cb(ws, onmsg, NULL);
 	ws_set_onconnect_cb(ws, onconnect, NULL);
+	ws_set_onclose_cb(ws, onclose, NULL);
 
 	if (ws_connect(ws, "localhost", 9500, ""))
 	{

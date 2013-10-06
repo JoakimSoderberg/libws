@@ -247,6 +247,8 @@ static void _ws_eof_event(struct bufferevent *bev, short events, void *ptr)
 	ws_t ws = (ws_t)ptr;
 	assert(ws);
 
+	LIBWS_LOG(LIBWS_TRACE, "EOF event");
+
 	if (ws->close_cb)
 	{
 		if (ws->received_close)
@@ -329,13 +331,19 @@ static int _ws_handle_close_frame(ws_t ws)
 {
 	ws_header_t *h;
 	assert(ws);
-	LIBWS_LOG(LIBWS_TRACE, "Control frame");
+	LIBWS_LOG(LIBWS_TRACE, "Close frame");
 
 	h = &ws->header;
 
 	ws->server_close_status = (uint16_t)WS_CLOSE_STATUS_NORMAL_1000;
 	ws->server_reason = NULL;
 	ws->server_reason_len = 0;
+
+	if (ws->close_timeout_event)
+	{
+		event_free(ws->close_timeout_event);
+		ws->close_timeout_event = NULL;
+	}
 
 	ws->state = WS_STATE_CLOSING;
 	ws->received_close = 1;
@@ -492,6 +500,7 @@ int _ws_handle_frame_data(ws_t ws, char *buf, size_t len)
 int _ws_handle_frame_end(ws_t ws)
 {
 	assert(ws);
+	LIBWS_LOG(LIBWS_DEBUG2, "Frame end");
 
 	if (WS_OPCODE_IS_CONTROL(ws->header.opcode))
 	{
@@ -625,6 +634,8 @@ void _ws_read_websocket(ws_t ws, struct evbuffer *in)
 			}
 			else
 			{
+				// TODO: This is not hit in some cases.
+				LIBWS_LOG(LIBWS_DEBUG2, "recv_frame_len = %u, payload_len = %u", ws->recv_frame_len, ws->header.payload_len);
 				// The entire frame has been received.
 				if (ws->recv_frame_len == ws->header.payload_len)
 				{
@@ -796,13 +807,9 @@ int _ws_send_frame_raw(ws_t ws, ws_opcode_t opcode, char *data, uint64_t datalen
 
 	assert(ws);
 
-	if (ws->state != WS_STATE_CONNECTED)
-	{
-		return -1;
-	}
-
 	if (ws->send_state != WS_SEND_STATE_NONE)
 	{
+		LIBWS_LOG(LIBWS_ERR, "Send state not none");
 		return -1;
 	}
 
