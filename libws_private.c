@@ -325,6 +325,68 @@ static void _ws_event_callback(struct bufferevent *bev, short events, void *ptr)
 	}
 }
 
+static int _ws_handle_close_frame(ws_t ws)
+{
+	ws_header_t *h;
+	assert(ws);
+	LIBWS_LOG(LIBWS_TRACE, "Control frame");
+
+	h = &ws->header;
+
+	ws->server_close_status = (uint16_t)WS_CLOSE_STATUS_NORMAL_1000;
+	ws->server_reason = NULL;
+	ws->server_reason_len = 0;
+
+	ws->state = WS_STATE_CLOSING;
+	ws->received_close = 1;
+
+	// The Close frame MAY contain a body (the "Application data" portion of
+		// the frame) that indicates a reason for closing.
+	// If there is a body, the first two bytes of
+	// the body MUST be a 2-byte unsigned integer (in network byte order)
+	// representing a status code
+	if (ws->ctrl_len > 0)
+	{
+		if (ws->ctrl_len < 2)
+		{
+			LIBWS_LOG(LIBWS_ERR, "Close frame application data lacking "
+								 "status code");
+			// TODO: We should shutdown immediately here.
+		}
+		else
+		{
+			// Read status and reason.
+			if (h->mask_bit)
+			{
+				ws_unmask_payload(h->mask, ws->ctrl_payload, ws->ctrl_len);
+			}
+
+			ws->server_close_status = 
+				(ws_close_status_t)ntohs(*((uint16_t *)ws->ctrl_payload));
+			ws->server_reason = &ws->ctrl_payload[2];
+			ws->server_reason_len = ws->ctrl_len - 2;
+		}
+	}
+
+	// If an endpoint receives a Close frame and did not previously send a
+	// Close frame, the endpoint MUST send a Close frame in response.  (When
+	// sending a Close frame in response, the endpoint typically echos the
+	// status code it received.)  It SHOULD do so as soon as practical.  An
+	// endpoint MAY delay sending a Close frame until its current message is
+	// sent (for instance, if the majority of a fragmented message is
+	// already sent, an endpoint MAY send the remaining fragments before
+	// sending a Close frame).  However, there is no guarantee that the
+	// endpoint that has already sent a Close frame will continue to process
+	// data.
+	if (!ws->sent_close)
+	{
+		ws_close_with_status_reason(ws, 
+			ws->server_close_status, 
+			ws->server_reason, 
+			ws->server_reason_len);
+	}	
+}
+
 int _ws_handle_control_frame(ws_t ws)
 {
 	ws_header_t *h;
@@ -337,58 +399,7 @@ int _ws_handle_control_frame(ws_t ws)
 
 	if (h->opcode == WS_OPCODE_CLOSE_0X8)
 	{
-		ws->server_close_status = (uint16_t)WS_CLOSE_STATUS_NORMAL_1000;
-		ws->server_reason = NULL;
-		ws->server_reason_len = 0;
-
-		ws->state = WS_STATE_CLOSING;
-		ws->received_close = 1;
-
-		// The Close frame MAY contain a body (the "Application data" portion of
-   		// the frame) that indicates a reason for closing.
-		// If there is a body, the first two bytes of
-		// the body MUST be a 2-byte unsigned integer (in network byte order)
-		// representing a status code
-		if (ws->ctrl_len > 0)
-		{
-			if (ws->ctrl_len < 2)
-			{
-				LIBWS_LOG(LIBWS_ERR, "Close frame application data lacking "
-									 "status code");
-				// TODO: We should shutdown immediately here.
-			}
-			else
-			{
-				// Read status and reason.
-				if (h->mask_bit)
-				{
-					ws_unmask_payload(h->mask, ws->ctrl_payload, ws->ctrl_len);
-				}
-
-				ws->server_close_status = 
-					(ws_close_status_t)ntohs(*((uint16_t *)ws->ctrl_payload));
-				ws->server_reason = &ws->ctrl_payload[2];
-				ws->server_reason_len = ws->ctrl_len - 2;
-			}
-		}
-
-		// If an endpoint receives a Close frame and did not previously send a
-		// Close frame, the endpoint MUST send a Close frame in response.  (When
-		// sending a Close frame in response, the endpoint typically echos the
-		// status code it received.)  It SHOULD do so as soon as practical.  An
-		// endpoint MAY delay sending a Close frame until its current message is
-		// sent (for instance, if the majority of a fragmented message is
-		// already sent, an endpoint MAY send the remaining fragments before
-		// sending a Close frame).  However, there is no guarantee that the
-		// endpoint that has already sent a Close frame will continue to process
-		// data.
-		if (!ws->sent_close)
-		{
-			ws_close_with_status_reason(ws, 
-				ws->server_close_status, 
-				ws->server_reason, 
-				ws->server_reason_len);
-		}
+		_ws_handle_close_frame(ws);
 	}
 
 	return 0;
@@ -408,6 +419,8 @@ int _ws_handle_frame_begin(ws_t ws)
 		memset(ws->ctrl_payload, 0, sizeof(ws->ctrl_payload));
 		return 0;
 	}
+
+	LIBWS_LOG(LIBWS_DEBUG, "  Normal frame");
 
 	// Normal frame.
 	if (!ws->in_msg)
