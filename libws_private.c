@@ -530,6 +530,8 @@ int _ws_handle_frame_end(ws_t ws)
 		ws->in_msg = 0;
 	}
 
+	ws->has_header = 0;
+
 	return 0;
 }
 
@@ -593,7 +595,7 @@ void _ws_read_websocket(ws_t ws, struct evbuffer *in)
 		size_t recv_len = evbuffer_get_length(in);
 		size_t remaining = ws->header.payload_len - ws->recv_frame_len;
 
-		LIBWS_LOG(LIBWS_DEBUG2, "In frame");
+		LIBWS_LOG(LIBWS_DEBUG2, "In frame (remaining %u bytes)", remaining);
 
 		if (recv_len > remaining) 
 			recv_len = remaining;
@@ -631,6 +633,7 @@ void _ws_read_websocket(ws_t ws, struct evbuffer *in)
 			{
 				// TODO: Raise protocol error via error cb.
 				// TODO: Close connection.
+				LIBWS_LOG(LIBWS_ERR, "Failed to handle frame data");
 			}
 			else
 			{
