@@ -48,7 +48,7 @@ void ws_default_log_cb(int prio, const char *file,
 			break;
 	}
 
-	fprintf(fd, "%s, %s(),%d: ", ws_log_get_prio_str(prio), func, line);
+	fprintf(fd, "%s, %d:%-35s: ", ws_log_get_prio_str(prio), line, func);
 	vfprintf(fd, fmt, args);
 	fprintf(fd, "\n");
 }

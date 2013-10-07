@@ -245,23 +245,33 @@ int _ws_setup_connection_timeout(ws_t ws)
 static void _ws_eof_event(struct bufferevent *bev, short events, void *ptr)
 {
 	ws_t ws = (ws_t)ptr;
+	ws_close_status_t status = ws->server_close_status;
 	assert(ws);
 
-	LIBWS_LOG(LIBWS_TRACE, "EOF event");
+	LIBWS_LOG(LIBWS_TRACE, "EOF event. "
+		"Sent close frame %d, received close frame %d", 
+		ws->sent_close, ws->received_close);
+
+	_ws_shutdown(ws);
+
+	if (!ws->received_close)
+	{
+		ws->state = WS_STATE_CLOSED_UNCLEANLY;
+		status = WS_CLOSE_STATUS_ABNORMAL_1006;
+	}
 
 	if (ws->close_cb)
 	{
-		if (ws->received_close)
-		{
-			ws->close_cb(ws, 
-				ws->server_close_status,
-				ws->server_reason,
-				ws->server_reason_len,
-				ws->close_arg);
-		}
+		ws->close_cb(ws, 
+			status,
+			ws->server_reason,
+			ws->server_reason_len,
+			ws->close_arg);
 	}
-
-	_ws_shutdown(ws);
+	else
+	{
+		LIBWS_LOG(LIBWS_DEBUG, "No close callback");
+	}
 }
 
 static void _ws_error_event(struct bufferevent *bev, short events, void *ptr)
@@ -417,7 +427,7 @@ int _ws_handle_frame_begin(ws_t ws)
 {
 	assert(ws);
 
-	LIBWS_LOG(LIBWS_TRACE, "Frame begin");
+	LIBWS_LOG(LIBWS_TRACE, "Frame begin, opcode = %d", ws->header.opcode);
 
 	ws->recv_frame_len = 0;
 
@@ -500,7 +510,7 @@ int _ws_handle_frame_data(ws_t ws, char *buf, size_t len)
 int _ws_handle_frame_end(ws_t ws)
 {
 	assert(ws);
-	LIBWS_LOG(LIBWS_DEBUG2, "Frame end");
+	LIBWS_LOG(LIBWS_DEBUG2, "Frame end, opcode = %d", ws->header.opcode);
 
 	if (WS_OPCODE_IS_CONTROL(ws->header.opcode))
 	{
@@ -881,6 +891,12 @@ void _ws_shutdown(ws_t ws)
 	#ifdef LIBWS_WITH_OPENSSL
 	_ws_openssl_close(ws);
 	#endif
+
+	if (ws->connect_timeout_event)
+	{
+		event_free(ws->connect_timeout_event);
+		ws->connect_timeout_event = NULL;
+	}
 
 	if (ws->bev)
 	{

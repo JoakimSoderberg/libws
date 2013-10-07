@@ -396,6 +396,8 @@ int ws_base_quit(ws_base_t base, int let_running_events_complete)
 	int ret;
 	assert(base);
 
+	LIBWS_LOG(LIBWS_TRACE, "Websocket base quit");
+
 	if (let_running_events_complete)
 	{
 		ret = event_base_loopexit(base->ev_base, NULL);
@@ -405,7 +407,7 @@ int ws_base_quit(ws_base_t base, int let_running_events_complete)
 		ret = event_base_loopbreak(base->ev_base);
 	}
 
-	return 0;
+	return ret;
 }
 
 #if 0
@@ -692,7 +694,7 @@ int ws_msg_end(ws_t ws)
 	return 0;
 }
 
-int ws_send_msg(ws_t ws, char *msg, uint64_t len)
+int ws_send_msg_ex(ws_t ws, char *msg, uint64_t len)
 {
 	uint64_t frame_len;
 	assert(ws);
@@ -736,6 +738,20 @@ int ws_send_msg(ws_t ws, char *msg, uint64_t len)
 	}
 
 	return 0;
+}
+
+int ws_send_msg(ws_t ws, char *msg)
+{
+	int ret = 0;
+	int saved_binary_mode = ws->binary_mode;
+	
+	ws->binary_mode = 0;
+	
+	ret = ws_send_msg_ex(ws, msg, (uint64_t)strlen(msg));
+	
+	ws->binary_mode = saved_binary_mode;
+
+	return ret;
 }
 
 int ws_set_max_frame_size(ws_t ws, uint64_t max_frame_size)
@@ -1154,7 +1170,7 @@ void ws_default_msg_end_cb(ws_t ws, void *arg)
 	evbuffer_add_printf(ws->msg, "");
 
 	len = evbuffer_get_length(ws->msg);
-		payload = evbuffer_pullup(ws->msg, len);
+	payload = evbuffer_pullup(ws->msg, len);
 		
 	LIBWS_LOG(LIBWS_DEBUG2, "Message received: %s", payload);
 

@@ -179,13 +179,32 @@ int ws_quit(ws_t ws, int let_running_events_complete);
 ///
 /// Send a websocket message.
 ///
+/// @note To send binary data call #ws_set_binary first.
+///
+/// @see ws_set_binary
+///
 /// @param[in]	ws 		The websocket session context.
-/// @param[in]	msg 	The message payload.
+/// @param[in]	msg 	The message payload UTF-8 string or binary.
 /// @param[in]	len 	The message length in octets.
 ///
 /// @returns			0 on success.
 ///
-int ws_send_msg(ws_t ws, char *msg, uint64_t len);
+int ws_send_msg_ex(ws_t ws, char *msg, uint64_t len);
+
+///
+/// Send a websocket UTF-8 text message.
+///
+/// @note This overrides the binary mode set with #ws_set_binary
+/// 	  to send binary data use #ws_send_msg_ex instead
+///
+/// @see ws_send_msg_ex
+///
+/// @param[in]	ws 		The websocket session context.
+/// @param[in]	msg 	The message payload UTF-8 string or binary.
+///
+/// @returns			0 on success.
+///
+int ws_send_msg(ws_t ws, char *msg);
 
 //
 // Based on this API:
