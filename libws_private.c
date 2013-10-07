@@ -132,29 +132,6 @@ void _ws_set_memory_functions(ws_malloc_replacement_f malloc_replace,
 	event_set_mem_functions(malloc_replace, realloc_replace, free_replace);
 }
 
-static void _ws_connected_event(struct bufferevent *bev, short events, void *arg)
-{
-	ws_t ws = (ws_t)arg;
-	assert(ws);
-	char buf[1024];
-	LIBWS_LOG(LIBWS_DEBUG, "Connected to %s", ws_get_uri(ws, buf, sizeof(buf)));
-
-	if (ws->connect_timeout_event)
-	{
-		LIBWS_LOG(LIBWS_DEBUG, "Freeing connect timeout event");
-		event_free(ws->connect_timeout_event);
-		ws->connect_timeout_event = NULL;
-	}
-
-	// Add the handshake to the send buffer, this will
-	// be sent as soon as we're connected.
-	if (_ws_send_handshake(ws, bufferevent_get_output(ws->bev)))
-	{
-		LIBWS_LOG(LIBWS_ERR, "Failed to assemble handshake");
-		return;
-	}
-}
-
 ///
 /// Event for when a connection attempt times out.
 ///
@@ -240,101 +217,6 @@ int _ws_setup_connection_timeout(ws_t ws)
 
 	return _ws_setup_timeout_event(ws, _ws_connection_timeout_event, 
 									&ws->connect_timeout_event, &tv);
-}
-
-static void _ws_eof_event(struct bufferevent *bev, short events, void *ptr)
-{
-	ws_t ws = (ws_t)ptr;
-	ws_close_status_t status = ws->server_close_status;
-	assert(ws);
-
-	LIBWS_LOG(LIBWS_TRACE, "EOF event. "
-		"Sent close frame %d, received close frame %d", 
-		ws->sent_close, ws->received_close);
-
-	_ws_shutdown(ws);
-
-	if (!ws->received_close)
-	{
-		ws->state = WS_STATE_CLOSED_UNCLEANLY;
-		status = WS_CLOSE_STATUS_ABNORMAL_1006;
-	}
-
-	if (ws->close_cb)
-	{
-		ws->close_cb(ws, 
-			status,
-			ws->server_reason,
-			ws->server_reason_len,
-			ws->close_arg);
-	}
-	else
-	{
-		LIBWS_LOG(LIBWS_DEBUG, "No close callback");
-	}
-}
-
-static void _ws_error_event(struct bufferevent *bev, short events, void *ptr)
-{
-	const char *err_msg;
-	int err;
-	ws_t ws = (ws_t)ptr;
-	assert(ws);
-
-	LIBWS_LOG(LIBWS_DEBUG, "Error raised");
-
-	if (ws->state == WS_STATE_DNS_LOOKUP)
-	{
-		err = bufferevent_socket_get_dns_error(ws->bev);
-		err_msg = evutil_gai_strerror(err);
-
-		LIBWS_LOG(LIBWS_ERR, "DNS error %d: %s", err, err_msg);
-	}
-	else
-	{
-		err = EVUTIL_SOCKET_ERROR();
-		err_msg = evutil_socket_error_to_string(err);
-
-		LIBWS_LOG(LIBWS_ERR, "%s (%d)", err_msg, err);
-	}
-
-	// TODO: Should there even be an erro callback?
-	if (ws->err_cb)
-	{
-		ws->err_cb(ws, err, err_msg, ws->err_arg);
-	}
-	else
-	{
-		ws_close(ws);
-	}
-}
-
-///
-/// Libevent bufferevent callback for when an event occurs on
-/// the websocket socket.
-///
-static void _ws_event_callback(struct bufferevent *bev, short events, void *ptr)
-{
-	ws_t ws = (ws_t)ptr;
-	assert(ws);
-
-	if (events & BEV_EVENT_CONNECTED)
-	{
-		_ws_connected_event(bev, events, ws);
-		return;
-	}
-
-	if (events & BEV_EVENT_EOF)
-	{
-		_ws_eof_event(bev, events, ws);
-		return;
-	}
-	
-	if (events & BEV_EVENT_ERROR)
-	{
-		_ws_error_event(bev, events, ws);
-		return;
-	}
 }
 
 static int _ws_handle_close_frame(ws_t ws)
@@ -720,6 +602,137 @@ static void _ws_write_callback(struct bufferevent *bev, void *ptr)
 	assert(bev);
 
 	LIBWS_LOG(LIBWS_DEBUG, "Write callback");
+}
+
+static void _ws_connected_event(struct bufferevent *bev, short events, void *arg)
+{
+	ws_t ws = (ws_t)arg;
+	assert(ws);
+	char buf[1024];
+	LIBWS_LOG(LIBWS_DEBUG, "Connected to %s", ws_get_uri(ws, buf, sizeof(buf)));
+
+	if (ws->connect_timeout_event)
+	{
+		LIBWS_LOG(LIBWS_DEBUG, "Freeing connect timeout event");
+		event_free(ws->connect_timeout_event);
+		ws->connect_timeout_event = NULL;
+	}
+
+	// Add the handshake to the send buffer, this will
+	// be sent as soon as we're connected.
+	if (_ws_send_handshake(ws, bufferevent_get_output(ws->bev)))
+	{
+		LIBWS_LOG(LIBWS_ERR, "Failed to assemble handshake");
+		return;
+	}
+}
+
+static void _ws_eof_event(struct bufferevent *bev, short events, void *ptr)
+{
+	ws_t ws = (ws_t)ptr;
+	ws_close_status_t status;
+	struct evbuffer *in;
+	assert(ws);
+
+	LIBWS_LOG(LIBWS_TRACE, "EOF event");
+
+	in = bufferevent_get_input(ws->bev);
+
+	if (evbuffer_get_length(in) > 0)
+	{
+		LIBWS_LOG(LIBWS_DEBUG, "Left %u bytes at EOF", evbuffer_get_length(in));
+
+		_ws_read_websocket(ws, in);
+	}
+
+	status = ws->server_close_status;
+
+	LIBWS_LOG(LIBWS_DEBUG, "Sent close frame %d, received close frame %d", 
+							ws->sent_close, ws->received_close);
+
+	_ws_shutdown(ws);
+
+	if (!ws->received_close)
+	{
+		ws->state = WS_STATE_CLOSED_UNCLEANLY;
+		status = WS_CLOSE_STATUS_ABNORMAL_1006;
+	}
+
+	if (ws->close_cb)
+	{
+		ws->close_cb(ws, 
+			status,
+			ws->server_reason,
+			ws->server_reason_len,
+			ws->close_arg);
+	}
+	else
+	{
+		LIBWS_LOG(LIBWS_DEBUG, "No close callback");
+	}
+}
+
+static void _ws_error_event(struct bufferevent *bev, short events, void *ptr)
+{
+	const char *err_msg;
+	int err;
+	ws_t ws = (ws_t)ptr;
+	assert(ws);
+
+	LIBWS_LOG(LIBWS_DEBUG, "Error raised");
+
+	if (ws->state == WS_STATE_DNS_LOOKUP)
+	{
+		err = bufferevent_socket_get_dns_error(ws->bev);
+		err_msg = evutil_gai_strerror(err);
+
+		LIBWS_LOG(LIBWS_ERR, "DNS error %d: %s", err, err_msg);
+	}
+	else
+	{
+		err = EVUTIL_SOCKET_ERROR();
+		err_msg = evutil_socket_error_to_string(err);
+
+		LIBWS_LOG(LIBWS_ERR, "%s (%d)", err_msg, err);
+	}
+
+	// TODO: Should there even be an erro callback?
+	if (ws->err_cb)
+	{
+		ws->err_cb(ws, err, err_msg, ws->err_arg);
+	}
+	else
+	{
+		ws_close(ws);
+	}
+}
+
+///
+/// Libevent bufferevent callback for when an event occurs on
+/// the websocket socket.
+///
+static void _ws_event_callback(struct bufferevent *bev, short events, void *ptr)
+{
+	ws_t ws = (ws_t)ptr;
+	assert(ws);
+
+	if (events & BEV_EVENT_CONNECTED)
+	{
+		_ws_connected_event(bev, events, ws);
+		return;
+	}
+
+	if (events & BEV_EVENT_EOF)
+	{
+		_ws_eof_event(bev, events, ws);
+		return;
+	}
+	
+	if (events & BEV_EVENT_ERROR)
+	{
+		_ws_error_event(bev, events, ws);
+		return;
+	}
 }
 
 int _ws_create_bufferevent_socket(ws_t ws)
