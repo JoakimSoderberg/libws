@@ -660,6 +660,8 @@ static void _ws_eof_event(struct bufferevent *bev, short events, void *ptr)
 
 	if (ws->close_cb)
 	{
+		LIBWS_LOG(LIBWS_DEBUG, "Call close callback");
+
 		ws->close_cb(ws, 
 			status,
 			ws->server_reason,
@@ -967,7 +969,7 @@ int _ws_send_close(ws_t ws, ws_close_status_t status_code,
 							 "frame payload size %u + 2 byte status (max %d)", 
 							 reason_len, WS_CONTROL_MAX_PAYLOAD_LEN);
 		return -1;
-	}	
+	}
 
 	*((uint16_t *)close_payload) = htons((uint16_t)status_code);
 	memcpy(&close_payload[2], reason, reason_len);
@@ -1018,3 +1020,13 @@ void _ws_set_timeouts(ws_t ws)
 	bufferevent_set_timeouts(ws->bev, &ws->recv_timeout, &ws->send_timeout);
 }
 
+void _ws_destroy_event(struct event **event)
+{
+	assert(event);
+
+	if (*event)
+	{
+		event_free(*event);
+		*event = NULL;
+	}
+}

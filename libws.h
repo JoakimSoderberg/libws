@@ -825,6 +825,13 @@ void ws_set_ssl_state(ws_t ws, libws_ssl_state_t ssl);
 ///
 const char *ws_parse_state_to_string(ws_parse_state_t state);
 
+///
+/// Sets rate limits for the websocket connection.
+/// The rates are specified in bytes/second.
+///
+void ws_set_rate_limits(ws_t ws, size_t read_rate, size_t read_burst, 
+						size_t write_rate, size_t write_burst);
+
 #endif // __LIBWS_H__
 
 

@@ -39,7 +39,7 @@ int _ws_global_openssl_init(ws_base_t ws_base)
 void _ws_global_openssl_destroy(ws_base_t ws_base)
 {
 	if (ws_base->ssl_ctx)
-	{		
+	{
 		SSL_CTX_free(ws_base->ssl_ctx);
 		ws_base->ssl_ctx = NULL;
 	}
@@ -52,11 +52,6 @@ int _ws_openssl_init(ws_t ws, ws_base_t ws_base)
 
 void _ws_openssl_destroy(ws_t ws)
 {
-	if (ws->ws_base->ssl_ctx)
-	{
-		SSL_CTX_free(ws->ws_base->ssl_ctx);
-		ws->ws_base->ssl_ctx = NULL;
-	}
 }
 
 int _ws_openssl_close(ws_t ws)

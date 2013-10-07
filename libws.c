@@ -173,18 +173,15 @@ void ws_destroy(ws_t *ws)
 		_ws_free(w->origin);
 	}
 
-	// TODO: Destroy all timeout events here.
-	if (w->connect_timeout_event)
-	{
-		LIBWS_LOG(LIBWS_DEBUG, "Freeing connect timeout event");
-		event_free(w->connect_timeout_event);
-		w->connect_timeout_event = NULL;
-	}
+	_ws_destroy_event(&w->connect_timeout_event);
+	_ws_destroy_event(&w->close_timeout_event);
+	_ws_destroy_event(&w->pong_timeout_event);
 
-	if (w->close_timeout_event)
+	// Must be done after the bufferevent is freed.
+	if (w->rate_limits)
 	{
-		event_free(w->close_timeout_event);
-		w->close_timeout_event = NULL;
+		ev_token_bucket_cfg_free(w->rate_limits);
+		w->rate_limits = NULL;
 	}
 
 	ws_clear_subprotocols(w);
@@ -1275,3 +1272,38 @@ const char *ws_parse_state_to_string(ws_parse_state_t state)
 		default: return "Unknown";
 	}
 }
+
+void ws_set_rate_limits(ws_t ws, size_t read_rate, size_t read_burst, 
+						size_t write_rate, size_t write_burst)
+{
+	struct timeval tv;
+	assert(ws);
+	assert(ws->bev);
+
+	// Get rid of any old rate limiting.
+	if (bufferevent_set_rate_limit(ws->bev, NULL))
+	{
+		LIBWS_LOG(LIBWS_ERR, "Failed to turn off rate limit");
+	}
+
+	if (ws->rate_limits)
+	{
+		ev_token_bucket_cfg_free(ws->rate_limits);
+		ws->rate_limits = NULL;
+	}
+
+	// Turn off rate limiting.
+	if ((read_rate == 0) && (read_burst == 0)
+	 && (write_rate == 0) && (write_burst == 0))
+	{
+		return;
+	}
+
+	// Create a rate limiting token bucket.
+	tv.tv_sec = 1;
+	ws->rate_limits = ev_token_bucket_cfg_new(read_rate, read_burst, 
+											  write_rate, write_burst, &tv);
+
+
+}
+

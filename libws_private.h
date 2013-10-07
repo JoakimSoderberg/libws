@@ -218,6 +218,8 @@ typedef struct ws_s
 	void 					*no_copy_extra;		///< User supplied argument for the ws_s#no_copy_cleanup_cb
 	/// @}
 
+	struct ev_token_bucket_cfg *rate_limits;	///< Rate limits.
+
 	#ifdef LIBWS_WITH_OPENSSL
 	///
 	/// @defgroup OpenSSL OpenSSL variables
@@ -364,5 +366,9 @@ void _ws_set_memory_functions(ws_malloc_replacement_f malloc_replace,
 							 ws_free_replacement_f free_replace,
 							 ws_realloc_replacement_f realloc_replace);
 
+///
+/// Frees and NULLs an libevent event.
+///
+void _ws_destroy_event(struct event **event);
 
 #endif // __LIBWS_PRIVATE_H__
