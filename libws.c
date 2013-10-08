@@ -15,6 +15,7 @@
 #include <inttypes.h>
 #include <unistd.h> // TODO: System introspection.
 #include <string.h>
+#include <signal.h>
 
 #include "libws_types.h"
 #include "libws_log.h"
@@ -46,6 +47,8 @@ int ws_global_init(ws_base_t *base)
 	}
 
 	b = *base;
+
+	signal(SIGPIPE, SIG_IGN);
 
 	#ifndef WIN32
 	if ((b->random_fd = open(WS_RANDOM_PATH, O_RDONLY)) < 0)
@@ -146,6 +149,16 @@ int ws_init(ws_t *ws, ws_base_t ws_base)
 
 	w->ws_base = ws_base;
 
+	#ifdef LIBWS_WITH_OPENSSL
+	if (_ws_openssl_init(w, ws_base))
+	{
+		LIBWS_LOG(LIBWS_ERR, "Failed to init OpenSSL");
+		_ws_free(*ws);
+		*ws = NULL;
+		return -1;
+	}
+	#endif // LIBWS_WITH_OPENSSL
+
 	w->state = WS_STATE_CLOSED_CLEANLY;
 
 	return 0;
@@ -189,6 +202,7 @@ void ws_destroy(ws_t *ws)
 	if (w->handshake_key_base64) _ws_free(w->handshake_key_base64);
 	if (w->server) _ws_free(w->server);
 	if (w->uri) _ws_free(w->uri);
+
 
 	#ifdef LIBWS_WITH_OPENSSL
 	_ws_openssl_destroy(w);

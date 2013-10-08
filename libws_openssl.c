@@ -11,10 +11,15 @@
 #include <event2/listener.h>
 #include <event2/bufferevent_ssl.h>
 
+// TODO: Allow setting client cert: SSL_CTX_use_certificate_file(ssl_ctx, "my_apple_cert_key.pem", SSL_FILETYPE_PEM);
+// http://www.provos.org/index.php?/archives/79-OpenSSL-Client-Certificates-and-Libevent-2.0.3-alpha.html
+
 int _ws_global_openssl_init(ws_base_t ws_base)
 {
 	SSL_library_init();
+	ERR_load_crypto_strings();
 	SSL_load_error_strings();
+	OpenSSL_add_all_algorithms();
 
 	if (!RAND_poll())
 	{
@@ -47,6 +52,14 @@ void _ws_global_openssl_destroy(ws_base_t ws_base)
 
 int _ws_openssl_init(ws_t ws, ws_base_t ws_base)
 {
+	assert(ws);
+	assert(ws_base);
+
+	LIBWS_LOG(LIBWS_DEBUG, "OpenSSL init");
+
+	if (!(ws->ssl = SSL_new(ws_base->ssl_ctx)))
+		return -1;
+
 	return 0;
 }
 
@@ -83,7 +96,7 @@ int _ws_create_bufferevent_openssl_socket(ws_t ws)
 	assert(ws->ssl);
 
 	if (!(ws->bev = bufferevent_openssl_socket_new(ws->ws_base->ev_base, -1, 
-			ws->ssl, BUFFEREVENT_SSL_CONNECTING, BEV_OPT_CLOSE_ON_FREE)))
+			ws->ssl, BUFFEREVENT_SSL_CONNECTING, BEV_OPT_CLOSE_ON_FREE|BEV_OPT_DEFER_CALLBACKS)))
 	{
 		LIBWS_LOG(LIBWS_ERR, "Failed to create SSL socket");
 		return -1;

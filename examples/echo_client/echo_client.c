@@ -70,6 +70,8 @@ int main(int argc, char **argv)
 	ws_set_onconnect_cb(ws, onconnect, NULL);
 	ws_set_onclose_cb(ws, onclose, NULL);
 
+	ws_set_ssl_state(ws, LIBWS_SSL_SELFSIGNED);
+
 	if (ws_connect(ws, "localhost", 9500, ""))
 	{
 		return -1;

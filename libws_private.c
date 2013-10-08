@@ -130,6 +130,10 @@ void _ws_set_memory_functions(ws_malloc_replacement_f malloc_replace,
 	replaced_ws_realloc = realloc_replace;
 
 	event_set_mem_functions(malloc_replace, realloc_replace, free_replace);
+
+	#ifdef LIBWS_WITH_OPENSSL
+	CRYPTO_set_mem_functions(malloc_replace, realloc_replace, free_replace);
+	#endif
 }
 
 ///
@@ -618,6 +622,8 @@ static void _ws_connected_event(struct bufferevent *bev, short events, void *arg
 		ws->connect_timeout_event = NULL;
 	}
 
+	bufferevent_enable(ws->bev, EV_READ | EV_WRITE);
+
 	// Add the handshake to the send buffer, this will
 	// be sent as soon as we're connected.
 	if (_ws_send_handshake(ws, bufferevent_get_output(ws->bev)))
@@ -748,6 +754,7 @@ int _ws_create_bufferevent_socket(ws_t ws)
 	{
 		if (_ws_create_bufferevent_openssl_socket(ws)) 
 		{
+			LIBWS_LOG(LIBWS_ERR, "Failed to create SSL socket");
 			return -1;
 		}
 	}
@@ -765,13 +772,14 @@ int _ws_create_bufferevent_socket(ws_t ws)
 	bufferevent_setcb(ws->bev, _ws_read_callback, _ws_write_callback, 
 					_ws_event_callback, (void *)ws);
 
-	bufferevent_enable(ws->bev, EV_READ | EV_WRITE);
+	//bufferevent_enable(ws->bev, EV_READ | EV_WRITE);
 
 	return 0;
 fail:
 	if (ws->bev)
 	{
 		bufferevent_free(ws->bev);
+		ws->bev = NULL;
 	}
 
 	return -1;
@@ -903,15 +911,15 @@ void _ws_shutdown(ws_t ws)
 
 	LIBWS_LOG(LIBWS_TRACE, "Websocket shutdown");
 
-	#ifdef LIBWS_WITH_OPENSSL
-	_ws_openssl_close(ws);
-	#endif
-
 	if (ws->connect_timeout_event)
 	{
 		event_free(ws->connect_timeout_event);
 		ws->connect_timeout_event = NULL;
 	}
+
+	#ifdef LIBWS_WITH_OPENSSL
+	_ws_openssl_close(ws);
+	#endif
 
 	if (ws->bev)
 	{
