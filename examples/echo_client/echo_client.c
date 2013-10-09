@@ -46,7 +46,7 @@ int main(int argc, char **argv)
 	int ret = 0;
 	ws_base_t base = NULL;
 	ws_t ws = NULL;
-	int echo_count = 5;
+	int echo_count = 1;
 
 	ws_set_log_cb(ws_default_log_cb);
 	ws_set_log_level(-1);

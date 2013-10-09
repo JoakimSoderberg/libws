@@ -36,6 +36,14 @@ int _ws_global_openssl_init(ws_base_t ws_base)
 			LIBWS_LOG(LIBWS_ERR, "Failed to create OpenSSL context");
 			return -1;
 		}
+
+		#if OPENSSL_VERSION_NUMBER >= 0x10000000L
+		SSL_CTX_set_options(ws_base->ssl_ctx, SSL_MODE_RELEASE_BUFFERS);
+		/* SSL_CTX_set_options(ws_base->ssl_ctx, SSL_MODE_AUTO_RETRY); */
+		//SSL_CTX_set_timeout(ws_base->ssl_ctx, cfg->ssl_ctx_timeout);
+		#endif
+
+
 	}
 
 	return 0;
@@ -96,7 +104,8 @@ int _ws_create_bufferevent_openssl_socket(ws_t ws)
 	assert(ws->ssl);
 
 	if (!(ws->bev = bufferevent_openssl_socket_new(ws->ws_base->ev_base, -1, 
-			ws->ssl, BUFFEREVENT_SSL_CONNECTING, BEV_OPT_CLOSE_ON_FREE|BEV_OPT_DEFER_CALLBACKS)))
+			ws->ssl, BUFFEREVENT_SSL_CONNECTING, 
+			BEV_OPT_CLOSE_ON_FREE|BEV_OPT_DEFER_CALLBACKS)))
 	{
 		LIBWS_LOG(LIBWS_ERR, "Failed to create SSL socket");
 		return -1;

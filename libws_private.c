@@ -624,6 +624,22 @@ static void _ws_connected_event(struct bufferevent *bev, short events, void *arg
 
 	bufferevent_enable(ws->bev, EV_READ | EV_WRITE);
 
+	#ifdef LIBWS_WITH_OPENSSL
+	{
+		int rc = SSL_get_verify_result(ws->ssl);
+
+		if(rc != X509_V_OK) 
+		{
+  			if (rc == X509_V_ERR_DEPTH_ZERO_SELF_SIGNED_CERT 
+  			 || rc == X509_V_ERR_SELF_SIGNED_CERT_IN_CHAIN)
+  			{
+  				LIBWS_LOG(LIBWS_DEBUG, "Server using a self-signed certificate");
+  				// TODO: Fail if use_ssl is not set to allow self-signed.
+  			}
+  		}
+	}
+	#endif
+
 	// Add the handshake to the send buffer, this will
 	// be sent as soon as we're connected.
 	if (_ws_send_handshake(ws, bufferevent_get_output(ws->bev)))
