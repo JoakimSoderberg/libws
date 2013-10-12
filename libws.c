@@ -40,6 +40,8 @@ int ws_global_init(ws_base_t *base)
 
 	assert(base);
 
+	LIBWS_LOG(LIBWS_TRACE, "Global init");
+
 	if (!(*base = (ws_base_s *)_ws_calloc(1, sizeof(ws_base_s))))
 	{
 		LIBWS_LOG(LIBWS_CRIT, "Out of memory!");
@@ -48,6 +50,7 @@ int ws_global_init(ws_base_t *base)
 
 	b = *base;
 
+	// Don't crash on Broken pipe for a socket.
 	signal(SIGPIPE, SIG_IGN);
 
 	#ifndef WIN32
@@ -55,7 +58,7 @@ int ws_global_init(ws_base_t *base)
 	{
 		LIBWS_LOG(LIBWS_ERR, "Failed to open random source %s , %d",
 							WS_RANDOM_PATH, b->random_fd);
-		return -1;
+		goto fail;
 	}
 	#endif
 
@@ -78,12 +81,18 @@ int ws_global_init(ws_base_t *base)
 	if (_ws_global_openssl_init(b))
 	{
 		LIBWS_LOG(LIBWS_CRIT, "Failed to init OpenSSL");
-		return -1;
+		goto fail;
 	}
 	#endif
 
 	return 0;
 fail:
+	if (*base)
+	{
+		_ws_free(*base);
+		*base = NULL;
+	}
+
 	if (b->ev_base)
 	{
 		event_base_free(b->ev_base);
@@ -109,10 +118,6 @@ void ws_global_destroy(ws_base_t *base)
 	}
 	#endif
 
-	#ifdef LIBWS_WITH_OPENSSL
-	_ws_global_openssl_destroy(b);
-	#endif
-
 	if (b->dns_base)
 	{
 		evdns_base_free(b->dns_base, 1);
@@ -124,6 +129,10 @@ void ws_global_destroy(ws_base_t *base)
 		event_base_free(b->ev_base);
 		b->ev_base = NULL;
 	}
+
+	#ifdef LIBWS_WITH_OPENSSL
+	_ws_global_openssl_destroy(b);
+	#endif
 
 	_ws_free(*base);
 	*base = NULL;
@@ -279,8 +288,8 @@ int ws_connect(ws_t ws, const char *server, int port, const char *uri)
 
 	return 0;
 fail:
-	if (ws->server) free(ws->server);
-	if (ws->uri) free(ws->uri);
+	if (ws->server) _ws_free(ws->server);
+	if (ws->uri) _ws_free(ws->uri);
 
 	return -1;
 }

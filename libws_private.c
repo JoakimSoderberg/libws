@@ -788,8 +788,6 @@ int _ws_create_bufferevent_socket(ws_t ws)
 	bufferevent_setcb(ws->bev, _ws_read_callback, _ws_write_callback, 
 					_ws_event_callback, (void *)ws);
 
-	//bufferevent_enable(ws->bev, EV_READ | EV_WRITE);
-
 	return 0;
 fail:
 	if (ws->bev)
@@ -801,7 +799,7 @@ fail:
 	return -1;
 }
 
-void _ws_builtin_no_copy_cleanup_wrapper(const void *data, 
+static void _ws_builtin_no_copy_cleanup_wrapper(const void *data, 
 										size_t datalen, void *extra)
 {
 	ws_t ws = (ws_t)extra;
@@ -933,15 +931,15 @@ void _ws_shutdown(ws_t ws)
 		ws->connect_timeout_event = NULL;
 	}
 
-	#ifdef LIBWS_WITH_OPENSSL
-	_ws_openssl_close(ws);
-	#endif
-
 	if (ws->bev)
 	{
 		bufferevent_free(ws->bev);
 		ws->bev = NULL;
 	}
+
+	#ifdef LIBWS_WITH_OPENSSL
+	_ws_openssl_close(ws);
+	#endif
 }
 
 void _ws_close_timeout_cb(evutil_socket_t fd, short what, void *arg)

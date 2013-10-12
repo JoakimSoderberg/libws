@@ -74,7 +74,8 @@ int main(int argc, char **argv)
 
 	if (ws_connect(ws, "localhost", 9500, ""))
 	{
-		return -1;
+		ret = -1;
+		goto fail;
 	}
 
 	ws_base_service_blocking(base);
@@ -82,6 +83,7 @@ int main(int argc, char **argv)
 fail:
 	ws_destroy(&ws);
 	ws_global_destroy(&base);
+	printf("Bye bye!");
 	return ret;
 }
 

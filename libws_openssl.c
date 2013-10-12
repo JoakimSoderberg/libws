@@ -17,9 +17,9 @@
 int _ws_global_openssl_init(ws_base_t ws_base)
 {
 	SSL_library_init();
-	ERR_load_crypto_strings();
+	//ERR_load_crypto_strings();
 	SSL_load_error_strings();
-	OpenSSL_add_all_algorithms();
+	//OpenSSL_add_all_algorithms();
 
 	if (!RAND_poll())
 	{
@@ -56,6 +56,11 @@ void _ws_global_openssl_destroy(ws_base_t ws_base)
 		SSL_CTX_free(ws_base->ssl_ctx);
 		ws_base->ssl_ctx = NULL;
 	}
+
+	CRYPTO_cleanup_all_ex_data();
+	ERR_free_strings();
+	ERR_remove_state(0);
+	EVP_cleanup();
 }
 
 int _ws_openssl_init(ws_t ws, ws_base_t ws_base)
@@ -73,10 +78,13 @@ int _ws_openssl_init(ws_t ws, ws_base_t ws_base)
 
 void _ws_openssl_destroy(ws_t ws)
 {
+	_ws_openssl_close(ws);
 }
 
 int _ws_openssl_close(ws_t ws)
 {
+	LIBWS_LOG(LIBWS_TRACE, "OpenSSL close");
+
 	//
 	// SSL_RECEIVED_SHUTDOWN tells SSL_shutdown to act as if we had already
 	// received a close notify from the other end.  SSL_shutdown will then
@@ -92,8 +100,11 @@ int _ws_openssl_close(ws_t ws)
 	{
 		SSL_set_shutdown(ws->ssl, SSL_RECEIVED_SHUTDOWN);
 		SSL_shutdown(ws->ssl);
+		SSL_free(ws->ssl);
 		ws->ssl = NULL;
 	}
+
+	LIBWS_LOG(LIBWS_TRACE, "End");
 
 	return 0;
 }
