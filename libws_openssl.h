@@ -12,6 +12,6 @@ void _ws_openssl_destroy(struct ws_s *ws);
 
 int _ws_openssl_close(struct ws_s *ws);
 
-int _ws_create_bufferevent_openssl_socket(struct ws_s *ws);
+struct bufferevent *_ws_create_bufferevent_openssl_socket(struct ws_s *ws);
 
 #endif // __LIBWS_H_OPENSSL__

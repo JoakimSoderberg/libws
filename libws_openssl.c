@@ -17,9 +17,9 @@
 int _ws_global_openssl_init(ws_base_t ws_base)
 {
 	SSL_library_init();
-	//ERR_load_crypto_strings();
+	ERR_load_crypto_strings();
 	SSL_load_error_strings();
-	//OpenSSL_add_all_algorithms();
+	OpenSSL_add_all_algorithms();
 
 	if (!RAND_poll())
 	{
@@ -27,36 +27,11 @@ int _ws_global_openssl_init(ws_base_t ws_base)
 		return -1;
 	}
 
-	// Setup the SSL context.
-	{
-		const SSL_METHOD *ssl_method = SSLv23_client_method();
-
-		if (!(ws_base->ssl_ctx = SSL_CTX_new(ssl_method)))
-		{
-			LIBWS_LOG(LIBWS_ERR, "Failed to create OpenSSL context");
-			return -1;
-		}
-
-		#if OPENSSL_VERSION_NUMBER >= 0x10000000L
-		SSL_CTX_set_options(ws_base->ssl_ctx, SSL_MODE_RELEASE_BUFFERS);
-		/* SSL_CTX_set_options(ws_base->ssl_ctx, SSL_MODE_AUTO_RETRY); */
-		//SSL_CTX_set_timeout(ws_base->ssl_ctx, cfg->ssl_ctx_timeout);
-		#endif
-
-
-	}
-
 	return 0;
 }
 
 void _ws_global_openssl_destroy(ws_base_t ws_base)
 {
-	if (ws_base->ssl_ctx)
-	{
-		SSL_CTX_free(ws_base->ssl_ctx);
-		ws_base->ssl_ctx = NULL;
-	}
-
 	CRYPTO_cleanup_all_ex_data();
 	ERR_free_strings();
 	ERR_remove_state(0);
@@ -70,7 +45,22 @@ int _ws_openssl_init(ws_t ws, ws_base_t ws_base)
 
 	LIBWS_LOG(LIBWS_DEBUG, "OpenSSL init");
 
-	if (!(ws->ssl = SSL_new(ws_base->ssl_ctx)))
+	// Setup the SSL context.
+	{
+		const SSL_METHOD *ssl_method = SSLv23_client_method();
+
+		if (!(ws->ssl_ctx = SSL_CTX_new(ssl_method)))
+		{
+			LIBWS_LOG(LIBWS_ERR, "Failed to create OpenSSL context");
+			return -1;
+		}
+
+		#if OPENSSL_VERSION_NUMBER >= 0x10000000L
+		SSL_CTX_set_options(ws->ssl_ctx, SSL_MODE_RELEASE_BUFFERS);
+		#endif
+	}
+
+	if (!(ws->ssl = SSL_new(ws->ssl_ctx)))
 		return -1;
 
 	return 0;
@@ -79,6 +69,12 @@ int _ws_openssl_init(ws_t ws, ws_base_t ws_base)
 void _ws_openssl_destroy(ws_t ws)
 {
 	_ws_openssl_close(ws);
+
+	if (ws->ssl_ctx)
+	{
+		SSL_CTX_free(ws->ssl_ctx);
+		ws->ssl_ctx = NULL;
+	}
 }
 
 int _ws_openssl_close(ws_t ws)
@@ -109,19 +105,20 @@ int _ws_openssl_close(ws_t ws)
 	return 0;
 }
 
-int _ws_create_bufferevent_openssl_socket(ws_t ws)
+struct bufferevent * _ws_create_bufferevent_openssl_socket(ws_t ws)
 {
-	assert(ws->ws_base->ssl_ctx);
+	struct bufferevent *bev = NULL;
+	assert(ws->ssl_ctx);
 	assert(ws->ssl);
 
-	if (!(ws->bev = bufferevent_openssl_socket_new(ws->ws_base->ev_base, -1, 
+	if (!(bev = bufferevent_openssl_socket_new(ws->ws_base->ev_base, -1, 
 			ws->ssl, BUFFEREVENT_SSL_CONNECTING, 
 			BEV_OPT_CLOSE_ON_FREE|BEV_OPT_DEFER_CALLBACKS)))
 	{
 		LIBWS_LOG(LIBWS_ERR, "Failed to create SSL socket");
-		return -1;
+		return NULL;
 	}
 
-	return 0;
+	return bev;
 }
 

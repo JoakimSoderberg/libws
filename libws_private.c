@@ -761,6 +761,7 @@ static void _ws_event_callback(struct bufferevent *bev, short events, void *ptr)
 
 int _ws_create_bufferevent_socket(ws_t ws)
 {
+	int ret = 0;
 	assert(ws);
 
 	LIBWS_LOG(LIBWS_DEBUG, "Create bufferevent socket");
@@ -768,10 +769,11 @@ int _ws_create_bufferevent_socket(ws_t ws)
 	#ifdef LIBWS_WITH_OPENSSL
 	if (ws->use_ssl)
 	{
-		if (_ws_create_bufferevent_openssl_socket(ws)) 
+		if (!(ws->bev = _ws_create_bufferevent_openssl_socket(ws))) 
 		{
 			LIBWS_LOG(LIBWS_ERR, "Failed to create SSL socket");
-			return -1;
+			ret = -1;
+			goto fail;
 		}
 	}
 	else
@@ -781,14 +783,15 @@ int _ws_create_bufferevent_socket(ws_t ws)
 										BEV_OPT_CLOSE_ON_FREE)))
 		{
 			LIBWS_LOG(LIBWS_ERR, "Failed to create socket");
-			return -1;
+			ret = -1;
+			goto fail;
 		}
 	}
 
 	bufferevent_setcb(ws->bev, _ws_read_callback, _ws_write_callback, 
 					_ws_event_callback, (void *)ws);
 
-	return 0;
+	return ret;
 fail:
 	if (ws->bev)
 	{
@@ -796,7 +799,7 @@ fail:
 		ws->bev = NULL;
 	}
 
-	return -1;
+	return ret;
 }
 
 static void _ws_builtin_no_copy_cleanup_wrapper(const void *data, 

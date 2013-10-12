@@ -57,12 +57,6 @@ typedef struct ws_base_s
 
 	struct event_base		*ev_base;			///< Libevent event base.
 	struct evdns_base 		*dns_base;			///< Libevent DNS base.
-
-	#ifdef LIBWS_WITH_OPENSSL
-
-	SSL_CTX *ssl_ctx;
-
-	#endif // LIBWS_WITH_OPENSSL
 } ws_base_s;
 
 ///
@@ -225,6 +219,7 @@ typedef struct ws_s
 	/// @defgroup OpenSSL OpenSSL variables
 	///
 	libws_ssl_state_t 		use_ssl;			///< If SSL should be used or not.
+	SSL_CTX					*ssl_ctx;
 	SSL 					*ssl;				///< SSL session.
 
 	#endif // LIBWS_WITH_OPENSSL
