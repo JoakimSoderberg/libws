@@ -42,6 +42,8 @@ int ws_global_init(ws_base_t *base)
 
 	LIBWS_LOG(LIBWS_TRACE, "Global init");
 
+	LIBWS_LOG(LIBWS_INFO, "Libevent version %s", event_get_version());
+
 	if (!(*base = (ws_base_s *)_ws_calloc(1, sizeof(ws_base_s))))
 	{
 		LIBWS_LOG(LIBWS_CRIT, "Out of memory!");
