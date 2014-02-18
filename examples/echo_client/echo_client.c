@@ -44,9 +44,24 @@ void onconnect(ws_t ws, void *arg)
 int main(int argc, char **argv)
 {
 	int ret = 0;
+	int i;
 	ws_base_t base = NULL;
 	ws_t ws = NULL;
-	int echo_count = 1;
+	int echo_count = 5;
+	int ssl = 0;
+	char *server = "localhost";
+
+	for (i = 1; i < argc; i++)
+	{
+		if (!strcmp(argv[i], "--ssl"))
+		{
+			ssl = 1;
+		}
+		else
+		{
+			server = argv[i];
+		}
+	}
 
 	ws_set_log_cb(ws_default_log_cb);
 	ws_set_log_level(-1);
@@ -70,9 +85,14 @@ int main(int argc, char **argv)
 	ws_set_onconnect_cb(ws, onconnect, NULL);
 	ws_set_onclose_cb(ws, onclose, NULL);
 
-	ws_set_ssl_state(ws, LIBWS_SSL_SELFSIGNED);
+	if (ssl)
+	{
+		ws_set_ssl_state(ws, LIBWS_SSL_SELFSIGNED);
+	}
 
-	if (ws_connect(ws, "localhost", 9500, ""))
+	printf("Connect to server %s\n", server);
+
+	if (ws_connect(ws, server, 9500, ""))
 	{
 		ret = -1;
 		goto fail;
@@ -83,7 +103,7 @@ int main(int argc, char **argv)
 fail:
 	ws_destroy(&ws);
 	ws_global_destroy(&base);
-	printf("Bye bye!");
+	printf("Bye bye!\n");
 	return ret;
 }
 
