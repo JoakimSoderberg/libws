@@ -934,15 +934,21 @@ void _ws_shutdown(ws_t ws)
 		ws->connect_timeout_event = NULL;
 	}
 
+	#ifdef LIBWS_WITH_OPENSSL
+	_ws_openssl_close(ws);
+	#endif
+
 	if (ws->bev)
 	{
 		bufferevent_free(ws->bev);
 		ws->bev = NULL;
+		LIBWS_LOG(LIBWS_DEBUG, "Freed bufferevent");
 	}
 
-	#ifdef LIBWS_WITH_OPENSSL
-	_ws_openssl_close(ws);
-	#endif
+	// TODO: Only quit when the base has no more connections.
+	ws_base_quit(ws->ws_base, 1);
+
+	LIBWS_LOG(LIBWS_TRACE, "End");
 }
 
 void _ws_close_timeout_cb(evutil_socket_t fd, short what, void *arg)

@@ -72,6 +72,7 @@ void _ws_openssl_destroy(ws_t ws)
 
 	if (ws->ssl_ctx)
 	{
+		SSL_CTX_sess_set_remove_cb(ws->ssl_ctx, NULL);
 		SSL_CTX_free(ws->ssl_ctx);
 		ws->ssl_ctx = NULL;
 	}
@@ -96,7 +97,6 @@ int _ws_openssl_close(ws_t ws)
 	{
 		SSL_set_shutdown(ws->ssl, SSL_RECEIVED_SHUTDOWN);
 		SSL_shutdown(ws->ssl);
-		SSL_free(ws->ssl);
 		ws->ssl = NULL;
 	}
 
