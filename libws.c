@@ -366,7 +366,7 @@ fail:
 
 	LIBWS_LOG(LIBWS_ERR, "Failed to send close frame, "
 						 "forcing unclean close");
-	
+
 	_ws_shutdown(ws);
 
 	if (ws->close_cb)
@@ -588,7 +588,7 @@ int ws_msg_frame_data_begin(ws_t ws, uint64_t datalen)
 		LIBWS_LOG(LIBWS_ERR, "Incorrect state for frame data begin");
 		return -1;
 	}
-	
+
 	if (datalen > WS_MAX_PAYLOAD_LEN)
 	{
 		LIBWS_LOG(LIBWS_ERR, "Payload length (0x%x) larger than max allowed "
@@ -766,9 +766,9 @@ int ws_send_msg(ws_t ws, char *msg)
 {
 	int ret = 0;
 	int saved_binary_mode = ws->binary_mode;
-	
+
 	ws->binary_mode = 0;
-	
+
 	ret = ws_send_msg_ex(ws, msg, (uint64_t)strlen(msg));
 	
 	ws->binary_mode = saved_binary_mode;
@@ -904,7 +904,10 @@ void ws_onping_default_cb(ws_t ws, const char *msg, uint64_t len,
 {
 	assert(ws);
 
-	// TODO: Reply with a ping.
+	if (ws_send_pong(ws, msg, len))
+	{
+		LIBWS_LOG(LIBWS_ERR, "Failed to send pong");
+	}
 }
 
 void ws_set_onping_cb(ws_t ws, ws_msg_callback_f func, void *arg)
@@ -1010,7 +1013,7 @@ void ws_set_connect_timeout_cb(ws_t ws, ws_timeout_callback_f func,
 	ws->connect_timeout_arg = arg;
 }
 
-int ws_send_ping_ex(ws_t ws, char *msg, size_t len)
+int ws_send_ping_ex(ws_t ws, const char *msg, size_t len)
 {
 	assert(ws);
 
@@ -1033,7 +1036,7 @@ int ws_send_ping(ws_t ws)
 	return ws_send_ping_ex(ws, NULL, 0);
 }
 
-int ws_send_pong(ws_t ws, char *msg, size_t len)
+int ws_send_pong(ws_t ws, const char *msg, size_t len)
 {
 	assert(ws);
 

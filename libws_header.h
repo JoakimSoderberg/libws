@@ -1,6 +1,7 @@
 #ifndef __LIBWS_HEADER_H__
 #define __LIBWS_HEADER_H__
 
+#include <stdio.h>
 #include <inttypes.h>
 
 typedef enum ws_opcode_e

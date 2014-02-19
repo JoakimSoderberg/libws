@@ -284,7 +284,7 @@ int ws_send_ping(ws_t ws);
 ///
 /// @returns			0 on success.
 ///
-int ws_send_ping_ex(ws_t ws, char *msg, size_t len);
+int ws_send_ping_ex(ws_t ws, const char *msg, size_t len);
 
 ///
 /// Sends a pong reply with a payload to the websocket.
@@ -303,7 +303,7 @@ int ws_send_ping_ex(ws_t ws, char *msg, size_t len);
 ///
 /// @returns 			0 on success.
 /// 
-int ws_send_pong(ws_t ws, char *msg, size_t len);
+int ws_send_pong(ws_t ws, const char *msg, size_t len);
 
 ///
 /// Sets the max allowed frame size. If any frame size exceeds
@@ -571,10 +571,28 @@ int ws_set_origin(ws_t ws, const char *origin);
 /// @see ws_set_onping_cb
 ///
 /// @param[in]	ws 		The websocket session context.
+/// @param[in]	msg 	The ping payload.
+/// @param[in]	len 	The ping payload length.
 /// @param[in]	arg		User context passed to the callback.
 ///
 void ws_onping_default_cb(ws_t ws, const char *msg, uint64_t len, 
 							int binary, void *arg);
+
+///
+/// The default pong callback handler. 
+///
+/// @note This should only ever be called from within the
+///       pong callback set using #ws_set_onpong_cb.
+///
+/// @see ws_set_onpong_cb
+///
+/// @param[in]	ws 		The websocket session context.
+/// @param[in]	msg 	The pong payload.
+/// @param[in]	len 	The pong payload length.
+/// @param[in]	arg		User context passed to the callback.
+///
+void ws_onpong_default_cb(ws_t ws, const char *msg, uint64_t len, 
+						int binary, void *arg);
 
 ///
 /// Sets the on ping callback function for when a ping websocket

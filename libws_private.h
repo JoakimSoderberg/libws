@@ -268,7 +268,7 @@ int _ws_create_bufferevent_socket(ws_t ws);
 ///
 /// @returns			0 on success.
 /// 
-int _ws_send_data(ws_t ws, char *msg, uint64_t len, int no_copy);
+int _ws_send_data(ws_t ws, const char *msg, uint64_t len, int no_copy);
 
 ///
 /// Sends a raw websocket frame.
@@ -280,7 +280,7 @@ int _ws_send_data(ws_t ws, char *msg, uint64_t len, int no_copy);
 ///
 /// @returns			0 on success.
 ///
-int _ws_send_frame_raw(ws_t ws, ws_opcode_t opcode, char *data, uint64_t datalen);
+int _ws_send_frame_raw(ws_t ws, ws_opcode_t opcode, const char *data, uint64_t datalen);
 
 ///
 /// Sends a close frame.

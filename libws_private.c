@@ -245,7 +245,7 @@ static int _ws_handle_close_frame(ws_t ws)
 	ws->received_close = 1;
 
 	// The Close frame MAY contain a body (the "Application data" portion of
-		// the frame) that indicates a reason for closing.
+	// the frame) that indicates a reason for closing.
 	// If there is a body, the first two bytes of
 	// the body MUST be a 2-byte unsigned integer (in network byte order)
 	// representing a status code
@@ -256,6 +256,7 @@ static int _ws_handle_close_frame(ws_t ws)
 			LIBWS_LOG(LIBWS_ERR, "Close frame application data lacking "
 								 "status code");
 			// TODO: We should shutdown immediately here.
+			_ws_shutdown(ws);
 		}
 		else
 		{
@@ -291,6 +292,38 @@ static int _ws_handle_close_frame(ws_t ws)
 	}	
 }
 
+int _ws_handle_ping_frame(ws_t ws)
+{
+	ws_header_t *h;
+	assert(ws);
+	LIBWS_LOG(LIBWS_TRACE, "  Ping frame");
+
+	if (ws->ping_cb)
+	{
+		ws->ping_cb(ws, ws->ctrl_payload, ws->ctrl_len, 0, NULL);
+	}
+	else
+	{
+		ws_onping_default_cb(ws, ws->ctrl_payload, ws->ctrl_len, 0, NULL);
+	}
+}
+
+int _ws_handle_pong_frame(ws_t ws)
+{
+	ws_header_t *h;
+	assert(ws);
+	LIBWS_LOG(LIBWS_TRACE, "  Pong frame");
+
+	if (ws->pong_cb)
+	{
+		ws->pong_cb(ws, ws->ctrl_payload, ws->ctrl_len, 0, NULL);
+	}
+	else
+	{
+		ws_onpong_default_cb(ws, ws->ctrl_payload, ws->ctrl_len, 0, NULL);
+	}
+}
+
 int _ws_handle_control_frame(ws_t ws)
 {
 	ws_header_t *h;
@@ -301,9 +334,11 @@ int _ws_handle_control_frame(ws_t ws)
 
 	assert(WS_OPCODE_IS_CONTROL(h->opcode));
 
-	if (h->opcode == WS_OPCODE_CLOSE_0X8)
+	switch (h->opcode)
 	{
-		_ws_handle_close_frame(ws);
+		case WS_OPCODE_CLOSE_0X8: return _ws_handle_close_frame(ws);
+		case WS_OPCODE_PONG_0XA: return _ws_handle_pong_frame(ws);
+		case WS_OPCODE_PING_0X9: return _ws_handle_ping_frame(ws);
 	}
 
 	return 0;
@@ -368,10 +403,11 @@ int _ws_handle_frame_data(ws_t ws, char *buf, size_t len)
 		{
 			LIBWS_LOG(LIBWS_ERR, "Control payload too big %u, only %u allowed",
 						total_len, WS_CONTROL_MAX_PAYLOAD_LEN);
-			
+
 			// Copy the remaining data into the buf.
 			len = WS_CONTROL_MAX_PAYLOAD_LEN - ws->ctrl_len;
 			// TODO: Set protocol violation error status here. (This will then be handled in the read callback)
+			ws_close_with_status(ws, WS_CLOSE_STATUS_PROTOCOL_ERR_1002);
 			ret = -1;
 		}
 
@@ -815,7 +851,7 @@ static void _ws_builtin_no_copy_cleanup_wrapper(const void *data,
 	ws->no_copy_cleanup_cb(ws, data, datalen, ws->no_copy_extra);
 }
 
-int _ws_send_data(ws_t ws, char *msg, uint64_t len, int no_copy)
+int _ws_send_data(ws_t ws, const char *msg, uint64_t len, int no_copy)
 {
 	// TODO: We supply a len of uint64_t, evbuffer_add uses size_t...
 	assert(ws);
@@ -853,7 +889,7 @@ int _ws_send_data(ws_t ws, char *msg, uint64_t len, int no_copy)
 	return 0;
 }
 
-int _ws_send_frame_raw(ws_t ws, ws_opcode_t opcode, char *data, uint64_t datalen)
+int _ws_send_frame_raw(ws_t ws, ws_opcode_t opcode, const char *data, uint64_t datalen)
 {
 	uint8_t header_buf[WS_HDR_MAX_SIZE];
 	size_t header_len = 0;
