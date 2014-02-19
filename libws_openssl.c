@@ -97,6 +97,7 @@ int _ws_openssl_close(ws_t ws)
 	{
 		SSL_set_shutdown(ws->ssl, SSL_RECEIVED_SHUTDOWN);
 		SSL_shutdown(ws->ssl);
+		SSL_free(ws->ssl);
 		ws->ssl = NULL;
 	}
 
