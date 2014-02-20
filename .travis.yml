@@ -1,15 +1,18 @@
 env:
-  - LIBWS_METHOD=coverage LIBWS_EXTRA_ARGS="-DLIBWS_COVERAGE=ON -DCMAKE_BUILD_TYPE=Debug" LIBWS_EXTRA_INSTALL="valgrind lcov"
+  - LIBWS_METHOD=coverage CMAKE_ARGS="-DLIBWS_WITH_MEMCHECK=OFF -DLIBWS_COVERAGE=ON -DCMAKE_BUILD_TYPE=Debug" COVERALLS=yes
+  - LIBWS_METHOD=memcheck
 language: C
 compiler:
   - gcc
   - clang
 before_install:
-  - sudo pip install cpp-coveralls --use-mirrors
+  - sudo pip install cpp-coveralls
 install:
   - sudo apt-get update -qq
-  - sudo apt-get install -y -qq cmake $LIBWS_EXTRA_INSTALL 
+  - sudo apt-get install -y -qq cmake valgrind lcov
 script:
-  if [ "$LIBWS_METHOD" = "coverage" ]; then mkdir build && cd build && cmake $LIBWS_EXTRA_ARGS .. && cmake --build . --target verify_coverage; fi
+  - if [ x$LIBWS_METHOD == xcoverage ]; then cmake $CMAKE_ARGS . && cmake --build . && ctest --output-on-failure; fi
+  - if [ x$LIBWS_METHOD == xmemcheck ]; then mkdir build && cd build && cmake $CMAKE_ARGS .. && cmake --build . && ctest --output-on-failure; fi
+
 after_success:
-  - CI=true TRAVIS=true coveralls -n --verbose
+  - if [ x$COVERALLS == xyes ]; then coveralls -x c --exclude test --exclude examples --exclude-pattern 'CMake.*?\.c' --exclude-pattern 'CMake.*?\.cpp' --exclude-pattern '.*?\.h'; fi

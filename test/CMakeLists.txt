@@ -39,7 +39,7 @@ generate_run_all_tests_driver(RUN_ALL_TESTS_SRCS 	# Name of driver (list of the 
 list(APPEND TEST_DRIVERS ${LIBWS_TESTS_ALL_NAME}.c)
 
 # Coverage using gcov (gcc only).
-if (LIBWS_COVERAGE)
+if (LIBWS_COVERAGE_REPORT)
 	if(CMAKE_COMPILER_IS_GNUCXX OR "${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
 		include(CodeCoverage)
 		setup_target_for_coverage(

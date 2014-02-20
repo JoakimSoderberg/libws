@@ -9,7 +9,6 @@ set(PROJECT_PATCH_VERSION 0)
 option(LIBWS_WITH_TESTS "Build test suite" ON)
 option(LIBWS_WITH_OPENSSL "Compile with OpenSSL support" ON)
 option(LIBWS_WITH_LOG "Compile with logging support" ON)
-option(LIBWS_COVERAGE "(GCC Only! Requires gcov/lcov to be installed). Include target for doing coverage analysis for the test suite. Note that -DCMAKE_BUILD_TYPE=Debug must be set" OFF)
 option(LIBWS_WITH_MEMCHECK "Run valgrind on tests" ON)
 
 set(PROJECT_VERSION ${PROJECT_MAJOR_VERSION}.${PROJECT_MINOR_VERSION}.${PROJECT_PATCH_VERSION})
@@ -29,6 +28,15 @@ set(CMAKE_CXX_FLAGS "-Wimplicit-function-declaration")
 set(CMAKE_C_FLAGS "-std=gnu89 -Wimplicit-function-declaration -Wpointer-sign")
 
 # Turn on coverage support.
+if(${CMAKE_C_COMPILER_ID} STREQUAL "GNU" OR ${CMAKE_C_COMPILER_ID} STREQUAL "Clang")
+	option(LIBWS_COVERAGE "Compile with coverage flags.")
+	option(LIBWS_COVERAGE_REPORT "(GCC Only! Requires gcov/lcov to be installed). Include target for doing coverage analysis for the test suite. Note that -DCMAKE_BUILD_TYPE=Debug must be set" OFF)
+
+	if (LIBWS_COVERAGE_REPORT)
+		set(LIBWS_COVERAGE ON)
+	endif()
+endif()
+
 if (LIBWS_COVERAGE)
 	if(NOT CMAKE_COMPILER_IS_GNUCXX)
 		if (NOT "${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
