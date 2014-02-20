@@ -10,6 +10,6 @@ install:
   - sudo apt-get update -qq
   - sudo apt-get install -y -qq cmake $LIBWS_EXTRA_INSTALL 
 script:
-  if [ "$LIBWS_METHOD" = "coverage" ]; then mkdir build && cd build && cmake $LIBWS_EXTRA_ARGS .. && cmake --build . && ctest --output-on-failure; fi
+  if [ "$LIBWS_METHOD" = "coverage" ]; then mkdir build && cd build && cmake $LIBWS_EXTRA_ARGS .. && cmake --build . --target verify_coverage; fi
 after_success:
-  - CI=true TRAVIS=true coveralls -n -b build/ --verbose
+  - CI=true TRAVIS=true coveralls -n --verbose

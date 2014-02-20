@@ -43,10 +43,10 @@ if (LIBWS_COVERAGE)
 	if(CMAKE_COMPILER_IS_GNUCXX OR "${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
 		include(CodeCoverage)
 		setup_target_for_coverage(
-			coverage 						# Coverage make target.
-			${LIBWS_TESTS_ALL_NAME} 		# Name of test runner executable.
-			coverage 						# Name of output directory.
-			)
+			verify_coverage 		# Coverage make target.
+			make	 				# Name of test runner executable.
+			coverage 				# Name of output directory.
+			check)
 	endif()
 endif()
 
