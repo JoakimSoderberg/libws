@@ -6,7 +6,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-void onmsg(ws_t ws, const char *msg, uint64_t len, int binary, void *arg)
+void onmsg(ws_t ws, char *msg, uint64_t len, int binary, void *arg)
 {
 	int *echo_count = (int *)arg;
 	

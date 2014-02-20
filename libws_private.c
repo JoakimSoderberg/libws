@@ -851,7 +851,7 @@ static void _ws_builtin_no_copy_cleanup_wrapper(const void *data,
 	ws->no_copy_cleanup_cb(ws, data, datalen, ws->no_copy_extra);
 }
 
-int _ws_send_data(ws_t ws, const char *msg, uint64_t len, int no_copy)
+int _ws_send_data(ws_t ws, char *msg, uint64_t len, int no_copy)
 {
 	// TODO: We supply a len of uint64_t, evbuffer_add uses size_t...
 	assert(ws);
@@ -889,7 +889,7 @@ int _ws_send_data(ws_t ws, const char *msg, uint64_t len, int no_copy)
 	return 0;
 }
 
-int _ws_send_frame_raw(ws_t ws, ws_opcode_t opcode, const char *data, uint64_t datalen)
+int _ws_send_frame_raw(ws_t ws, ws_opcode_t opcode, char *data, uint64_t datalen)
 {
 	uint8_t header_buf[WS_HDR_MAX_SIZE];
 	size_t header_len = 0;

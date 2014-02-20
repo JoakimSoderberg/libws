@@ -284,7 +284,7 @@ int ws_send_ping(ws_t ws);
 ///
 /// @returns			0 on success.
 ///
-int ws_send_ping_ex(ws_t ws, const char *msg, size_t len);
+int ws_send_ping_ex(ws_t ws, char *msg, size_t len);
 
 ///
 /// Sends a pong reply with a payload to the websocket.
@@ -303,7 +303,7 @@ int ws_send_ping_ex(ws_t ws, const char *msg, size_t len);
 ///
 /// @returns 			0 on success.
 /// 
-int ws_send_pong(ws_t ws, const char *msg, size_t len);
+int ws_send_pong(ws_t ws, char *msg, size_t len);
 
 ///
 /// Sets the max allowed frame size. If any frame size exceeds
@@ -386,7 +386,7 @@ void ws_default_msg_begin_cb(ws_t ws, void *arg);
 ///
 /// @see ws_msg_frame_callback_f
 ///
-void ws_default_msg_frame_cb(ws_t ws, const char *payload, 
+void ws_default_msg_frame_cb(ws_t ws, char *payload, 
 							uint64_t len, void *arg);
 
 ///
@@ -466,7 +466,7 @@ void ws_default_msg_frame_begin_cb(ws_t ws, void *arg);
 ///
 /// @see ws_msg_frame_data_callback_f
 ///
-void ws_default_msg_frame_data_cb(ws_t ws, const char *payload, 
+void ws_default_msg_frame_data_cb(ws_t ws, char *payload, 
 								uint64_t len, void *arg);
 
 ///
@@ -575,7 +575,7 @@ int ws_set_origin(ws_t ws, const char *origin);
 /// @param[in]	len 	The ping payload length.
 /// @param[in]	arg		User context passed to the callback.
 ///
-void ws_onping_default_cb(ws_t ws, const char *msg, uint64_t len, 
+void ws_onping_default_cb(ws_t ws, char *msg, uint64_t len, 
 							int binary, void *arg);
 
 ///
@@ -591,7 +591,7 @@ void ws_onping_default_cb(ws_t ws, const char *msg, uint64_t len,
 /// @param[in]	len 	The pong payload length.
 /// @param[in]	arg		User context passed to the callback.
 ///
-void ws_onpong_default_cb(ws_t ws, const char *msg, uint64_t len, 
+void ws_onpong_default_cb(ws_t ws, char *msg, uint64_t len, 
 						int binary, void *arg);
 
 ///

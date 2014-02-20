@@ -899,7 +899,7 @@ int ws_set_origin(ws_t ws, const char *origin)
 	return 0;
 }
 
-void ws_onping_default_cb(ws_t ws, const char *msg, uint64_t len, 
+void ws_onping_default_cb(ws_t ws, char *msg, uint64_t len, 
 						int binary, void *arg)
 {
 	assert(ws);
@@ -918,7 +918,7 @@ void ws_set_onping_cb(ws_t ws, ws_msg_callback_f func, void *arg)
 	ws->ping_arg = arg;
 }
 
-void ws_onpong_default_cb(ws_t ws, const char *msg, uint64_t len, 
+void ws_onpong_default_cb(ws_t ws, char *msg, uint64_t len, 
 						int binary, void *arg)
 {
 	assert(ws);
@@ -1013,7 +1013,7 @@ void ws_set_connect_timeout_cb(ws_t ws, ws_timeout_callback_f func,
 	ws->connect_timeout_arg = arg;
 }
 
-int ws_send_ping_ex(ws_t ws, const char *msg, size_t len)
+int ws_send_ping_ex(ws_t ws, char *msg, size_t len)
 {
 	assert(ws);
 
@@ -1036,7 +1036,7 @@ int ws_send_ping(ws_t ws)
 	return ws_send_ping_ex(ws, NULL, 0);
 }
 
-int ws_send_pong(ws_t ws, const char *msg, size_t len)
+int ws_send_pong(ws_t ws, char *msg, size_t len)
 {
 	assert(ws);
 
@@ -1170,7 +1170,7 @@ void ws_default_msg_begin_cb(ws_t ws, void *arg)
 	}
 }
 
-void ws_default_msg_frame_cb(ws_t ws, const char *payload, 
+void ws_default_msg_frame_cb(ws_t ws, char *payload, 
 							uint64_t len, void *arg)
 {
 	assert(ws);
@@ -1185,7 +1185,7 @@ void ws_default_msg_frame_cb(ws_t ws, const char *payload,
 void ws_default_msg_end_cb(ws_t ws, void *arg)
 {
 	size_t len;
-	const unsigned char *payload;
+	unsigned char *payload;
 	assert(ws);
 
 	LIBWS_LOG(LIBWS_TRACE, "Default message end callback "
@@ -1202,7 +1202,7 @@ void ws_default_msg_end_cb(ws_t ws, void *arg)
 	if (ws->msg_cb)
 	{
 		LIBWS_LOG(LIBWS_DEBUG, "Calling message callback");
-		ws->msg_cb(ws, (const char *)payload, len, 
+		ws->msg_cb(ws, (char *)payload, len, 
 			(ws->header.opcode == WS_OPCODE_BINARY_0X2), ws->msg_arg);
 	}
 	else
@@ -1241,7 +1241,7 @@ void ws_default_msg_frame_begin_cb(ws_t ws, void *arg)
 	}
 }
 
-void ws_default_msg_frame_data_cb(ws_t ws, const char *payload, 
+void ws_default_msg_frame_data_cb(ws_t ws, char *payload, 
 								uint64_t len, void *arg)
 {
 	assert(ws);
