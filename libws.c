@@ -1057,11 +1057,8 @@ int ws_add_subprotocol(ws_t ws, const char *subprotocol)
 	if (!(ws->subprotocols = (char **)_ws_realloc(ws->subprotocols, 
 								(ws->num_subprotocols + 1) * sizeof(char *))))
 	{
-		// LCOV_EXCL_LINE
-		// LCOV_EXCL_START
 		LIBWS_LOG(LIBWS_ERR, "Out of memory!");
 		return -1;
-		// LCOV_EXCL_STOP
 	}
 
 	ws->subprotocols[ws->num_subprotocols] = strdup(subprotocol);
@@ -1088,23 +1085,23 @@ char **ws_get_subprotocols(ws_t ws, size_t *count)
 
 	if (!(ret = (char **)_ws_malloc(ws->num_subprotocols * sizeof(char *))))
 	{
-		// LCOV_EXCL_START
 		LIBWS_LOG(LIBWS_ERR, "Out of memory!"); 
 		return NULL;
-		// LCOV_EXCL_STOP
 	}
 
 	for (i = 0; i < ws->num_subprotocols; i++)
 	{
-		ret[i] = _ws_strdup(ws->subprotocols[i]);
+		if (!(ret[i] = _ws_strdup(ws->subprotocols[i])))
+		{
+			goto fail;
+		}
 	}
 
 	*count = ws->num_subprotocols;
 
 	return ret;
 fail:
-	if (ret)
-		_ws_free(ret);
+	ws_free_subprotocols_list(ret, i);
 
 	return NULL;
 }
@@ -1165,7 +1162,7 @@ void ws_default_msg_begin_cb(ws_t ws, void *arg)
 
 	if (!(ws->msg = evbuffer_new()))
 	{
-		// TODO: Close connection. Exit program?
+		// TODO: Close connection. Internal error error code.
 		return;
 	}
 }
@@ -1192,6 +1189,7 @@ void ws_default_msg_end_cb(ws_t ws, void *arg)
 							"(Calls the on message callback)");
 	
 	// Finalize the message by adding a null char.
+	// TODO: No null for binary?
 	evbuffer_add_printf(ws->msg, "");
 
 	len = evbuffer_get_length(ws->msg);
@@ -1227,6 +1225,7 @@ void ws_default_msg_frame_begin_cb(ws_t ws, void *arg)
 		if (evbuffer_get_length(ws->frame_data) != 0)
 		{
 			LIBWS_LOG(LIBWS_WARN, "Non-empty message buffer on new frame");
+			// TODO: This should probably fail somehow...
 		}
 
 		// TODO: Should we really free it? Not just do evbuffer_remove with a NULL dest?
@@ -1236,7 +1235,7 @@ void ws_default_msg_frame_begin_cb(ws_t ws, void *arg)
 
 	if (!(ws->frame_data = evbuffer_new()))
 	{
-		// TODO: Close connection.
+		// TODO: Close connection. Internal error reason.
 		return;
 	}
 }
