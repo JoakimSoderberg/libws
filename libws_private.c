@@ -501,7 +501,7 @@ void _ws_read_websocket(ws_t ws, struct evbuffer *in)
 				ws->has_header = 1;
 
 				LIBWS_LOG(LIBWS_DEBUG2, "Got header:\n"
-					"fin = %d, rsv = {%d,%d,%d}, mask_bit = %d, opcode = %d, "
+					"fin = %d, rsv = {%d,%d,%d}, mask_bit = %d, opcode = 0x%x, "
 					"mask = %x, len = %d", 
 					h->fin, h->rsv1, h->rsv2, h->rsv3, h->mask_bit, 
 					h->opcode, h->mask, h->payload_len);
@@ -608,7 +608,10 @@ static void _ws_read_callback(struct bufferevent *bev, void *ptr)
 
 		switch ((state = _ws_read_server_handshake_reply(ws, in)))
 		{
-			case WS_PARSE_STATE_ERROR: break; // TODO: Close connection.
+			case WS_PARSE_STATE_ERROR:
+				// TODO: Do anything else here?
+				_ws_shutdown(ws);
+				break;
 			case WS_PARSE_STATE_NEED_MORE: return;
 			case WS_PARSE_STATE_SUCCESS:
 			{
@@ -705,8 +708,9 @@ static void _ws_eof_event(struct bufferevent *bev, short events, void *ptr)
 
 	status = ws->server_close_status;
 
-	LIBWS_LOG(LIBWS_DEBUG, "Sent close frame %d, received close frame %d", 
-							ws->sent_close, ws->received_close);
+	LIBWS_LOG(LIBWS_DEBUG, "Sent close frame %s, received close frame %s", 
+							ws->sent_close ? "TRUE" : "FALSE", 
+							ws->received_close ? "TRUE" : "FALSE");
 
 	_ws_shutdown(ws);
 
@@ -754,6 +758,13 @@ static void _ws_error_event(struct bufferevent *bev, short events, void *ptr)
 		err_msg = evutil_socket_error_to_string(err);
 
 		LIBWS_LOG(LIBWS_ERR, "%s (%d)", err_msg, err);
+
+		if (ws->close_cb)
+		{
+			LIBWS_LOG(LIBWS_ERR, "Abnormal close by server");
+			ws->close_cb(ws, WS_CLOSE_STATUS_ABNORMAL_1006, 
+				err_msg, strlen(err_msg), ws->close_arg);
+		}
 	}
 
 	// TODO: Should there even be an erro callback?
@@ -763,7 +774,7 @@ static void _ws_error_event(struct bufferevent *bev, short events, void *ptr)
 	}
 	else
 	{
-		ws_close(ws);
+		_ws_shutdown(ws);
 	}
 }
 
@@ -787,7 +798,7 @@ static void _ws_event_callback(struct bufferevent *bev, short events, void *ptr)
 		_ws_eof_event(bev, events, ws);
 		return;
 	}
-	
+
 	if (events & BEV_EVENT_ERROR)
 	{
 		_ws_error_event(bev, events, ws);

@@ -722,6 +722,8 @@ int ws_send_msg_ex(ws_t ws, char *msg, uint64_t len)
 	assert(ws);
 	_WS_MUST_BE_CONNECTED(ws, "send message");
 
+	LIBWS_LOG(LIBWS_TRACE, "Send message start");
+
 	// TODO: Use _ws_send_frame_raw if we're not fragmenting the message.
 
 	if (ws_msg_begin(ws))
@@ -759,17 +761,23 @@ int ws_send_msg_ex(ws_t ws, char *msg, uint64_t len)
 		return -1;
 	}
 
+	LIBWS_LOG(LIBWS_TRACE, "Send message end");
+
 	return 0;
 }
 
 int ws_send_msg(ws_t ws, char *msg)
 {
 	int ret = 0;
+	size_t len = 0;
 	int saved_binary_mode = ws->binary_mode;
 
 	ws->binary_mode = 0;
 
-	ret = ws_send_msg_ex(ws, msg, (uint64_t)strlen(msg));
+	if (msg)
+		len = strlen(msg);
+
+	ret = ws_send_msg_ex(ws, msg, (uint64_t)len);
 	
 	ws->binary_mode = saved_binary_mode;
 
@@ -1195,7 +1203,7 @@ void ws_default_msg_end_cb(ws_t ws, void *arg)
 	len = evbuffer_get_length(ws->msg);
 	payload = evbuffer_pullup(ws->msg, len);
 		
-	LIBWS_LOG(LIBWS_DEBUG2, "Message received: %s", payload);
+	LIBWS_LOG(LIBWS_DEBUG2, "Message received of length %lu:\n%s", len, payload);
 
 	if (ws->msg_cb)
 	{
