@@ -10,6 +10,7 @@ option(LIBWS_WITH_TESTS "Build test suite" ON)
 option(LIBWS_WITH_OPENSSL "Compile with OpenSSL support" ON)
 option(LIBWS_WITH_LOG "Compile with logging support" ON)
 option(LIBWS_WITH_MEMCHECK "Run valgrind on tests" ON)
+option(LIBWS_WITH_EXAMPLES "Compile with example programs" ON)
 
 set(PROJECT_VERSION ${PROJECT_MAJOR_VERSION}.${PROJECT_MINOR_VERSION}.${PROJECT_PATCH_VERSION})
 set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/CMakeModules)
@@ -119,6 +120,7 @@ source_group("Headers public"	FILES ${HDRS_PUBLIC})
 source_group("Headers private"	FILES ${HDRS_PRIVATE})
 source_group("Sources"			FILES ${SRCS})
 
+# TODO: Support shared as well.
 add_library(ws STATIC 
 			${SRCS} 
 			${HDRS_PUBLIC} 
@@ -128,9 +130,18 @@ add_library(ws STATIC
 add_dependencies(ws ${LIBWS_DEP_LIST})
 target_link_libraries(ws ${LIBWS_LIB_LIST})
 
-add_subdirectory(examples/echo_client)
+if (LIBWS_WITH_EXAMPLES)
+	add_subdirectory(examples/echo_client)
+	add_subdirectory(examples/autobahntest)
+endif()
 
 if (LIBWS_WITH_TESTS)
 	ENABLE_TESTING()
 	add_subdirectory(test)
 endif()
+
+# TODO: Create CMake config.
+# TODO: Export libraries and headers.
+# TODO: Install stuff
+
+
