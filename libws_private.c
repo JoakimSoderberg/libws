@@ -759,10 +759,18 @@ static void _ws_error_event(struct bufferevent *bev, short events, void *ptr)
 
 		LIBWS_LOG(LIBWS_ERR, "%s (%d)", err_msg, err);
 
+		// See if the serve closed on us.
+		_ws_read_websocket(ws, bufferevent_get_input(ws->bev));
+
+		if (!ws->received_close)
+		{
+			ws->server_close_status = WS_CLOSE_STATUS_ABNORMAL_1006;
+		}
+
 		if (ws->close_cb)
 		{
 			LIBWS_LOG(LIBWS_ERR, "Abnormal close by server");
-			ws->close_cb(ws, WS_CLOSE_STATUS_ABNORMAL_1006, 
+			ws->close_cb(ws, ws->server_close_status, 
 				err_msg, strlen(err_msg), ws->close_arg);
 		}
 	}
