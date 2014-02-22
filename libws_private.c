@@ -812,6 +812,21 @@ static void _ws_event_callback(struct bufferevent *bev, short events, void *ptr)
 		_ws_error_event(bev, events, ws);
 		return;
 	}
+
+	if (events & BEV_EVENT_TIMEOUT)
+	{
+		LIBWS_LOG(LIBWS_DEBUG, "Bufferevent timeout");
+	}
+
+	if (events & BEV_EVENT_WRITING)
+	{
+		LIBWS_LOG(LIBWS_DEBUG, "   Writing");
+	}
+
+	if (events & BEV_EVENT_READING)
+	{
+		LIBWS_LOG(LIBWS_DEBUG, "   Reading");
+	}
 }
 
 int _ws_create_bufferevent_socket(ws_t ws)
@@ -875,6 +890,8 @@ int _ws_send_data(ws_t ws, char *msg, uint64_t len, int no_copy)
 	// TODO: We supply a len of uint64_t, evbuffer_add uses size_t...
 	assert(ws);
 
+	LIBWS_LOG(LIBWS_TRACE, " Send the data");
+
 	if (!ws->bev)
 	{
 		LIBWS_LOG(LIBWS_ERR, "Null bufferevent on send");
@@ -914,6 +931,8 @@ int _ws_send_frame_raw(ws_t ws, ws_opcode_t opcode, char *data, uint64_t datalen
 	size_t header_len = 0;
 
 	assert(ws);
+
+	LIBWS_LOG(LIBWS_TRACE, " Send frame raw 0x%x", opcode);
 
 	if (ws->send_state != WS_SEND_STATE_NONE)
 	{
@@ -1001,7 +1020,7 @@ void _ws_shutdown(ws_t ws)
 	}
 
 	// TODO: Only quit when the base has no more connections.
-	ws_base_quit(ws->ws_base, 1);
+	//ws_base_quit(ws->ws_base, 1);
 
 	LIBWS_LOG(LIBWS_TRACE, "End");
 }
