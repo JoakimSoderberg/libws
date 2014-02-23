@@ -186,10 +186,11 @@ int ws_quit(ws_t ws, int let_running_events_complete);
 /// @param[in]	ws 		The websocket session context.
 /// @param[in]	msg 	The message payload UTF-8 string or binary.
 /// @param[in]	len 	The message length in octets.
+/// @param[in]	binary 	If we should send a binary message.
 ///
 /// @returns			0 on success.
 ///
-int ws_send_msg_ex(ws_t ws, char *msg, uint64_t len);
+int ws_send_msg_ex(ws_t ws, char *msg, uint64_t len, int binary);
 
 ///
 /// Send a websocket UTF-8 text message.

@@ -580,7 +580,8 @@ int ws_msg_frame_data_begin(ws_t ws, uint64_t datalen)
 	assert(ws);
 	_WS_MUST_BE_CONNECTED(ws, "frame data begin");
 
-	LIBWS_LOG(LIBWS_DEBUG, "Message frame data begin");
+	LIBWS_LOG(LIBWS_DEBUG, "Message frame data begin, opcode 0x%x "
+			"(send header)", ws->header.opcode, datalen);
 
 	if ((ws->send_state != WS_SEND_STATE_MESSAGE_BEGIN)
 	 && (ws->send_state != WS_SEND_STATE_IN_MESSAGE))
@@ -716,15 +717,25 @@ int ws_msg_end(ws_t ws)
 	return 0;
 }
 
-int ws_send_msg_ex(ws_t ws, char *msg, uint64_t len)
+int ws_send_msg_ex(ws_t ws, char *msg, uint64_t len, int binary)
 {
 	uint64_t frame_len;
+	int saved_binary_mode;
 	assert(ws);
 	_WS_MUST_BE_CONNECTED(ws, "send message");
 
 	LIBWS_LOG(LIBWS_TRACE, "Send message start");
 
+	saved_binary_mode = ws->binary_mode;
+	ws->binary_mode = binary;
+
 	// TODO: Use _ws_send_frame_raw if we're not fragmenting the message.
+	if (len <= ws->max_frame_size)
+	{
+		return _ws_send_frame_raw(ws, 
+				binary ? WS_OPCODE_BINARY_0X2 : WS_OPCODE_TEXT_0X1, 
+				msg, len);
+	}
 
 	if (ws_msg_begin(ws))
 	{
@@ -761,6 +772,8 @@ int ws_send_msg_ex(ws_t ws, char *msg, uint64_t len)
 		return -1;
 	}
 
+	ws->binary_mode = saved_binary_mode;
+
 	LIBWS_LOG(LIBWS_TRACE, "Send message end");
 
 	return 0;
@@ -770,16 +783,11 @@ int ws_send_msg(ws_t ws, char *msg)
 {
 	int ret = 0;
 	size_t len = 0;
-	int saved_binary_mode = ws->binary_mode;
-
-	ws->binary_mode = 0;
 
 	if (msg)
 		len = strlen(msg);
 
-	ret = ws_send_msg_ex(ws, msg, (uint64_t)len);
-	
-	ws->binary_mode = saved_binary_mode;
+	ret = ws_send_msg_ex(ws, msg, (uint64_t)len, 0);
 
 	return ret;
 }

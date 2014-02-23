@@ -13,7 +13,14 @@ void onmsg(ws_t ws, char *msg, uint64_t len, int binary, void *arg)
 	else
 		printf("%d length binary message received\n", len);
 
-	ws_send_msg_ex(ws, msg, len);
+	ws_send_msg_ex(ws, msg, len, binary);
+	ws_close(ws);
+}
+
+void onping(ws_t ws, char *payload, uint64_t len, int binary, void *arg)
+{
+	ws_onping_default_cb(ws, payload, len, binary, arg);
+
 	ws_close(ws);
 }
 
@@ -101,6 +108,7 @@ int main(int argc, char **argv)
 	ws_set_onmsg_cb(ws, onmsg, NULL);
 	ws_set_onconnect_cb(ws, onconnect, NULL);
 	ws_set_onclose_cb(ws, onclose, NULL);
+	ws_set_onping_cb(ws, onping, NULL);
 
 	if (ssl)
 	{

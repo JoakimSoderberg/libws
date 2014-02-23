@@ -886,7 +886,7 @@ int _ws_send_data(ws_t ws, char *msg, uint64_t len, int no_copy)
 	// TODO: We supply a len of uint64_t, evbuffer_add uses size_t...
 	assert(ws);
 
-	LIBWS_LOG(LIBWS_TRACE, " Send the data");
+	LIBWS_LOG(LIBWS_TRACE, " Send the data (%llu bytes)", len);
 
 	if (!ws->bev)
 	{
