@@ -106,7 +106,7 @@ typedef enum ws_close_status_e
 } ws_close_status_t;
 
 #define WS_IS_CLOSE_STATUS_NOT_USED(code) \
-	((code < 1000) || (code > 4999))
+	(((int)code < 1000) || ((int)code > 4999))
 
 /// Status codes in the range 1000-2999 are reserved for definition by
 /// this protocol, its future revisions, and extensions specified in a
