@@ -135,12 +135,12 @@ static void _ws_pack_header_rest(ws_header_t *h, uint8_t *b, size_t len, size_t 
 
 	*header_len = 2;
 
-	if (h->payload_len < 126)
+	if (h->payload_len <= 125)
 	{
 		// Use 1 byte for payload len.
 		b[1] |= h->payload_len;
 	}
-	else if (h->payload_len == 126)
+	else if (h->payload_len <= 0xFFFF)
 	{
 		// 2 byte extra payload length.
 		uint16_t *size_ptr = (uint16_t *)&b[2];
