@@ -920,7 +920,7 @@ void ws_onping_default_cb(ws_t ws, char *msg, uint64_t len,
 {
 	assert(ws);
 
-	if (ws_send_pong(ws, msg, len))
+	if (ws_send_pong(ws, msg, len, binary))
 	{
 		LIBWS_LOG(LIBWS_ERR, "Failed to send pong");
 	}
@@ -1052,7 +1052,7 @@ int ws_send_ping(ws_t ws)
 	return ws_send_ping_ex(ws, NULL, 0);
 }
 
-int ws_send_pong(ws_t ws, char *msg, size_t len)
+int ws_send_pong(ws_t ws, char *msg, size_t len, int binary)
 {
 	assert(ws);
 
@@ -1060,8 +1060,6 @@ int ws_send_pong(ws_t ws, char *msg, size_t len)
 	{
 		return -1;
 	}
-
-	// TODO: The pong MUST contain the same payload as the PING.
 
 	return 0;
 }

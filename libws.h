@@ -301,10 +301,11 @@ int ws_send_ping_ex(ws_t ws, char *msg, size_t len);
 /// @param[in]	ws 		The websocket session context.
 /// @param[in]	msg 	Pong payload (MUST be same as ping payload).
 /// @param[in]	len 	Length of pong payload.
+/// @param[in]	binary  Send payload as binary?
 ///
 /// @returns 			0 on success.
 /// 
-int ws_send_pong(ws_t ws, char *msg, size_t len);
+int ws_send_pong(ws_t ws, char *msg, size_t len, int binary);
 
 ///
 /// Sets the max allowed frame size. If any frame size exceeds
