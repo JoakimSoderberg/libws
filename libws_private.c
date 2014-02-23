@@ -622,16 +622,12 @@ static void _ws_read_callback(struct bufferevent *bev, void *ptr)
 					LIBWS_LOG(LIBWS_DEBUG, "Calling connect callback");
 					ws->connect_cb(ws, ws->connect_arg);
 				}
-				
-				return;
 			}
 		}
 	}
-	else
-	{
-		// Connected and completed handshake we can now expect websocket data.
-		_ws_read_websocket(ws, in);
-	}
+
+	// Connected and completed handshake we can now expect websocket data.
+	_ws_read_websocket(ws, in);
 }
 
 ///
