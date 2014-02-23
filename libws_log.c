@@ -9,8 +9,44 @@
 #include "libws.h"
 #include "libws_private.h"
 
+#ifdef _WIN32
+#include <WinSock2.h>
+#endif // _WIN32
+
 static int _ws_log_level = LIBWS_NONE;
 static ws_log_callback_f _ws_log_cb;
+
+///
+/// Returns a string representation of the current time.
+///
+/// @param[in]	buf		A buffer to write the resulting string to.
+/// @param[in]	bufsize	The size of #buf.
+///
+/// @returns A pointer to the buffer passed in.
+///
+char *_ws_get_time_str(char *buf, size_t bufsize)
+{
+	int ret;
+	const char *fmt = "%Y-%m-%d %H:%M:%S";
+
+	#ifdef _WIN32
+	struct tm *now;
+	time_t timenow;
+	time(&timenow);
+	now = localtime(&timenow);
+	strftime(buf, bufsize, fmt, now);
+	#else
+	struct timeval now;
+	evutil_gettimeofday(&now, NULL);
+	ret = strftime(buf, bufsize, fmt, localtime(&now.tv_sec));
+	if (ret != 0)
+	{
+		snprintf(&buf[ret], bufsize, ".%d", now.tv_usec);
+	}
+	#endif
+
+	return buf;
+}
 
 const char *ws_log_get_prio_str(int prio)
 {
@@ -31,6 +67,7 @@ const char *ws_log_get_prio_str(int prio)
 void ws_default_log_cb(int prio, const char *file, 
 	const char *func, int line, const char *fmt, va_list args)
 {
+	char timebuf[256];
 	FILE *fd = stdout;
 
 	switch (prio)
@@ -48,7 +85,9 @@ void ws_default_log_cb(int prio, const char *file,
 			break;
 	}
 
-	fprintf(fd, "%s, %d:%-35s: ", ws_log_get_prio_str(prio), line, func);
+	fprintf(fd, "[%s] %6s, %4d:%-32s: ", 
+			_ws_get_time_str(timebuf, sizeof(timebuf)), 
+			ws_log_get_prio_str(prio), line, func);
 	vfprintf(fd, fmt, args);
 	fprintf(fd, "\n");
 }
