@@ -436,6 +436,7 @@ int _ws_handle_frame_end(ws_t ws)
 
 	if (WS_OPCODE_IS_CONTROL(ws->header.opcode))
 	{
+		ws->has_header = 0;
 		return _ws_handle_control_frame(ws);
 	}
 
@@ -475,112 +476,121 @@ void _ws_read_websocket(ws_t ws, struct evbuffer *in)
 
 	LIBWS_LOG(LIBWS_DEBUG2, "Read websocket data");
 
-	// First read the websocket header.
-	if (!ws->has_header)
+	while (evbuffer_get_length(in))
 	{
-		size_t header_len;
-		ev_ssize_t bytes_read;
-		char header_buf[WS_HDR_MAX_SIZE];
-		ws_parse_state_t state;
-
-		LIBWS_LOG(LIBWS_DEBUG2, "Read websocket header");
-
-		bytes_read = evbuffer_copyout(in, (void *)header_buf, 
-										sizeof(header_buf));
-
-		state = ws_unpack_header(&ws->header, &header_len, 
-				(unsigned char *)header_buf, sizeof(header_buf));
-
-		assert(state != WS_PARSE_STATE_USER_ABORT);
-
-		switch (state)
+		// First read the websocket header.
+		if (!ws->has_header)
 		{
-			case WS_PARSE_STATE_SUCCESS: 
+			size_t header_len;
+			ev_ssize_t bytes_read;
+			char header_buf[WS_HDR_MAX_SIZE];
+			ws_parse_state_t state;
+
+			LIBWS_LOG(LIBWS_DEBUG2, "Read websocket header");
+
+			bytes_read = evbuffer_copyout(in, (void *)header_buf, 
+											sizeof(header_buf));
+
+			state = ws_unpack_header(&ws->header, &header_len, 
+					(unsigned char *)header_buf, sizeof(header_buf));
+
+			assert(state != WS_PARSE_STATE_USER_ABORT);
+
+			switch (state)
 			{
-				ws_header_t *h = &ws->header;
-				ws->has_header = 1;
-
-				LIBWS_LOG(LIBWS_DEBUG2, "Got header:\n"
-					"fin = %d, rsv = {%d,%d,%d}, mask_bit = %d, opcode = 0x%x, "
-					"mask = %x, len = %d", 
-					h->fin, h->rsv1, h->rsv2, h->rsv3, h->mask_bit, 
-					h->opcode, h->mask, h->payload_len);
-
-				if (evbuffer_drain(in, header_len))
+				case WS_PARSE_STATE_SUCCESS: 
 				{
-					// TODO: Error! close
+					ws_header_t *h = &ws->header;
+					ws->has_header = 1;
+
+					LIBWS_LOG(LIBWS_DEBUG2, "Got header:\n"
+						"fin = %d, rsv = {%d,%d,%d}, mask_bit = %d, opcode = 0x%x, "
+						"mask = %x, len = %d", 
+						h->fin, h->rsv1, h->rsv2, h->rsv3, h->mask_bit, 
+						h->opcode, h->mask, h->payload_len);
+
+					if (evbuffer_drain(in, header_len))
+					{
+						// TODO: Error! close
+						LIBWS_LOG(LIBWS_ERR, "Failed to drain header buffer");
+					}
+					break;
 				}
-				break;
+				case WS_PARSE_STATE_NEED_MORE: return;
+				case WS_PARSE_STATE_ERROR:
+					// TODO: Protocol violation.
+					break;
 			}
-			case WS_PARSE_STATE_NEED_MORE: return;
-			case WS_PARSE_STATE_ERROR:
-				// TODO: raise error callback with websocket error.
-				break;
+
+			_ws_handle_frame_begin(ws);
 		}
 
-		_ws_handle_frame_begin(ws);
-	}
-	
-	if (ws->has_header)
-	{
-		// We're in a frame.
-		size_t recv_len = evbuffer_get_length(in);
-		size_t remaining = ws->header.payload_len - ws->recv_frame_len;
-
-		LIBWS_LOG(LIBWS_DEBUG2, "In frame (remaining %u bytes)", remaining);
-
-		if (recv_len > remaining) 
-			recv_len = remaining;
-
-		if (remaining == 0)
+		if (ws->has_header)
 		{
-			_ws_handle_frame_end(ws);
-		}
-		else
-		{
-			int bytes_read;
-			char *buf = (char *)_ws_malloc(recv_len);
+			// We're in a frame.
+			size_t recv_len = evbuffer_get_length(in);
+			size_t remaining = ws->header.payload_len - ws->recv_frame_len;
 
-			// TODO: Maybe we should only do evbuffer_pullup here instead and pass that pointer on instead.
-			bytes_read = evbuffer_remove(in, buf, recv_len);
-			ws->recv_frame_len += bytes_read;
+			LIBWS_LOG(LIBWS_DEBUG2, "In frame (remaining %u bytes)", remaining);
 
-			if (bytes_read != recv_len)
+			if (recv_len > remaining) 
+				recv_len = remaining;
+
+			if (remaining == 0)
 			{
-				LIBWS_LOG(LIBWS_ERR, "Wanted to read %u but only got %d", 
-						recv_len, bytes_read);
-			}
-
-			if (ws->header.mask_bit)
-			{
-				ws_unmask_payload(ws->header.mask, buf, bytes_read);
-			}
-
-			LIBWS_LOG(LIBWS_DEBUG2, "Read %u bytes of the %u total. "
-					"Expecting %u payload bytes", 
-					bytes_read, ws->recv_frame_len, 
-					ws->header.payload_len);
-
-			if (_ws_handle_frame_data(ws, buf, bytes_read))
-			{
-				// TODO: Raise protocol error via error cb.
-				// TODO: Close connection.
-				LIBWS_LOG(LIBWS_ERR, "Failed to handle frame data");
+				_ws_handle_frame_end(ws);
 			}
 			else
 			{
-				// TODO: This is not hit in some cases.
-				LIBWS_LOG(LIBWS_DEBUG2, "recv_frame_len = %u, payload_len = %u", ws->recv_frame_len, ws->header.payload_len);
-				// The entire frame has been received.
-				if (ws->recv_frame_len == ws->header.payload_len)
-				{
-					_ws_handle_frame_end(ws);
-				}
-			}
+				int bytes_read;
+				char *buf = (char *)_ws_malloc(recv_len);
 
-			_ws_free(buf);
+				// TODO: Maybe we should only do evbuffer_pullup here instead
+				// and pass that pointer on instead.
+				bytes_read = evbuffer_remove(in, buf, recv_len);
+				ws->recv_frame_len += bytes_read;
+
+				if (bytes_read != recv_len)
+				{
+					LIBWS_LOG(LIBWS_ERR, "Wanted to read %u but only got %d", 
+							recv_len, bytes_read);
+				}
+
+				if (ws->header.mask_bit)
+				{
+					ws_unmask_payload(ws->header.mask, buf, bytes_read);
+				}
+
+				LIBWS_LOG(LIBWS_DEBUG2, "Read %u bytes of the %u total. "
+						"Expecting %u payload bytes", 
+						bytes_read, ws->recv_frame_len, 
+						ws->header.payload_len);
+
+				if (_ws_handle_frame_data(ws, buf, bytes_read))
+				{
+					// TODO: Raise protocol error via error cb.
+					// TODO: Close connection.
+					LIBWS_LOG(LIBWS_ERR, "Failed to handle frame data");
+				}
+				else
+				{
+					// TODO: This is not hit in some cases.
+					LIBWS_LOG(LIBWS_DEBUG2, "recv_frame_len = %u, payload_len = %u",
+						 ws->recv_frame_len, ws->header.payload_len);
+					// The entire frame has been received.
+					if (ws->recv_frame_len == ws->header.payload_len)
+					{
+						_ws_handle_frame_end(ws);
+					}
+				}
+
+				_ws_free(buf);
+			}
 		}
 	}
+
+	LIBWS_LOG(LIBWS_DEBUG, "    %lu bytes left after websocket read", 
+			evbuffer_get_length(in));
 }
 
 ///
