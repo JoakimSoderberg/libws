@@ -255,21 +255,26 @@ static int _ws_handle_close_frame(ws_t ws)
 		{
 			LIBWS_LOG(LIBWS_ERR, "Close frame application data lacking "
 								 "status code");
-			// TODO: We should shutdown immediately here.
 			_ws_shutdown(ws);
+			return -1;
 		}
 		else
 		{
+			LIBWS_LOG(LIBWS_DEBUG, "Reading server close status and reason "
+					" (payload length %lu)", ws->ctrl_len);
+
 			// Read status and reason.
 			if (h->mask_bit)
 			{
 				ws_unmask_payload(h->mask, ws->ctrl_payload, ws->ctrl_len);
 			}
 
+			// TODO: Fix reading this properly.
+			/*
 			ws->server_close_status = 
 				(ws_close_status_t)ntohs(*((uint16_t *)ws->ctrl_payload));
 			ws->server_reason = &ws->ctrl_payload[2];
-			ws->server_reason_len = ws->ctrl_len - 2;
+			ws->server_reason_len = ws->ctrl_len - 2;*/
 		}
 	}
 
@@ -285,11 +290,13 @@ static int _ws_handle_close_frame(ws_t ws)
 	// data.
 	if (!ws->sent_close)
 	{
-		ws_close_with_status_reason(ws, 
+		return ws_close_with_status_reason(ws, 
 			ws->server_close_status, 
 			ws->server_reason, 
 			ws->server_reason_len);
-	}	
+	}
+
+	return 0;
 }
 
 int _ws_handle_ping_frame(ws_t ws)
