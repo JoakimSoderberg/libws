@@ -7,11 +7,11 @@
 #include <stdlib.h>
 
 void onmsg(ws_t ws, char *msg, uint64_t len, int binary, void *arg)
-{	
+{
 	if (!binary)
 		printf("%s\n", msg ? msg : "NULL");
 	else
-		printf("%d length binary message received\n", len);
+		printf("%llu length binary message received\n", len);
 
 	ws_send_msg_ex(ws, msg, len, binary);
 	ws_close(ws);
@@ -20,23 +20,19 @@ void onmsg(ws_t ws, char *msg, uint64_t len, int binary, void *arg)
 void onping(ws_t ws, char *payload, uint64_t len, int binary, void *arg)
 {
 	ws_onping_default_cb(ws, payload, len, binary, arg);
-
-	ws_close(ws);
+	printf("Ping! (%llu byte payload)\n", len);
 }
 
 void onclose(ws_t ws, ws_close_status_t status,
 			const char *reason, size_t reason_len, void *arg)
 {
-	printf("Closing %u\n", (uint16_t)status);
+	printf("Closing %u. %s\n", (uint16_t)status, reason);
 	ws_base_quit(ws_get_base(ws), 1);
 }
 
 void onconnect(ws_t ws, void *arg)
 {
-	//char *msg = strdup("hello");
 	printf("Connected!\n");
-	//ws_send_msg(ws, msg);
-	//free(msg);
 }
 
 int main(int argc, char **argv)
@@ -46,7 +42,7 @@ int main(int argc, char **argv)
 	ws_base_t base = NULL;
 	ws_t ws = NULL;
 	int ssl = 0;
-	int port = 9500;
+	int port = 9001;
 	int testcase = 1;
 	char url[1024];
 	char *server = "localhost";
@@ -67,7 +63,7 @@ int main(int argc, char **argv)
 		{
 			i++;
 			testcase = atoi(argv[i]);
-					}
+		}
 		else if (!strcmp(argv[i], "--reports"))
 		{
 			snprintf(url, sizeof(url), "updateReports?agent=libws");
