@@ -150,6 +150,7 @@ int update_reports()
 
 	snprintf(url, sizeof(url), 
 			"updateReports?agent=%s", args.agentname);
+	state = LIBWS_AUTOBAHN_STATE_REPORT;
 
 	if (do_connect(url))
 	{
@@ -231,6 +232,12 @@ int run_cases(int start, int stop)
 		return -1;
 	}
 
+	printf("-----------------------------------\n");
+	printf("Running test case %d to %d (of %d)\n", 
+			args.cases[0], args.cases[1], max_case);
+	printf("-----------------------------------\n");
+
+
 	if (stop > max_case) stop = max_case;
 
 	for (i = start; i < stop; i++)
@@ -284,14 +291,10 @@ int main(int argc, char **argv)
 					"The websocket port to use.");
 		cargo_add_alias(cargo, "--port", "-p");
 
-		ret |= cargo_add(cargo, "--test", &args.testcase, CARGO_INT,
-					"The test cases to run. '+' can be used "
-					"as a wildcard.");
-		cargo_add_alias(cargo, "--test", "-t");
-
-		ret |= cargo_addv(cargo, "--cases", (void **)&args.cases, 
+		ret |= cargo_addv(cargo, "--test", (void **)&args.cases, 
 				&args.case_count, 2, CARGO_INT,
 				"A test case to run, or a range by specifying start and stop.");
+		cargo_add_alias(cargo, "--test", "-t");
 
 		ret |= cargo_addv(cargo, "--agent", (void **)&args.agentname, NULL , 1,
 					CARGO_STRING,
@@ -359,12 +362,7 @@ int main(int argc, char **argv)
 		}
 		else
 		{
-			printf("-----------------------------------\n");
-			printf("Running test case %d to %d\n", 
-					args.cases[0], args.cases[1]+1);
-			printf("-----------------------------------\n");
-
-			ret = run_cases(args.cases[0], args.cases[1]);
+			ret = run_cases(args.cases[0], args.cases[1]+1);
 		}
 	}
 
