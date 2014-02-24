@@ -401,6 +401,7 @@ int _ws_handle_frame_data(ws_t ws, char *buf, size_t len)
 {
 	int ret = 0;
 	assert(ws);
+	LIBWS_LOG(LIBWS_TRACE, "  Handle frame data");
 
 	if (WS_OPCODE_IS_CONTROL(ws->header.opcode))
 	{
@@ -418,6 +419,7 @@ int _ws_handle_frame_data(ws_t ws, char *buf, size_t len)
 			ret = -1;
 		}
 
+		LIBWS_LOG(LIBWS_DEBUG, "   Append %lu bytes to ctrl payload", len);
 		memcpy(&ws->ctrl_payload[ws->ctrl_len], buf, len);
 		ws->ctrl_len += len;
 		
