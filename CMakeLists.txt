@@ -144,16 +144,18 @@ if (LIBWS_WITH_AUTOBAHN)
 		message(FATAL_ERROR "Missing submodules!")
 	endif()
 
-	set(JANSSON_WITHOUT_TESTS ON)
-	set(JANSSON_BUILD_DOCS OFF)
+	set(JANSSON_WITHOUT_TESTS ON CACHE BOOL "")
+	set(JANSSON_BUILD_DOCS OFF CACHE BOOL "")
 	add_subdirectory(examples/autobahntest/jansson)
 	include_directories(${JANSSON_INCLUDE_DIRS})
 
+	# Uncomment this to get cargo debug info.
+	#add_definitions(-DCARGO_DEBUG=5)
 	add_executable(autobahntest
 		examples/autobahntest/autobahntest.c
 		examples/autobahntest/cargo/cargo.c)
 
-	target_link_libraries(autobahntest ws jansson)
+	target_link_libraries(autobahntest ws ${JANSSON_LIBRARIES})
 endif()
 
 if (LIBWS_WITH_TESTS)
