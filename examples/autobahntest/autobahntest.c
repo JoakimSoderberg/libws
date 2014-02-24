@@ -5,6 +5,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include "jansson.h"
 
 void onmsg(ws_t ws, char *msg, uint64_t len, int binary, void *arg)
 {
@@ -48,6 +49,9 @@ int main(int argc, char **argv)
 	char *server = "localhost";
 	memset(url, 0, sizeof(url));
 
+	printf("AutobahnTestSuite client\n\n");
+	printf("  jansson v%s\n\n", JANSSON_VERSION);
+
 	for (i = 1; i < argc; i++)
 	{
 		if (!strcmp(argv[i], "--ssl"))
@@ -85,8 +89,6 @@ int main(int argc, char **argv)
 
 	ws_set_log_cb(ws_default_log_cb);
 	ws_set_log_level(-1);
-
-	printf("AutobahnTestSuite client\n\n");
 
 	if (ws_global_init(&base))
 	{

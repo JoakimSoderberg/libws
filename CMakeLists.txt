@@ -11,6 +11,7 @@ option(LIBWS_WITH_OPENSSL "Compile with OpenSSL support" ON)
 option(LIBWS_WITH_LOG "Compile with logging support" ON)
 option(LIBWS_WITH_MEMCHECK "Run valgrind on tests" ON)
 option(LIBWS_WITH_EXAMPLES "Compile with example programs" ON)
+option(LIBWS_WITH_AUTOBAHN "Compile the Autobahn test suite client. This requires extra dependencies." OFF)
 
 set(PROJECT_VERSION ${PROJECT_MAJOR_VERSION}.${PROJECT_MINOR_VERSION}.${PROJECT_PATCH_VERSION})
 set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/CMakeModules)
@@ -131,8 +132,28 @@ add_dependencies(ws ${LIBWS_DEP_LIST})
 target_link_libraries(ws ${LIBWS_LIB_LIST})
 
 if (LIBWS_WITH_EXAMPLES)
-	add_subdirectory(examples/echo_client)
-	add_subdirectory(examples/autobahntest)
+	add_executable(echo_client examples/echo_client/echo_client.c)
+	target_link_libraries(echo_client ws)
+endif()
+
+if (LIBWS_WITH_AUTOBAHN)
+	if (NOT EXISTS "${PROJECT_SOURCE_DIR}/examples/autobahntest/cargo/cargo.c")
+		message("####################################################")
+		message(" Please do 'git submodule update --init --recursive'")
+		message("####################################################")
+		message(FATAL_ERROR "Missing submodules!")
+	endif()
+
+	set(JANSSON_WITHOUT_TESTS ON)
+	set(JANSSON_BUILD_DOCS OFF)
+	add_subdirectory(examples/autobahntest/jansson)
+	include_directories(${JANSSON_INCLUDE_DIRS})
+
+	add_executable(autobahntest
+		examples/autobahntest/autobahntest.c
+		examples/autobahntest/cargo/cargo.c)
+
+	target_link_libraries(autobahntest ws jansson)
 endif()
 
 if (LIBWS_WITH_TESTS)
