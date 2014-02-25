@@ -168,7 +168,7 @@ int TEST_ws_read_server_handshake_reply(int argc, char *argv[])
 		evbuffer_drain(in, evbuffer_get_length(in));
 
 		evbuffer_add_printf(in, 
-							"HTTP/1.", key_hash);
+							"HTTP/1.");
 		
 		ret |= run_header_test("Partial HTTP version response", ws, in, 
 						WS_PARSE_STATE_NEED_MORE);
@@ -181,7 +181,7 @@ int TEST_ws_read_server_handshake_reply(int argc, char *argv[])
 		evbuffer_drain(in, evbuffer_get_length(in));
 
 		evbuffer_add_printf(in, 
-							"HTTP/1.1 abc\r\n", key_hash);
+							"HTTP/1.1 abc\r\n");
 		
 		ret |= run_header_test("Invalid HTTP version response", ws, in, 
 						WS_PARSE_STATE_ERROR);

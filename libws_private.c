@@ -313,6 +313,8 @@ int _ws_handle_ping_frame(ws_t ws)
 	{
 		ws_onping_default_cb(ws, ws->ctrl_payload, ws->ctrl_len, 0, NULL);
 	}
+
+	return 0;
 }
 
 int _ws_handle_pong_frame(ws_t ws)
@@ -329,6 +331,8 @@ int _ws_handle_pong_frame(ws_t ws)
 	{
 		ws_onpong_default_cb(ws, ws->ctrl_payload, ws->ctrl_len, 0, NULL);
 	}
+
+	return 0;
 }
 
 int _ws_handle_control_frame(ws_t ws)
@@ -346,6 +350,14 @@ int _ws_handle_control_frame(ws_t ws)
 		case WS_OPCODE_CLOSE_0X8: return _ws_handle_close_frame(ws);
 		case WS_OPCODE_PONG_0XA: return _ws_handle_pong_frame(ws);
 		case WS_OPCODE_PING_0X9: return _ws_handle_ping_frame(ws);
+		default:
+		case WS_OPCODE_CONTROL_RSV_0XB:
+		case WS_OPCODE_CONTROL_RSV_0XC:
+		case WS_OPCODE_CONTROL_RSV_0XD:
+		case WS_OPCODE_CONTROL_RSV_0XE:
+		case WS_OPCODE_CONTROL_RSV_0XF:
+			LIBWS_LOG(LIBWS_ERR, "Got unknown control frame 0x%x", h->opcode);
+			return -1;
 	}
 
 	return 0;
@@ -529,6 +541,9 @@ void _ws_read_websocket(ws_t ws, struct evbuffer *in)
 				case WS_PARSE_STATE_ERROR:
 					// TODO: Protocol violation.
 					break;
+				case WS_PARSE_STATE_USER_ABORT:
+					// TODO: What to do here?
+					break;
 			}
 
 			_ws_handle_frame_begin(ws);
@@ -642,6 +657,9 @@ static void _ws_read_callback(struct bufferevent *bev, void *ptr)
 					ws->connect_cb(ws, ws->connect_arg);
 				}
 			}
+			case WS_PARSE_STATE_USER_ABORT:
+				// TODO: What to do here?
+				break;
 		}
 	}
 

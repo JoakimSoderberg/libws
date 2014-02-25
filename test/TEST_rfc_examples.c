@@ -58,6 +58,8 @@ int do_unpack_test(char *buf, size_t buflen,
 			case WS_PARSE_STATE_USER_ABORT:
 				libws_test_FAILURE("\tUser abort");
 				break;
+			case WS_PARSE_STATE_SUCCESS:
+				break;
 		}
 		ret |= -1;
 	}
