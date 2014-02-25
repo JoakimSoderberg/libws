@@ -30,6 +30,7 @@ typedef struct libws_autobahn_args_s
 	int help;
 	int debug;
 	int nocolor;
+	int all;
 
 	char **extras;
 	size_t extra_count;
@@ -316,9 +317,15 @@ int run_cases(int start, int stop)
 		return -1;
 	}
 
+	if (args.all)
+	{
+		start = 1;
+		stop = max_case;
+	}
+
 	draw_line();
 	printf("Running test case %d to %d (of %d)\n", 
-			args.cases[0], args.cases[1], max_case);
+			start, stop, max_case);
 	draw_line();
 	printf("\n");
 
@@ -384,8 +391,12 @@ int main(int argc, char **argv)
 				"start and stop (2 arguments). Note that these are simply "
 				"specified as an integer. Not the 1.1.1 name format the "
 				"tests use.");
-
 		cargo_add_alias(cargo, "--test", "-t");
+
+		// TODO: Add skip list.
+
+		ret |= cargo_add(cargo, "--all", &args.all, CARGO_BOOL,
+					"Turn off fancy color output.");
 
 		ret |= cargo_addv(cargo, "--agent", (void **)&args.agentname, NULL , 1,
 					CARGO_STRING,
@@ -414,6 +425,7 @@ int main(int argc, char **argv)
 		args.extras = cargo_get_args(cargo, &args.extra_count);
 	}
 
+	// Verify and print settings.
 	if (args.extra_count >= 1)
 	{
 		args.server = args.extras[0];
@@ -441,33 +453,41 @@ int main(int argc, char **argv)
 	printf("SSL: %s\n", args.ssl ? "ON" : "OFF");
 	printf("Server: %s:%d\n", args.server, args.port);
 	printf("Test cases: ");
-	if (args.case_count == 1)
+	if (args.all)
 	{
-		printf("%d\n", args.cases[0]);
-	}
-	else if (args.case_count == 2)
-	{
-		printf("%d to %d\n", args.cases[0], args.cases[1]);
+		printf("All\n");
 	}
 	else
 	{
-		printf("-\n");
+		if (args.case_count == 1)
+		{
+			printf("%d\n", args.cases[0]);
+		}
+		else if (args.case_count == 2)
+		{
+			printf("%d to %d\n", args.cases[0], args.cases[1]);
+		}
+		else
+		{
+			printf("-\n");
+		}
 	}
 
 	draw_line();
 	printf("\n");
 
+	// Perform the specified command.
 	if (args.reports)
 	{
 		ret = update_reports();
 	}
 	else
 	{
-		if (args.case_count == 0)
+		if (!args.all && (args.case_count == 0))
 		{
 			fprintf(stderr, "You must specify at least one test case!\n");
 		}
-		else if (args.case_count == 1)
+		else if (!args.all && (args.case_count == 1))
 		{
 			ret = run_cases(args.cases[0], args.cases[0] + 1);
 		}
