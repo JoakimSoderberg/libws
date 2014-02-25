@@ -229,6 +229,8 @@ int update_reports()
 	char url[1024];
 	int ret = 0;
 
+	printf("Updating reports!\n");
+
 	snprintf(url, sizeof(url), 
 			"updateReports?agent=%s", args.agentname);
 	state = LIBWS_AUTOBAHN_STATE_REPORT;
@@ -340,6 +342,8 @@ int run_cases(int start, int stop)
 		}
 	}
 
+	update_reports();
+
 	return 0;
 }
 
@@ -396,7 +400,7 @@ int main(int argc, char **argv)
 		// TODO: Add skip list.
 
 		ret |= cargo_add(cargo, "--all", &args.all, CARGO_BOOL,
-					"Turn off fancy color output.");
+					"Run all tests.");
 
 		ret |= cargo_addv(cargo, "--agent", (void **)&args.agentname, NULL , 1,
 					CARGO_STRING,
