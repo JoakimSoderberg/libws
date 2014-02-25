@@ -153,7 +153,10 @@ if (LIBWS_WITH_AUTOBAHN)
 	#add_definitions(-DCARGO_DEBUG=5)
 	add_executable(autobahntest
 		examples/autobahntest/autobahntest.c
-		examples/autobahntest/cargo/cargo.c)
+		examples/autobahntest/cargo/cargo.c
+		test/libws_test_helpers.c)
+
+	include_directories(test)
 
 	target_link_libraries(autobahntest ws ${JANSSON_LIBRARIES})
 endif()

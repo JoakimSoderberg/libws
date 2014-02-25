@@ -11,6 +11,7 @@
 
 static int verbose;
 static int log_on;
+static int nocolor;
 
 int libws_test_verbose()
 {
@@ -20,6 +21,11 @@ int libws_test_verbose()
 int libws_test_log_on()
 {
 	return log_on;
+}
+
+void libws_test_nocolor(int _nocolor)
+{
+	nocolor = _nocolor;
 }
 
 int libws_test_init(int argc, char **argv)
@@ -54,18 +60,6 @@ int libws_test_parse_cmdline(int argc, char **argv)
 	return 0;
 }
 
-enum libws_test_color_e
-{
-	NORMAL,
-	GREEN,
-	RED,
-	YELLOW,
-	CYAN,
-	MAGNETA,
-	BRIGHT,
-	STATUS
-};
-
 void libws_test_vprintf(FILE *target, enum libws_test_color_e test_color, const char *fmt, va_list args)
 {
 	#ifdef WIN32
@@ -85,16 +79,16 @@ void libws_test_vprintf(FILE *target, enum libws_test_color_e test_color, const 
 		case CYAN: color = (FOREGROUND_BLUE | FOREGROUND_GREEN | FOREGROUND_INTENSITY); break;
 		case MAGNETA: color =  (FOREGROUND_RED | FOREGROUND_BLUE | FOREGROUND_INTENSITY); break;
 		case BRIGHT: color = (FOREGROUND_INTENSITY | FOREGROUND_BLUE | FOREGROUND_GREEN | FOREGROUND_RED); break;
-		case STATUS: color = FOREGROUND_INTENSITY; break;
+		case CSTATUS: color = FOREGROUND_INTENSITY; break;
 	}
 
 	// Set color.
-	if (color) SetConsoleTextAttribute(hstdout, color);
+	if (!nocolor && color) SetConsoleTextAttribute(hstdout, color);
 
 	vfprintf(target, fmt, args);
 
 	// Reset color.
-	SetConsoleTextAttribute(hstdout, csbi.wAttributes);
+	if (!nocolor) SetConsoleTextAttribute(hstdout, csbi.wAttributes);
 
 	#else // end WIN32
 
@@ -115,22 +109,25 @@ void libws_test_vprintf(FILE *target, enum libws_test_color_e test_color, const 
 	#define ANSI_COLOR_WHITE		"\x1b[01;37m"
 	#define ANSI_COLOR_RESET		"\x1b[0m"
 
-	switch (test_color)
+	if (!nocolor)
 	{
-		default:
-		case NORMAL: break;
-		case GREEN: fprintf(target, ANSI_COLOR_LIGHT_GREEN);  break;
-		case RED:	fprintf(target, ANSI_COLOR_LIGHT_RED); break;
-		case YELLOW: fprintf(target, ANSI_COLOR_YELLOW); break;
-		case CYAN: fprintf(target, ANSI_COLOR_LIGHT_CYAN); break;
-		case MAGNETA: fprintf(target, ANSI_COLOR_LIGHT_MAGNETA); break;
-		case BRIGHT: fprintf(target, ANSI_COLOR_WHITE); break;
-		case STATUS: fprintf(target, ANSI_COLOR_DARK_GRAY); break;
+		switch (test_color)
+		{
+			default:
+			case NORMAL: break;
+			case GREEN: fprintf(target, ANSI_COLOR_LIGHT_GREEN);  break;
+			case RED:	fprintf(target, ANSI_COLOR_LIGHT_RED); break;
+			case YELLOW: fprintf(target, ANSI_COLOR_YELLOW); break;
+			case CYAN: fprintf(target, ANSI_COLOR_LIGHT_CYAN); break;
+			case MAGNETA: fprintf(target, ANSI_COLOR_LIGHT_MAGNETA); break;
+			case BRIGHT: fprintf(target, ANSI_COLOR_WHITE); break;
+			case CSTATUS: fprintf(target, ANSI_COLOR_DARK_GRAY); break;
+		}
 	}
 
 	vfprintf(target, fmt, args);
 
-	fprintf(target, ANSI_COLOR_RESET);
+	if (!nocolor) fprintf(target, ANSI_COLOR_RESET);
 	
 	#endif
 }
@@ -181,7 +178,7 @@ void libws_test_STATUS_ex(const char *fmt, ...)
 	va_list args;
 	va_start(args, fmt);
 	
-	libws_test_vprintf(stdout, STATUS, fmt, args);
+	libws_test_vprintf(stdout, CSTATUS, fmt, args);
 
 	va_end(args);
 }
@@ -191,7 +188,7 @@ void libws_test_STATUS(const char *fmt, ...)
 	va_list args;
 	va_start(args, fmt);
 	
-	libws_test_vprintf(stdout, STATUS, fmt, args);
+	libws_test_vprintf(stdout, CSTATUS, fmt, args);
 	printf("\n");
 
 	va_end(args);

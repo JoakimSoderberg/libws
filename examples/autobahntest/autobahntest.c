@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include "jansson.h"
 #include "cargo/cargo.h"
+#include "libws_test_helpers.h"
 
 typedef enum libws_autobahn_state_e
 {
@@ -21,7 +22,6 @@ typedef struct libws_autobahn_args_s
 {
 	int ssl;
 	int port;
-	int testcase;
 	int cases[2];
 	size_t case_count;
 	char *agentname;
@@ -29,6 +29,7 @@ typedef struct libws_autobahn_args_s
 	int reports;
 	int help;
 	int debug;
+	int nocolor;
 
 	char **extras;
 	size_t extra_count;
@@ -36,7 +37,86 @@ typedef struct libws_autobahn_args_s
 
 libws_autobahn_state_t state;
 libws_autobahn_args_t args;
-int case_count = 0;
+int server_case_count = 0;
+int current_case = -1;
+int global_return = 0;
+
+void draw_line()
+{
+	int i;
+
+	for (i = 0; i < 80; i++)
+		printf("-");
+
+	printf("\n");
+}
+
+void parse_test_info(char *msg)
+{
+	char headline[128];
+	json_error_t error;
+	json_t *json = NULL;
+	char *id = NULL;
+	char *description = NULL;
+
+	if (!(json = json_loads(msg, 0, &error)))
+	{
+		fprintf(stderr, "Failed to load test info json: %s\n", error.text);
+		return;
+	}
+
+	if (json_unpack_ex(json, &error, 0,
+		"{"
+			"s:s"
+			"s:s"
+		"}",
+		"id", &id,
+		"description", &description))
+	{
+		fprintf(stderr, "Failed to parse test info: %s\n", error.text);
+		json_decref(json);
+		return;
+	}
+
+	snprintf(headline, sizeof(headline), "[%d] - %s", current_case, id);
+
+	libws_test_HEADLINE(headline);
+	libws_test_STATUS("%s", description);
+}
+
+void parse_test_status(char *msg)
+{
+	json_error_t error;
+	json_t *json = NULL;
+	char *behavior = NULL;
+
+	if (!(json = json_loads(msg, 0, &error)))
+	{
+		fprintf(stderr, "Failed to load test info json: %s\n", error.text);
+		return;
+	}
+
+	if (json_unpack_ex(json, &error, 0,
+		"{"
+			"s:s"
+		"}",
+		"behavior", &behavior))
+	{
+		fprintf(stderr, "Failed to parse test info: %s\n", error.text);
+		json_decref(json);
+		return;
+	}
+
+	if (!strcmp(behavior, "OK"))
+	{
+		libws_test_SUCCESS("");
+	}
+	else
+	{
+		libws_test_FAILURE("");
+		global_return = -1;
+	}
+}
 
 void onmsg(ws_t ws, char *msg, uint64_t len, int binary, void *arg)
 {
@@ -49,17 +129,17 @@ void onmsg(ws_t ws, char *msg, uint64_t len, int binary, void *arg)
 		}
 		case LIBWS_AUTOBAHN_STATE_TESTINFO:
 		{
-			printf("Test info: %s\n", msg);
+			parse_test_info(msg);
 			break;
 		}
 		case LIBWS_AUTOBAHN_STATE_TESTSTATUS:
 		{
-			printf("Test status: %s\n", msg);
+			parse_test_status(msg);
 			break;
 		}
 		case LIBWS_AUTOBAHN_STATE_COUNT: 
 		{
-			case_count = atoi(msg);
+			server_case_count = atoi(msg);
 			break;
 		}
 		default:
@@ -165,6 +245,8 @@ int run_case(int testcase)
 	char url[1024];
 	int ret = 0;
 
+	current_case = testcase;
+
 	// Get test info.
 	snprintf(url, sizeof(url), "getCaseInfo?case=%d&agent=%s",
 			testcase, args.agentname);
@@ -199,6 +281,8 @@ int run_case(int testcase)
 	}
 
 fail:
+	printf("\n");
+
 	return ret;
 }
 
@@ -216,7 +300,7 @@ int get_case_count()
 	}
 	else
 	{
-		ret = case_count;
+		ret = server_case_count;
 	}
 
 	return ret;
@@ -232,10 +316,11 @@ int run_cases(int start, int stop)
 		return -1;
 	}
 
-	printf("-----------------------------------\n");
+	draw_line();
 	printf("Running test case %d to %d (of %d)\n", 
 			args.cases[0], args.cases[1], max_case);
-	printf("-----------------------------------\n");
+	draw_line();
+	printf("\n");
 
 
 	if (stop > max_case) stop = max_case;
@@ -264,7 +349,6 @@ int main(int argc, char **argv)
 	{
 		args.ssl = 0;
 		args.port = 9001;
-		args.testcase = 1;
 		args.agentname = "libws";
 		args.server = "localhost";
 		args.reports = 0;
@@ -287,13 +371,20 @@ int main(int argc, char **argv)
 					"Use SSL for the websocket connection.");
 		cargo_add_alias(cargo, "--ssl", "-s");
 
+		ret |= cargo_add(cargo, "--nocolor", &args.nocolor, CARGO_BOOL,
+					"Turn off fancy color output.");
+
 		ret |= cargo_add(cargo, "--port", &args.port, CARGO_INT,
 					"The websocket port to use.");
 		cargo_add_alias(cargo, "--port", "-p");
 
 		ret |= cargo_addv(cargo, "--test", (void **)&args.cases, 
 				&args.case_count, 2, CARGO_INT,
-				"A test case to run, or a range by specifying start and stop.");
+				"A test case to run (1 argument), or a range by specifying "
+				"start and stop (2 arguments). Note that these are simply "
+				"specified as an integer. Not the 1.1.1 name format the "
+				"tests use.");
+
 		cargo_add_alias(cargo, "--test", "-t");
 
 		ret |= cargo_addv(cargo, "--agent", (void **)&args.agentname, NULL , 1,
@@ -314,6 +405,7 @@ int main(int argc, char **argv)
 
 		if (cargo_parse(cargo, 1, argc, argv))
 		{
+			cargo_print_usage(cargo);
 			fprintf(stderr, "Error parsing!\n");
 			ret = -1;
 			goto done;
@@ -325,6 +417,11 @@ int main(int argc, char **argv)
 	if (args.extra_count >= 1)
 	{
 		args.server = args.extras[0];
+	}
+
+	if (args.nocolor)
+	{
+		libws_test_nocolor(1);
 	}
 
 	if (args.help)
@@ -339,12 +436,26 @@ int main(int argc, char **argv)
 		ws_set_log_level(-1);
 	}
 
-	printf("-----------------------------------\n");
+	draw_line();
 	printf("Agent: %s\n", args.agentname);
 	printf("SSL: %s\n", args.ssl ? "ON" : "OFF");
 	printf("Server: %s:%d\n", args.server, args.port);
-	printf("Test cases: %d\n", args.testcase);
-	printf("-----------------------------------\n\n");
+	printf("Test cases: ");
+	if (args.case_count == 1)
+	{
+		printf("%d\n", args.cases[0]);
+	}
+	else if (args.case_count == 2)
+	{
+		printf("%d to %d\n", args.cases[0], args.cases[1]);
+	}
+	else
+	{
+		printf("-\n");
+	}
+
+	draw_line();
+	printf("\n");
 
 	if (args.reports)
 	{
@@ -362,13 +473,30 @@ int main(int argc, char **argv)
 		}
 		else
 		{
+			if (args.cases[0] > args.cases[1])
+			{
+				fprintf(stderr, "First test case must be smaller than the "
+					"second\n");
+				goto done;
+			}
+
 			ret = run_cases(args.cases[0], args.cases[1]+1);
 		}
+	}
+
+	if (ret)
+	{
+		fprintf(stderr, "Failure!\n");
+	}
+
+	if (global_return)
+	{
+		libws_test_FAILURE("One or more tests failed!");
 	}
 
 done:
 	cargo_destroy(&cargo);
 	printf("Bye bye!\n");
-	return ret;
+	return ret | global_return;
 }
 
