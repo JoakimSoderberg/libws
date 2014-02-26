@@ -5,6 +5,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <time.h>
 #include "jansson.h"
 #include "cargo/cargo.h"
 #include "libws_test_helpers.h"
@@ -31,6 +32,8 @@ typedef struct libws_autobahn_args_s
 	int debug;
 	int nocolor;
 	int all;
+	int maxtime;
+	int nodata;
 
 	char **extras;
 	size_t extra_count;
@@ -147,10 +150,13 @@ void onmsg(ws_t ws, char *msg, uint64_t len, int binary, void *arg)
 		case LIBWS_AUTOBAHN_STATE_TEST:
 		{
 			// Echo any message.
-			if (!binary)
-				printf("%s\n", msg ? msg : "NULL");
-			else
-				printf("%llu length binary message received\n", len);
+			if (!args.nodata)
+			{
+				if (!binary)
+					printf("%s\n", msg ? msg : "NULL");
+				else
+					printf("%llu length binary message received\n", len);
+			}
 
 			ws_send_msg_ex(ws, msg, len, binary);
 			break;
@@ -185,6 +191,7 @@ int do_connect(char *url)
 	int ret = 0;
 	ws_base_t base = NULL;
 	ws_t ws = NULL;
+	struct timeval max_test_run_time = {args.maxtime, 0}; // 20 seconds.
 
 	if (ws_global_init(&base))
 	{
@@ -215,6 +222,7 @@ int do_connect(char *url)
 		goto fail;
 	}
 
+	ws_base_quit_delay(base, 1, &max_test_run_time);
 	ws_base_service_blocking(base);
 
 fail:
@@ -365,6 +373,9 @@ int main(int argc, char **argv)
 		args.reports = 0;
 		args.help = 0;
 		args.debug = 0;
+		args.all = 0;
+		args.maxtime = 30;
+		args.nodata = 0;
 
 		cargo_init(&cargo, 32, argv[0],
 			"An AutobahnTestSuite client that can be "
@@ -378,6 +389,9 @@ int main(int argc, char **argv)
 					"Show websocket debug output.");
 		cargo_add_alias(cargo, "--debug", "-d");
 
+		ret |= cargo_add(cargo, "--nodata", &args.nodata, CARGO_BOOL,
+					"Don't output test data.");
+
 		ret |= cargo_add(cargo, "--ssl", &args.ssl, CARGO_BOOL,
 					"Use SSL for the websocket connection.");
 		cargo_add_alias(cargo, "--ssl", "-s");
@@ -388,6 +402,9 @@ int main(int argc, char **argv)
 		ret |= cargo_add(cargo, "--port", &args.port, CARGO_INT,
 					"The websocket port to use.");
 		cargo_add_alias(cargo, "--port", "-p");
+
+		ret |= cargo_add(cargo, "--maxtime", &args.maxtime, CARGO_INT,
+					"The max time a test case is allowed to run.");
 
 		ret |= cargo_addv(cargo, "--test", (void **)&args.cases, 
 				&args.case_count, 2, CARGO_INT,
