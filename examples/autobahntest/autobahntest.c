@@ -66,6 +66,33 @@ void draw_line()
 	printf("\n");
 }
 
+void print_linebreak(char *str, int width)
+{
+	char *s = strdup(str);
+	char *start = s;
+	char *prev = s;
+	char *p = NULL;
+
+	if (!s)
+		return;
+
+	p = strpbrk(s, " ");
+	while (p != NULL)
+	{
+		if ((p - start) > width)
+		{
+			*prev = '\n';
+			start = p;
+		}
+
+		prev = p;
+		p = strpbrk(p + 1, " ");
+	}
+
+	libws_test_STATUS("%s", s);
+	free(s);
+}
+
 void parse_test_info(char *msg)
 {
 	char headline[128];
@@ -96,7 +123,7 @@ void parse_test_info(char *msg)
 	snprintf(headline, sizeof(headline), "[%d] - %s", current_case, id);
 
 	libws_test_HEADLINE(headline);
-	libws_test_STATUS("%s", description);
+	print_linebreak(description, 80);
 }
 
 void parse_test_status(char *msg)
