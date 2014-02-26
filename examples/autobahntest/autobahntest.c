@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
+#include <assert.h>
 #include "jansson.h"
 #include "cargo/cargo.h"
 #include "libws_test_helpers.h"
@@ -35,6 +36,9 @@ typedef struct libws_autobahn_args_s
 	int maxtime;
 	int nodata;
 	const char *config;
+
+	int skiprange[2];
+	size_t skiprange_count;
 
 	int *skip;
 	size_t skip_count;
@@ -344,6 +348,91 @@ int int_compare(const void * a, const void * b)
    return (*(int*)a - *(int*)b);
 }
 
+int combine_range_and_values(int max_case,
+	const int *range, size_t range_count,
+	int **values, size_t *value_count)
+{
+	int i;
+	int j;
+	int start = 0;
+	int stop = 0;
+	int more_count = 0;
+	int tmp_count = 0;
+	int *tmp = NULL;
+	int *_values;
+	assert(range);
+	assert(values);
+
+	_values = *values;
+
+	start = range[0];
+	stop = (range_count == 2) ? range[1] : max_case;
+
+	if (start <= 0)
+	{
+		fprintf(stderr, "Range start must be positive integer!\n");
+		return -1;
+	}
+
+	// We will include the tests specified using --tests as well
+	// count how many of those are outside the range.
+	for (i = 0; i < *value_count; i++)
+	{
+		if ((_values[i] < start) || (_values[i] > stop))
+		{
+			more_count++;
+		}
+	}
+
+	// Make sure we have a valid range.
+	tmp_count = (stop - start) + 1;
+
+	if (tmp_count <= 0)
+	{
+		fprintf(stderr, "Invalid range specified! "
+			"Start needs to be larger than stop\n");
+		return -1;
+	}
+
+	// Include the extra tests in the count.
+	tmp_count += more_count;
+
+	if (!(tmp = malloc(sizeof(int) * tmp_count)))
+	{
+		fprintf(stderr, "Out of memory\n");
+		exit(1);
+	}
+
+	for (i = 0, j = start; j <= stop; i++)
+	{
+		tmp[i] = j++;
+	}
+
+	// Copy the old tests into the args.
+	for (j = 0; j < *value_count; j++)
+	{
+		if ((_values[j] < start) || (_values[j] > stop))
+		{
+			tmp[i] = _values[j];
+			i++;
+		}
+	}
+
+	// Finalize the list by sorting it.
+	*value_count = tmp_count;
+
+	if (*values)
+	{
+		free(*values);
+		*values = NULL;
+	}
+
+	*values = tmp;
+	qsort(*values, *value_count, sizeof(int), int_compare);
+
+	return 0;
+}
+
 int run_cases()
 {
 	int i;
@@ -374,80 +463,28 @@ int run_cases()
 	}
 	else if (args.range_count)
 	{
-		int start = args.range[0];
-		int stop = (args.range_count == 2) ? args.range[1] : max_case;
-		int more_count = 0;
-		int tmp_count = 0;
-		int *tmp = NULL;
-
-		if (start <= 0)
+		if (combine_range_and_values(max_case, 
+			args.range, args.range_count, 
+			&args.tests, &args.test_count))
 		{
-			fprintf(stderr, "Range start must be positive integer!\n");
 			return -1;
 		}
+	}
 
-		// We will include the tests specified using --tests as well
-		// count how many of those are outside the range.
-		for (i = 0; i < args.test_count; i++)
+	if (args.skiprange_count)
+	{
+		if (combine_range_and_values(max_case,
+			args.skiprange, args.skiprange_count,
+			&args.skip, &args.skip_count))
 		{
-			if ((args.tests[i] < start) || (args.tests[i] > stop))
-			{
-				more_count++;
-			}
-		}
-
-		// Make sure we have a valid range.
-		tmp_count = (stop - start) + 1;
-
-		if (tmp_count <= 0)
-		{
-			fprintf(stderr, "Invalid range specified! "
-				"Start needs to be larger than stop\n");
 			return -1;
 		}
-
-		// Include the extra tests in the count.
-		tmp_count += more_count;
-
-		if (!(tmp = malloc(sizeof(int) * tmp_count)))
-		{
-			fprintf(stderr, "Out of memory\n");
-			exit(1);
-		}
-
-		for (i = 0, j = start; j <= stop; i++)
-		{
-			tmp[i] = j++;
-		}
-
-		// Copy the old tests into the args.
-		for (j = 0; j < args.test_count; j++)
-		{
-			if ((args.tests[j] < start) || (args.tests[j] > stop))
-			{
-				tmp[i] = args.tests[j];
-				i++;
-			}
-		}
-
-		// Finalize the list by sorting it.
-		args.test_count = tmp_count;
-
-		if (args.tests)
-		{
-			free(args.tests);
-			args.tests = NULL;
-		}
-
-		args.tests = tmp;
-		qsort(args.tests, args.test_count, sizeof(int), int_compare);
 	}
 
 	// Print the cases we will run.
 	draw_line();
 	{
 		int len = 0;
-		int x = 1;
 
 		printf("Running test cases:\n");
 
@@ -483,6 +520,22 @@ int run_cases()
 	update_reports();
 
 	return 0;
+}
+
+void print_range(int range_count, int *range)
+{
+	if (range_count == 1)
+	{
+		printf("%d to MAX\n", range[0]);
+	}
+	else if (range_count == 2)
+	{
+		printf("%d to %d\n", range[0], range[1]);
+	}
+	else
+	{
+		printf("-\n");
+	}
 }
 
 int main(int argc, char **argv)
@@ -535,16 +588,6 @@ int main(int argc, char **argv)
 		ret |= cargo_add(cargo, "--maxtime", &args.maxtime, CARGO_INT,
 					"The max time a test case is allowed to run.");
 
-		ret |= cargo_addv(cargo, "--testrange", (void **)&args.range, 
-				&args.range_count, 2, CARGO_INT,
-				"A test case to run (1 argument), or a range by specifying "
-				"start and stop (2 arguments). Note that these are simply "
-				"specified as an integer. Not the 1.1.1 name format the "
-				"tests use.");
-
-		ret |= cargo_add(cargo, "--all", &args.all, CARGO_BOOL,
-					"Run all tests.");
-
 		ret |= cargo_addv(cargo, "--agent", (void **)&args.agentname, NULL , 1,
 					CARGO_STRING,
 					"The name of the user agent. Default is 'libws'.");
@@ -563,6 +606,18 @@ int main(int argc, char **argv)
 				&args.skip_count, CARGO_NARGS_ONE_OR_MORE, CARGO_INT,
 				"");
 		cargo_add_alias(cargo, "--skip", "-s");
+
+		ret |= cargo_addv(cargo, "--skiprange", (void **)&args.skiprange, 
+				&args.skiprange_count, 2, CARGO_INT,
+				"Skip this range of tests. Specify start and stop test case.");
+
+		ret |= cargo_addv(cargo, "--testrange", (void **)&args.range, 
+				&args.range_count, 2, CARGO_INT,
+				"Adds a range of tests. Specify start and stop test case. "
+				"These will be appended to the tests specified with --tests");
+
+		ret |= cargo_add(cargo, "--all", &args.all, CARGO_BOOL,
+					"Run all tests.");
 
 		ret |= cargo_addv_alloc(cargo, "--tests", (void **)&args.tests, 
 				&args.test_count, CARGO_NARGS_ONE_OR_MORE, CARGO_INT,
@@ -620,19 +675,10 @@ int main(int argc, char **argv)
 	}
 	else
 	{
-		if (args.range_count == 1)
-		{
-			printf("%d\n", args.range[0]);
-		}
-		else if (args.range_count == 2)
-		{
-			printf("%d to %d\n", args.range[0], args.range[1]);
-		}
-		else
-		{
-			printf("-\n");
-		}
+		print_range(args.range_count, args.range);
 	}
+	printf("Skip range: ");
+	print_range(args.skiprange_count, args.skiprange);
 
 	draw_line();
 	printf("\n");
@@ -647,6 +693,7 @@ int main(int argc, char **argv)
 		run_cases();
 	}
 
+	draw_line();
 	if (ret)
 	{
 		fprintf(stderr, "Failure!\n");
@@ -656,6 +703,7 @@ int main(int argc, char **argv)
 	{
 		libws_test_FAILURE("One or more tests failed!");
 	}
+	draw_line();
 
 done:
 	if (args.skip)
