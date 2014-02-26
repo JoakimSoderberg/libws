@@ -23,8 +23,8 @@ typedef struct libws_autobahn_args_s
 {
 	int ssl;
 	int port;
-	int cases[2];
-	size_t case_count;
+	int range[2];
+	size_t range_count;
 	char *agentname;
 	char *server;
 	int reports;
@@ -34,6 +34,13 @@ typedef struct libws_autobahn_args_s
 	int all;
 	int maxtime;
 	int nodata;
+	const char *config;
+
+	int *skip;
+	size_t skip_count;
+
+	int *tests;
+	size_t test_count;
 
 	char **extras;
 	size_t extra_count;
@@ -317,9 +324,30 @@ int get_case_count()
 	return ret;
 }
 
-int run_cases(int start, int stop)
+int skip_case(int testcase)
+{
+	int j;
+
+	for (j = 0; j < args.skip_count; j++)
+	{
+		if (args.skip[j] == testcase)
+		{
+			return 1;
+		}
+	}
+
+	return 0;
+}
+
+int int_compare(const void * a, const void * b)
+{
+   return (*(int*)a - *(int*)b);
+}
+
+int run_cases()
 {
 	int i;
+	int j;
 	int max_case = 0;
 	if ((max_case = get_case_count()) < 0)
 	{
@@ -327,24 +355,126 @@ int run_cases(int start, int stop)
 		return -1;
 	}
 
+	// Setup "all" or a range of tests.
+	// (These overwrite the normal tests).
 	if (args.all)
 	{
-		start = 1;
-		stop = max_case;
+		args.test_count = max_case;
+
+		if (!(args.tests = realloc(args.tests, sizeof(int) * args.test_count)))
+		{
+			fprintf(stderr, "Out of memory\n");
+			exit(1);
+		}
+
+		for (i = 0; i < args.test_count; i++)
+		{
+			args.tests[i] = i + 1;
+		}
+	}
+	else if (args.range_count)
+	{
+		int start = args.range[0];
+		int stop = (args.range_count == 2) ? args.range[1] : max_case;
+		int more_count = 0;
+		int tmp_count = 0;
+		int *tmp = NULL;
+
+		if (start <= 0)
+		{
+			fprintf(stderr, "Range start must be positive integer!\n");
+			return -1;
+		}
+
+		// We will include the tests specified using --tests as well
+		// count how many of those are outside the range.
+		for (i = 0; i < args.test_count; i++)
+		{
+			if ((args.tests[i] < start) || (args.tests[i] > stop))
+			{
+				more_count++;
+			}
+		}
+
+		// Make sure we have a valid range.
+		tmp_count = (stop - start) + 1;
+
+		if (tmp_count <= 0)
+		{
+			fprintf(stderr, "Invalid range specified! "
+				"Start needs to be larger than stop\n");
+			return -1;
+		}
+
+		// Include the extra tests in the count.
+		tmp_count += more_count;
+
+		if (!(tmp = malloc(sizeof(int) * tmp_count)))
+		{
+			fprintf(stderr, "Out of memory\n");
+			exit(1);
+		}
+
+		for (i = 0, j = start; j <= stop; i++)
+		{
+			tmp[i] = j++;
+		}
+
+		// Copy the old tests into the args.
+		for (j = 0; j < args.test_count; j++)
+		{
+			if ((args.tests[j] < start) || (args.tests[j] > stop))
+			{
+				tmp[i] = args.tests[j];
+				i++;
+			}
+		}
+
+		// Finalize the list by sorting it.
+		args.test_count = tmp_count;
+
+		if (args.tests)
+		{
+			free(args.tests);
+			args.tests = NULL;
+		}
+
+		args.tests = tmp;
+		qsort(args.tests, args.test_count, sizeof(int), int_compare);
 	}
 
+	// Print the cases we will run.
 	draw_line();
-	printf("Running test case %d to %d (of %d)\n", 
-			start, stop, max_case);
-	draw_line();
-	printf("\n");
-
-
-	if (stop > max_case) stop = max_case;
-
-	for (i = start; i < stop; i++)
 	{
-		if (run_case(i))
+		int len = 0;
+		int x = 1;
+
+		printf("Running test cases:\n");
+
+		for (i = 0; i < args.test_count; i++)
+		{
+			if (skip_case(args.tests[i])) continue;
+
+			len += printf("%d%s", args.tests[i],
+				((i + 1) == args.test_count) ? "" : ", ");
+
+			if (len >= 78)
+			{
+				len = 0;
+				printf("\n");
+			}
+		}
+
+		printf("\n");
+	}
+	draw_line();
+
+	// Finally run the actual test cases.
+	for (i = 0; i < args.test_count; i++)
+	{
+		if (skip_case(args.tests[i])) continue;
+
+		if (run_case(args.tests[i]))
 		{
 			return -1;
 		}
@@ -394,7 +524,6 @@ int main(int argc, char **argv)
 
 		ret |= cargo_add(cargo, "--ssl", &args.ssl, CARGO_BOOL,
 					"Use SSL for the websocket connection.");
-		cargo_add_alias(cargo, "--ssl", "-s");
 
 		ret |= cargo_add(cargo, "--nocolor", &args.nocolor, CARGO_BOOL,
 					"Turn off fancy color output.");
@@ -406,15 +535,12 @@ int main(int argc, char **argv)
 		ret |= cargo_add(cargo, "--maxtime", &args.maxtime, CARGO_INT,
 					"The max time a test case is allowed to run.");
 
-		ret |= cargo_addv(cargo, "--test", (void **)&args.cases, 
-				&args.case_count, 2, CARGO_INT,
+		ret |= cargo_addv(cargo, "--testrange", (void **)&args.range, 
+				&args.range_count, 2, CARGO_INT,
 				"A test case to run (1 argument), or a range by specifying "
 				"start and stop (2 arguments). Note that these are simply "
 				"specified as an integer. Not the 1.1.1 name format the "
 				"tests use.");
-		cargo_add_alias(cargo, "--test", "-t");
-
-		// TODO: Add skip list.
 
 		ret |= cargo_add(cargo, "--all", &args.all, CARGO_BOOL,
 					"Run all tests.");
@@ -428,6 +554,20 @@ int main(int argc, char **argv)
 				"Tell the server to update the Autobahn Test Suites "
 				"reports manually.");
 		cargo_add_alias(cargo, "--reports", "-r");
+
+		ret |= cargo_add(cargo, "--config", &args.config, CARGO_STRING,
+					"Configuration file containing the tests to run.");
+		cargo_add_alias(cargo, "--config", "-c");
+
+		ret |= cargo_addv_alloc(cargo, "--skip", (void **)&args.skip, 
+				&args.skip_count, CARGO_NARGS_ONE_OR_MORE, CARGO_INT,
+				"");
+		cargo_add_alias(cargo, "--skip", "-s");
+
+		ret |= cargo_addv_alloc(cargo, "--tests", (void **)&args.tests, 
+				&args.test_count, CARGO_NARGS_ONE_OR_MORE, CARGO_INT,
+				"A list of tests to run.");
+		cargo_add_alias(cargo, "--tests", "-t");
 
 		if (ret != 0)
 		{
@@ -473,20 +613,20 @@ int main(int argc, char **argv)
 	printf("Agent: %s\n", args.agentname);
 	printf("SSL: %s\n", args.ssl ? "ON" : "OFF");
 	printf("Server: %s:%d\n", args.server, args.port);
-	printf("Test cases: ");
+	printf("Test range: ");
 	if (args.all)
 	{
 		printf("All\n");
 	}
 	else
 	{
-		if (args.case_count == 1)
+		if (args.range_count == 1)
 		{
-			printf("%d\n", args.cases[0]);
+			printf("%d\n", args.range[0]);
 		}
-		else if (args.case_count == 2)
+		else if (args.range_count == 2)
 		{
-			printf("%d to %d\n", args.cases[0], args.cases[1]);
+			printf("%d to %d\n", args.range[0], args.range[1]);
 		}
 		else
 		{
@@ -504,25 +644,7 @@ int main(int argc, char **argv)
 	}
 	else
 	{
-		if (!args.all && (args.case_count == 0))
-		{
-			fprintf(stderr, "You must specify at least one test case!\n");
-		}
-		else if (!args.all && (args.case_count == 1))
-		{
-			ret = run_cases(args.cases[0], args.cases[0] + 1);
-		}
-		else
-		{
-			if (args.cases[0] > args.cases[1])
-			{
-				fprintf(stderr, "First test case must be smaller than the "
-					"second\n");
-				goto done;
-			}
-
-			ret = run_cases(args.cases[0], args.cases[1]+1);
-		}
+		run_cases();
 	}
 
 	if (ret)
@@ -536,6 +658,16 @@ int main(int argc, char **argv)
 	}
 
 done:
+	if (args.skip)
+	{
+		free(args.skip);
+	}
+
+	if (args.tests)
+	{
+		free(args.tests);
+	}
+
 	cargo_destroy(&cargo);
 	printf("Bye bye!\n");
 	return ret | global_return;
