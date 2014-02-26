@@ -134,6 +134,18 @@ int ws_base_service(ws_base_t base);
 int ws_base_service_blocking(ws_base_t base);
 
 ///
+/// Quits the given websocket event loop after a given delay.
+///
+/// @param[in] base 						The websocket base context.
+/// @param[in] let_running_events_complete	Let any pending events run.
+/// @param[in] delay 						The time to wait before quiting.
+///
+/// @returns 0 on success.
+///
+int ws_base_quit_delay(ws_base_t base, int let_running_events_complete, 
+					const struct timeval *delay);
+
+///
 /// Quits the given websocket event loop.
 ///
 /// @param[in] base 						The websocket base context.

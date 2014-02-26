@@ -413,7 +413,8 @@ int ws_base_service_blocking(ws_base_t base)
 	return ret;
 }
 
-int ws_base_quit(ws_base_t base, int let_running_events_complete)
+int ws_base_quit_delay(ws_base_t base, int let_running_events_complete, 
+					const struct timeval *delay)
 {
 	int ret;
 	assert(base);
@@ -422,7 +423,7 @@ int ws_base_quit(ws_base_t base, int let_running_events_complete)
 
 	if (let_running_events_complete)
 	{
-		ret = event_base_loopexit(base->ev_base, NULL);
+		ret = event_base_loopexit(base->ev_base, delay);
 	}
 	else
 	{
@@ -430,6 +431,11 @@ int ws_base_quit(ws_base_t base, int let_running_events_complete)
 	}
 
 	return ret;
+}
+
+int ws_base_quit(ws_base_t base, int let_running_events_complete)
+{
+	return ws_base_quit_delay(base, let_running_events_complete, NULL);
 }
 
 #if 0
