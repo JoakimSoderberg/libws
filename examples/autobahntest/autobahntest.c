@@ -35,7 +35,8 @@ typedef struct libws_autobahn_args_s
 	int nocolor;
 	int all;
 	int maxtime;
-	int nodata;
+	int fulldata;
+	int compact;
 	const char *config;
 
 	int skiprange[2];
@@ -123,8 +124,15 @@ void parse_test_info(char *msg)
 
 	snprintf(headline, sizeof(headline), "[%d] - %s", current_case, id);
 
-	libws_test_HEADLINE(headline);
-	print_linebreak(description, 80);
+	if (args.compact)
+	{
+		libws_test_printf(stdout, MAGNETA, "%s: ", headline);
+	}
+	else
+	{
+		libws_test_HEADLINE(headline);
+		print_linebreak(description, 80);
+	}
 }
 
 void parse_test_status(char *msg)
@@ -152,11 +160,29 @@ void parse_test_status(char *msg)
 
 	if (!strcmp(behavior, "OK"))
 	{
-		libws_test_SUCCESS("");
+		if (args.compact)
+		{
+			libws_test_printf(stdout, BRIGHT, "[");
+			libws_test_printf(stdout, GREEN, "SUCCESS");
+			libws_test_printf(stdout, BRIGHT, "] ");
+		}
+		else
+		{
+			libws_test_SUCCESS("");
+		}
 	}
 	else
 	{
-		libws_test_FAILURE("");
+		if (args.compact)
+		{
+			libws_test_printf(stderr, BRIGHT, "[");
+			libws_test_printf(stderr, RED, "FAILURE");
+			libws_test_printf(stderr, BRIGHT, "] ");
+		}
+		else
+		{
+			libws_test_FAILURE("");
+		}
 		global_return = -1;
 	}
 }
@@ -189,13 +215,19 @@ void onmsg(ws_t ws, char *msg, uint64_t len, int binary, void *arg)
 		case LIBWS_AUTOBAHN_STATE_TEST:
 		{
 			// Echo any message.
-			if (!args.nodata)
+			if (args.fulldata && !binary)
 			{
-				if (!binary)
-					printf("%s\n", msg ? msg : "NULL");
-				else
-					printf("%llu length binary message received\n", len);
+				printf("%s (%llu bytes) ", msg, len);
 			}
+			else
+			{
+				printf("(%s) %*llu bytes ",
+					binary ? "binary" : "text", 
+					args.compact ? 10 : 0, len);
+			}
+
+			if (!args.compact)
+				printf("\n");
 
 			ws_send_msg_ex(ws, msg, len, binary);
 			break;
@@ -214,14 +246,15 @@ void onping(ws_t ws, char *payload, uint64_t len, int binary, void *arg)
 void onclose(ws_t ws, ws_close_status_t status,
 			const char *reason, size_t reason_len, void *arg)
 {
-	if (state == LIBWS_AUTOBAHN_STATE_TEST)
+	if (state == LIBWS_AUTOBAHN_STATE_TEST && !args.compact)
 		printf("Close status: %u. %s\n", (uint16_t)status, reason);
+
 	ws_base_quit(ws_get_base(ws), 1);
 }
 
 void onconnect(ws_t ws, void *arg)
 {
-	if (state == LIBWS_AUTOBAHN_STATE_TEST)
+	if ((state == LIBWS_AUTOBAHN_STATE_TEST) && !args.compact)
 		printf("Connected!\n");
 }
 
@@ -741,7 +774,7 @@ int main(int argc, char **argv)
 		args.debug = 0;
 		args.all = 0;
 		args.maxtime = 30;
-		args.nodata = 0;
+		args.fulldata = 0;
 
 		cargo_init(&cargo, 32, argv[0],
 			"An AutobahnTestSuite client that can be "
@@ -755,8 +788,11 @@ int main(int argc, char **argv)
 					"Show websocket debug output.");
 		cargo_add_alias(cargo, "--debug", "-d");
 
-		ret |= cargo_add(cargo, "--nodata", &args.nodata, CARGO_BOOL,
-					"Don't output test data.");
+		ret |= cargo_add(cargo, "--fulldata", &args.fulldata, CARGO_BOOL,
+					"Output the full test data.");
+
+		ret |= cargo_add(cargo, "--compact", &args.compact, CARGO_BOOL,
+					"Use a compact output format.");
 
 		ret |= cargo_add(cargo, "--ssl", &args.ssl, CARGO_BOOL,
 					"Use SSL for the websocket connection.");
