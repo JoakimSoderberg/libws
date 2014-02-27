@@ -137,7 +137,7 @@ if (LIBWS_WITH_EXAMPLES)
 endif()
 
 if (LIBWS_WITH_AUTOBAHN)
-	if (NOT EXISTS "${PROJECT_SOURCE_DIR}/examples/autobahntest/cargo/cargo.c")
+	if (NOT EXISTS "${PROJECT_SOURCE_DIR}/test/autobahn/cargo/cargo.c")
 		message("####################################################")
 		message(" Please do 'git submodule update --init --recursive'")
 		message("####################################################")
@@ -146,14 +146,14 @@ if (LIBWS_WITH_AUTOBAHN)
 
 	set(JANSSON_WITHOUT_TESTS ON CACHE BOOL "")
 	set(JANSSON_BUILD_DOCS OFF CACHE BOOL "")
-	add_subdirectory(examples/autobahntest/jansson)
+	add_subdirectory(test/autobahn/jansson)
 	include_directories(${JANSSON_INCLUDE_DIRS})
 
 	# Uncomment this to get cargo debug info.
 	#add_definitions(-DCARGO_DEBUG=5)
 	add_executable(autobahntest
-		examples/autobahntest/autobahntest.c
-		examples/autobahntest/cargo/cargo.c
+		test/autobahn/autobahntest.c
+		test/autobahn/cargo/cargo.c
 		test/libws_test_helpers.c)
 
 	include_directories(test)
