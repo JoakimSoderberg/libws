@@ -27,6 +27,7 @@ typedef struct libws_autobahn_args_s
 	int range[2];
 	size_t range_count;
 	char *agentname;
+	size_t agentname_count;
 	char *server;
 	int reports;
 	int help;
@@ -652,6 +653,8 @@ int load_config(const char *path)
 	json_t *skips = NULL;
 	json_t *skiprange = NULL;
 	json_t *testrange = NULL;
+	char *server = NULL;
+	char *agentname = NULL;
 	json_error_t error;
 
 	if (!(json = json_load_file(path, 0, &error)))
@@ -662,11 +665,24 @@ int load_config(const char *path)
 
 	if (json_unpack_ex(json, &error, 0,
 		"{"
+			"s?:s" // server
+			"s?:i" // port
+			"s?:i" // maxtime
+			"s?:i" // ssl
+			"s?:i" // debug
+			"s?:i" // nocolor
 			"s?:o" // tests
 			"s?:o" // skips
 			"s?:o" // testrange
 			"s?:o" // skiprange
 		"}",
+		"server", &server,
+		"port", &args.port,
+		"maxtime", &args.maxtime,
+		"agent", &agentname,
+		"ssl", &args.ssl,
+		"debug", &args.debug,
+		"nocolor", &args.nocolor,
 		"tests", &tests,
 		"skips", &skips,
 		"testrange", &testrange,
@@ -675,6 +691,12 @@ int load_config(const char *path)
 		fprintf(stderr, "Failed to unpack config: %s\n", error.text);
 		return -1;
 	}
+
+	if (server)
+		args.server = strdup(server);
+
+	if (agentname)
+		args.agentname = strdup(agentname);
 
 	if (load_config_int_array(tests, "tests", &args.tests, &args.test_count))
 		goto fail;
@@ -713,7 +735,7 @@ int main(int argc, char **argv)
 		args.ssl = 0;
 		args.port = 9001;
 		args.agentname = "libws";
-		args.server = "localhost";
+		args.server = NULL;
 		args.reports = 0;
 		args.help = 0;
 		args.debug = 0;
@@ -749,10 +771,8 @@ int main(int argc, char **argv)
 		ret |= cargo_add(cargo, "--maxtime", &args.maxtime, CARGO_INT,
 					"The max time a test case is allowed to run.");
 
-		ret |= cargo_addv(cargo, "--agent", (void **)&args.agentname, NULL , 1,
-					CARGO_STRING,
+		ret |= cargo_add(cargo, "--agent", &args.agentname, CARGO_STRING,
 					"The name of the user agent. Default is 'libws'.");
-		cargo_add_alias(cargo, "--agent", "-a");
 
 		ret |= cargo_add(cargo, "--reports", &args.reports, CARGO_BOOL,
 				"Tell the server to update the Autobahn Test Suites "
@@ -779,6 +799,7 @@ int main(int argc, char **argv)
 
 		ret |= cargo_add(cargo, "--all", &args.all, CARGO_BOOL,
 					"Run all tests.");
+		cargo_add_alias(cargo, "--all", "-a");
 
 		ret |= cargo_addv_alloc(cargo, "--tests", (void **)&args.tests, 
 				&args.test_count, CARGO_NARGS_ONE_OR_MORE, CARGO_INT,
@@ -803,11 +824,6 @@ int main(int argc, char **argv)
 	}
 
 	// Verify and print settings.
-	if (args.extra_count >= 1)
-	{
-		args.server = args.extras[0];
-	}
-
 	if (args.nocolor)
 	{
 		libws_test_nocolor(1);
@@ -829,6 +845,20 @@ int main(int argc, char **argv)
 	{
 		if (load_config(args.config))
 		{
+			ret = -1;
+			goto done;
+		}
+	}
+
+	if (!args.server)
+	{
+		if (args.extra_count >= 1)
+		{
+			args.server = strdup(args.extras[0]);
+		}
+		else
+		{
+			fprintf(stderr, "Error! No server specified\n");
 			ret = -1;
 			goto done;
 		}
@@ -889,6 +919,19 @@ done:
 	{
 		free(args.tests);
 	}
+
+	if (args.server)
+	{
+		free(args.server);
+	}
+
+	#if 0
+	// TODO: Fix this.
+	if (args.agentname)
+	{
+		free(args.agentname);
+	}
+	#endif
 
 	cargo_destroy(&cargo);
 	printf("Bye bye!\n");
