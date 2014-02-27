@@ -565,6 +565,140 @@ void print_range(int range_count, int *range)
 	}
 }
 
+int load_config_int_array(json_t *array, const char *name,
+	int **target, size_t *target_count)
+{
+	int ret = 0;
+	size_t i;
+
+	if (array)
+	{
+		if (!json_is_array(array))
+		{
+			fprintf(stderr, "Error parsing JSON: \"%s\" is not "
+					"an array.\n", name);
+			ret = -1;
+			goto fail;
+		}
+		else
+		{
+			json_t *val = NULL;
+			*target_count = json_array_size(array);
+
+			if (!(*target = realloc(*target, 
+					sizeof(int) * (*target_count))))
+			{
+				fprintf(stderr, "Out of memory!\n");
+				exit(1);
+			}
+
+			for (i = 0; i < *target_count; i++)
+			{
+				val = json_array_get(array, i);
+
+				if (!json_is_integer(val))
+				{
+					fprintf(stderr, "Item at index %lu in \"%s\" is not "
+						"an integer!\n", i, name);
+					ret = -1;
+					goto fail;
+				}
+
+				(*target)[i] = json_integer_value(val);
+			}
+		}
+	}
+
+fail:
+	return ret;
+}
+
+int load_config_int_range(json_t *range, char *name, 
+				int *target, size_t *target_count)
+{
+	json_error_t error;
+
+	if (!range)
+		return 0;
+
+	if (json_is_array(range))
+	{
+		if (json_unpack_ex(range, &error, 0,
+			"[i,i]",
+			&target[0],
+			&target[1]))
+		{
+			fprintf(stderr, "Failed to parse %s: %s\n", name, error.text);
+			return -1;
+		}
+
+		*target_count = 2;
+	}
+	else
+	{
+		fprintf(stderr, "\"%s\" is not an array.\n", name);
+		return -1;
+	}
+
+	return 0;
+}
+
+int load_config(const char *path)
+{
+	int ret = 0;
+	size_t i;
+	json_t *json = NULL;
+	json_t *tests = NULL;
+	json_t *skips = NULL;
+	json_t *skiprange = NULL;
+	json_t *testrange = NULL;
+	json_error_t error;
+
+	if (!(json = json_load_file(path, 0, &error)))
+	{
+		fprintf(stderr, "Error loading config: %s\n", error.text);
+		return -1;
+	}
+
+	if (json_unpack_ex(json, &error, 0,
+		"{"
+			"s?:o" // tests
+			"s?:o" // skips
+			"s?:o" // testrange
+			"s?:o" // skiprange
+		"}",
+		"tests", &tests,
+		"skips", &skips,
+		"testrange", &testrange,
+		"skiprange", &skiprange))
+	{
+		fprintf(stderr, "Failed to unpack config: %s\n", error.text);
+		return -1;
+	}
+
+	if (load_config_int_array(tests, "tests", &args.tests, &args.test_count))
+		goto fail;
+
+	if (load_config_int_array(skips, "skips", &args.skip, &args.skip_count))
+		goto fail;
+
+	if (load_config_int_range(skiprange, "test range", 
+		args.range, &args.range_count))
+	{
+		goto fail;
+	}
+
+	if (load_config_int_range(skiprange, "skip range", 
+		args.skiprange, &args.skiprange_count))
+	{
+		goto fail;
+	}
+
+fail:
+	json_decref(json);
+	return ret;
+}
+
 int main(int argc, char **argv)
 {
 	int ret = 0;
@@ -691,6 +825,15 @@ int main(int argc, char **argv)
 		ws_set_log_level(-1);
 	}
 
+	if (args.config)
+	{
+		if (load_config(args.config))
+		{
+			ret = -1;
+			goto done;
+		}
+	}
+
 	draw_line();
 	printf("Agent: %s\n", args.agentname);
 	printf("SSL: %s\n", args.ssl ? "ON" : "OFF");
@@ -729,6 +872,10 @@ int main(int argc, char **argv)
 	if (global_return)
 	{
 		libws_test_FAILURE("One or more tests failed!");
+	}
+	else
+	{
+		libws_test_SUCCESS("All tests ran OK!");
 	}
 	draw_line();
 
