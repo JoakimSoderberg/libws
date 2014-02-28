@@ -26,7 +26,6 @@ static ws_log_callback_f _ws_log_cb;
 ///
 char *_ws_get_time_str(char *buf, size_t bufsize)
 {
-	int ret;
 	const char *fmt = "%Y-%m-%d %H:%M:%S";
 
 	#ifdef _WIN32

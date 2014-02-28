@@ -39,7 +39,6 @@ int do_unpack_test(char *buf, size_t buflen,
 	char *payload = NULL;
 	int ret = 0;
 	ws_header_t header;
-	size_t i;
 	size_t header_len;
 	ws_parse_state_t state;
 
@@ -68,8 +67,8 @@ int do_unpack_test(char *buf, size_t buflen,
 		return -1;
 
 	// Make sure we copy and null terminate the payload.
-	payload = (char *)calloc(header.payload_len + 1, sizeof(char));
-	memcpy(payload, &buf[header_len], header.payload_len);
+	payload = (char *)calloc((size_t)header.payload_len + 1, sizeof(char));
+	memcpy(payload, &buf[header_len], (size_t)header.payload_len);
 	payload[header.payload_len] = '\0';
 
 	if (header.mask_bit)
@@ -126,8 +125,6 @@ int TEST_rfc_examples(int argc, char *argv[])
 {
 	int ret = 0;
 	ws_header_t expected_header;
-	ws_header_t header;
-	size_t header_len;
 	ws_header_t *h = NULL;
 
 	libws_test_HEADLINE("TEST_rfc_examples");

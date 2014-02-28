@@ -16,7 +16,11 @@
 #include "libws_header.h"
 #include "libws_handshake.h"
 
+#ifdef _WIN32
+#include <time.h>
+#else
 #include <sys/time.h>
+#endif
 
 #include <event2/event.h>
 #include <event2/bufferevent.h>

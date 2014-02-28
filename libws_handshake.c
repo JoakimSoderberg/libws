@@ -114,7 +114,6 @@ int _ws_parse_http_header(char *line, char **header_name,
  	char *start = line;
  	char *end;
  	size_t len;
-	char *l;
 
 	assert(header_name);
 	assert(header_val);
@@ -246,7 +245,6 @@ int _ws_check_server_protocol_list(ws_t ws, const char *val)
 	char *v = s;
 	char *prot = NULL;
 	char *end = NULL;
-	size_t len;
 	int found = 0;
 	
 	while ((prot = strsep(&v, ",")) != NULL)
@@ -538,7 +536,6 @@ ws_parse_state_t _ws_read_http_headers(ws_t ws, struct evbuffer *in)
 
 ws_parse_state_t _ws_read_server_handshake_reply(ws_t ws, struct evbuffer *in)
 {
-	size_t len;
 	char *line = NULL;
 	char *header_name = NULL;
 	char *header_val = NULL;

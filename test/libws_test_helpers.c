@@ -3,7 +3,10 @@
 #include <stdlib.h>
 #include <stdarg.h>
 #include <string.h>
-#ifdef WIN32
+#ifdef _WIN32
+
+#define WIN32_LEAN_AND_MEAN 
+#include <Windows.h>
 #include <io.h>
 #endif
 #include "libws_test_helpers.h"
@@ -62,7 +65,7 @@ int libws_test_parse_cmdline(int argc, char **argv)
 
 void libws_test_vprintf(FILE *target, enum libws_test_color_e test_color, const char *fmt, va_list args)
 {
-	#ifdef WIN32
+	#ifdef _WIN32
 	WORD color = 0;
 	
 	HANDLE hstdout = GetStdHandle(STD_OUTPUT_HANDLE);
@@ -75,7 +78,7 @@ void libws_test_vprintf(FILE *target, enum libws_test_color_e test_color, const 
 		case NORMAL: break;
 		case GREEN: color = (FOREGROUND_GREEN | FOREGROUND_INTENSITY); break;
 		case RED: color = (FOREGROUND_RED | FOREGROUND_INTENSITY); break;
-		case YELLOW: color = (FOREGROUND_YELLOW | FOREGROUND_INTENSITY); break;
+		case YELLOW: color = (14 | FOREGROUND_INTENSITY); break;
 		case CYAN: color = (FOREGROUND_BLUE | FOREGROUND_GREEN | FOREGROUND_INTENSITY); break;
 		case MAGNETA: color =  (FOREGROUND_RED | FOREGROUND_BLUE | FOREGROUND_INTENSITY); break;
 		case BRIGHT: color = (FOREGROUND_INTENSITY | FOREGROUND_BLUE | FOREGROUND_GREEN | FOREGROUND_RED); break;

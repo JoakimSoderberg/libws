@@ -70,7 +70,6 @@ int TEST_ws_get_subprotocols(int argc, char **argv)
 	int ret = 0;
 	ws_base_t base;
 	ws_t ws;
-	size_t i;
 	char **prots = NULL;
 	size_t count = 0;
 

@@ -44,7 +44,6 @@ int TEST_ws_read_server_handshake_reply(int argc, char *argv[])
 	ws_t ws = NULL;
 	char key_hash[256];
 	struct evbuffer *in = evbuffer_new();
-	ws_parse_state_t state;
 
 	libws_test_HEADLINE("TEST_ws_read_server_handshake_reply");
 	if (libws_test_init(argc, argv)) return -1;

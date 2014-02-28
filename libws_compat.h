@@ -18,4 +18,9 @@ uint64_t libws_hton64(const uint64_t input);
 char *strsep(char **s, const char *del);
 char *ws_rtrim(char *s);
 
+#ifdef _WIN32
+#define strcasecmp _stricmp 
+#define strncasecmp _strnicmp 
+#endif
+
 #endif // __LIBWS_COMPAT_H__

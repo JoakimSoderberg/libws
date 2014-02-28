@@ -9,8 +9,12 @@
 #include <stdlib.h>
 #endif
 
+#ifdef _WIN32
+#include <time.h>
+#else
 #include <sys/time.h>
 #include <unistd.h>
+#endif
 #include <string.h>
 
 #include <event2/event.h>
@@ -99,8 +103,9 @@ char *_ws_strdup(const char *str)
 	{
 		size_t len = strlen(str);
 		void *p = NULL;
-		
-		// TODO: goto fail if len == size_t max.
+
+		if (len == ((size_t)-1))
+			goto fail;
 
 		if ((p = replaced_ws_malloc(len + 1)))
 		{
@@ -301,7 +306,6 @@ static int _ws_handle_close_frame(ws_t ws)
 
 int _ws_handle_ping_frame(ws_t ws)
 {
-	ws_header_t *h;
 	assert(ws);
 	LIBWS_LOG(LIBWS_TRACE, "  Ping frame");
 
@@ -319,7 +323,6 @@ int _ws_handle_ping_frame(ws_t ws)
 
 int _ws_handle_pong_frame(ws_t ws)
 {
-	ws_header_t *h;
 	assert(ws);
 	LIBWS_LOG(LIBWS_TRACE, "  Pong frame");
 
@@ -553,7 +556,7 @@ void _ws_read_websocket(ws_t ws, struct evbuffer *in)
 		{
 			// We're in a frame.
 			size_t recv_len = evbuffer_get_length(in);
-			size_t remaining = ws->header.payload_len - ws->recv_frame_len;
+			size_t remaining = (size_t)(ws->header.payload_len - ws->recv_frame_len);
 
 			LIBWS_LOG(LIBWS_DEBUG2, "In frame (remaining %u bytes)", remaining);
 
@@ -938,7 +941,7 @@ int _ws_send_data(ws_t ws, char *msg, uint64_t len, int no_copy)
 	if (no_copy && ws->no_copy_cleanup_cb)
 	{
 		if (evbuffer_add_reference(bufferevent_get_output(ws->bev), 
-			(void *)msg, len, _ws_builtin_no_copy_cleanup_wrapper, (void *)ws))
+			(void *)msg, (size_t)len, _ws_builtin_no_copy_cleanup_wrapper, (void *)ws))
 		{
 			LIBWS_LOG(LIBWS_ERR, "Failed to write reference to send buffer");
 			return -1;
@@ -1124,18 +1127,18 @@ int _ws_send_close(ws_t ws, ws_close_status_t status_code,
 
 int _ws_get_random_mask(ws_t ws, char *buf, size_t len)
 {
-	int i;
-
-	#ifdef WIN32
+	#ifdef _WIN32
+	size_t i;
 	// http://msdn.microsoft.com/en-us/library/sxtz2fa8(VS.80).aspx
-	for (i = 0; i < len)
+	for (i = 0; i < len; i++)
 	{
-		if (rand_s((unsigned int)&buf[i]))
+		if (rand_s((unsigned int *)&buf[i]))
 		{
 			return -1;
 		}
 	}
 	#else
+	int i;
 	i = read(ws->ws_base->random_fd, buf, len);
 	#endif 
 

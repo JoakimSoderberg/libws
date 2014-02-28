@@ -5,7 +5,12 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <inttypes.h>
+
+#ifdef _WIN32
+#include <time.h>
+#else
 #include <sys/time.h>
+#endif
 
 #include "libws_header.h"
 

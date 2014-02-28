@@ -25,12 +25,12 @@ SET(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/bin)
 SET(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/lib)
 SET(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/lib)
 
-# Aim for C89 with C++ style comments.
-set(CMAKE_CXX_FLAGS "-Wimplicit-function-declaration")
-set(CMAKE_C_FLAGS "-std=gnu89 -Wimplicit-function-declaration -Wpointer-sign")
-
-# Turn on coverage support.
 if(${CMAKE_C_COMPILER_ID} STREQUAL "GNU" OR ${CMAKE_C_COMPILER_ID} STREQUAL "Clang")
+	# Aim for C89 with C++ style comments.
+	set(CMAKE_CXX_FLAGS "-Wimplicit-function-declaration")
+	set(CMAKE_C_FLAGS "-std=gnu89 -Wimplicit-function-declaration -Wpointer-sign")
+
+	# Turn on coverage support.
 	option(LIBWS_COVERAGE "Compile with coverage flags.")
 	option(LIBWS_COVERAGE_REPORT "(GCC Only! Requires gcov/lcov to be installed). Include target for doing coverage analysis for the test suite. Note that -DCMAKE_BUILD_TYPE=Debug must be set" OFF)
 
@@ -56,11 +56,25 @@ endif()
 
 include_directories(${PROJECT_SOURCE_DIR})
 
-find_package(LibEvent REQUIRED)
-include_directories(${LIBEVENT_INCLUDE_DIR})
+if (WIN32)
+	add_definitions(-D_CRT_SECURE_NO_WARNINGS -D_CRT_NONSTDC_NO_DEPRECATE)
+	list(APPEND LIBWS_LIB_LIST Ws2_32.lib iphlpapi.lib User32.lib)
+endif()
 
-list(APPEND LIBWS_DEP_LIST LibEvent)
-list(APPEND LIBWS_LIB_LIST ${LIBEVENT_LIBRARY})
+# TODO: Maybe move this to the find module.
+# First look for a CMake config for Libevent.
+# The location of which can be specified with -DLibevent_DIR=/path/to/Libevent/build
+find_package(Libevent CONFIG)
+
+# If no config was found, search the system.
+if (NOT Libevent_FOUND)
+	find_package(Libevent REQUIRED)
+endif()
+
+include_directories(${LIBEVENT_INCLUDE_DIRS})
+
+list(APPEND LIBWS_DEP_LIST Libevent)
+list(APPEND LIBWS_LIB_LIST ${LIBEVENT_LIBRARIES})
 
 if (LIBWS_WITH_OPENSSL)
 	find_package(OpenSSL REQUIRED)
@@ -170,4 +184,7 @@ endif()
 # TODO: Export libraries and headers.
 # TODO: Install stuff
 
-
+message("=====================================================================")
+message("Libevent library: ${LIBEVENT_LIBRARIES}")
+message("Libevent include: ${LIBEVENT_INCLUDE_DIRS}")
+message("=====================================================================")

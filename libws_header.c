@@ -7,7 +7,10 @@
 #include "libws_private.h"
 #include <assert.h>
 #include <string.h>
+
+#ifndef _WIN32
 #include <arpa/inet.h>
+#endif
 
 ws_parse_state_t ws_unpack_header(ws_header_t *h, size_t *header_len, 
 									const unsigned char *b, size_t len)

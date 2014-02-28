@@ -7,13 +7,19 @@
 #include <event2/buffer.h>
 
 #include <stdio.h>
+#ifdef _WIN32
+#include <WinSock2.h>
+#else
 #include <sys/socket.h>
+#endif
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <assert.h>
 #include <stdint.h>
 #include <inttypes.h>
+#ifndef _WIN32
 #include <unistd.h> // TODO: System introspection.
+#endif
 #include <string.h>
 #include <signal.h>
 
@@ -53,9 +59,9 @@ int ws_global_init(ws_base_t *base)
 	b = *base;
 
 	// Don't crash on Broken pipe for a socket.
+	#ifndef _WIN32
 	signal(SIGPIPE, SIG_IGN);
 
-	#ifndef WIN32
 	if ((b->random_fd = open(WS_RANDOM_PATH, O_RDONLY)) < 0)
 	{
 		LIBWS_LOG(LIBWS_ERR, "Failed to open random source %s , %d",
@@ -72,6 +78,7 @@ int ws_global_init(ws_base_t *base)
 			goto fail;
 		}
 
+		// TODO: Passing 1 here fails on windows... dns/server regress test in Libevent does not.
 		if (!(b->dns_base = evdns_base_new(b->ev_base, 1)))
 		{
 			LIBWS_LOG(LIBWS_CRIT, "Out of memory!");
@@ -89,16 +96,16 @@ int ws_global_init(ws_base_t *base)
 
 	return 0;
 fail:
-	if (*base)
-	{
-		_ws_free(*base);
-		*base = NULL;
-	}
-
 	if (b->ev_base)
 	{
 		event_base_free(b->ev_base);
 		b->ev_base = NULL;
+	}
+
+	if (*base)
+	{
+		_ws_free(*base);
+		*base = NULL;
 	}
 
 	return -1;
@@ -725,7 +732,6 @@ int ws_msg_end(ws_t ws)
 
 int ws_send_msg_ex(ws_t ws, char *msg, uint64_t len, int binary)
 {
-	uint64_t frame_len;
 	int saved_binary_mode;
 	assert(ws);
 	_WS_MUST_BE_CONNECTED(ws, "send message");
@@ -926,7 +932,7 @@ void ws_onping_default_cb(ws_t ws, char *msg, uint64_t len,
 {
 	assert(ws);
 
-	if (ws_send_pong(ws, msg, len, binary))
+	if (ws_send_pong(ws, msg, (size_t)len, binary))
 	{
 		LIBWS_LOG(LIBWS_ERR, "Failed to send pong");
 	}
@@ -1268,7 +1274,7 @@ void ws_default_msg_frame_data_cb(ws_t ws, char *payload,
 	LIBWS_LOG(LIBWS_TRACE, "Default message frame data callback "
 							"(Append data to frame data buffer)");
 
-	evbuffer_add(ws->frame_data, payload, len);
+	evbuffer_add(ws->frame_data, payload, (size_t)len);
 }
 
 void ws_default_msg_frame_end_cb(ws_t ws, void *arg)
