@@ -35,6 +35,7 @@ char *_ws_get_time_str(char *buf, size_t bufsize)
 	now = localtime(&timenow);
 	strftime(buf, bufsize, fmt, now);
 	#else
+	int ret = 0;
 	struct timeval now;
 	evutil_gettimeofday(&now, NULL);
 	ret = strftime(buf, bufsize, fmt, localtime(&now.tv_sec));
