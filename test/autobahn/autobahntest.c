@@ -122,11 +122,11 @@ void parse_test_info(char *msg)
 		return;
 	}
 
-	snprintf(headline, sizeof(headline), "[%d] - %s", current_case, id);
+	snprintf(headline, sizeof(headline), "[%*d] - %*s", 3, current_case, 6, id);
 
 	if (args.compact)
 	{
-		libws_test_printf(stdout, MAGNETA, "%s: ", headline);
+		libws_test_printf(stdout, MAGNETA, "%*s: ", 10, headline);
 	}
 	else
 	{
@@ -162,9 +162,9 @@ void parse_test_status(char *msg)
 	{
 		if (args.compact)
 		{
-			libws_test_printf(stdout, BRIGHT, "[");
-			libws_test_printf(stdout, GREEN, "SUCCESS");
-			libws_test_printf(stdout, BRIGHT, "] ");
+			libws_test_printf(stderr, BRIGHT, "[");
+			libws_test_printf(stderr, GREEN, "SUCCESS");
+			libws_test_printf(stderr, BRIGHT, "] ");
 		}
 		else
 		{
@@ -221,9 +221,9 @@ void onmsg(ws_t ws, char *msg, uint64_t len, int binary, void *arg)
 			}
 			else
 			{
-				printf("(%s) %*llu bytes ",
-					binary ? "binary" : "text", 
-					args.compact ? 10 : 0, len);
+				printf("%*llu bytes (%s)",
+					args.compact ? 10 : 0, len,
+					binary ? "binary" : "text");
 			}
 
 			if (!args.compact)
