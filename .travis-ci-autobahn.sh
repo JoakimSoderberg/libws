@@ -11,6 +11,8 @@ if [ x$LIBWS_METHOD == xautobahn ]; then
   cmake $CMAKE_ARGS ..
   cmake --build .
   bin/autobahntest --config ../test/autobahn/libws.cfg
+  AUTOBAHN_RES=$?
   kill -9 $FUZZ_PID
+  exit $AUTOBAHN_RES
 fi
 
