@@ -61,15 +61,7 @@ if (WIN32)
 	list(APPEND LIBWS_LIB_LIST Ws2_32.lib iphlpapi.lib User32.lib)
 endif()
 
-# TODO: Maybe move this to the find module.
-# First look for a CMake config for Libevent.
-# The location of which can be specified with -DLibevent_DIR=/path/to/Libevent/build
-find_package(Libevent NO_MODULE)
-
-# If no config was found, search the system.
-if (NOT Libevent_FOUND)
-	find_package(Libevent REQUIRED)
-endif()
+find_package(Libevent REQUIRED)
 
 include_directories(${LIBEVENT_INCLUDE_DIRS})
 
