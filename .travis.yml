@@ -6,20 +6,14 @@ language: c
 compiler:
   - gcc
   - clang
-before_install:
-  - if [ x$LIBWS_METHOD == xcoverage ]; then sudo pip install cpp-coveralls; fi
-  - if [ x$LIBWS_METHOD == xautobahn ]; then sudo pip install autobahntestsuite; fi
 install:
-  - sudo apt-get update -qq
-  - if [ x$LIBWS_METHOD == xcoverage ]; then sudo apt-get install -y -qq lcov; fi
-  - if [ x$LIBWS_METHOD == xmemcheck ]; then sudo apt-get install -y -qq valgrind; fi
-before_script:
-  - if [ x$LIBWS_METHOD == xautobahn ]; then (wstest -m fuzzingserver & FUZZ_PID=$!) ; fi
+  - if [ x$LIBWS_METHOD == xcoverage ]; then sudo pip install cpp-coveralls; fi
+  - if [ x$LIBWS_METHOD == xcoverage ]; then sudo apt-get update -qq && sudo apt-get install -y -qq lcov valgrind; fi
+  - if [ x$LIBWS_METHOD == xmemcheck ]; then sudo apt-get update -qq && sudo apt-get install -y -qq lcov valgrind; fi
+  - if [ x$LIBWS_METHOD == xautobahn ]; then sudo pip install autobahntestsuite; fi
 script:
-  - if [ x$LIBWS_METHOD == xautobahn ]; then mkdir build && cd build && cmake $CMAKE_ARGS .. && cmake --build . && bin/autobahntest --config ../test/autobahn/libws.cfg; fi
   - if [ x$LIBWS_METHOD == xcoverage ]; then cmake $CMAKE_ARGS . && cmake --build . && ctest --output-on-failure; fi
   - if [ x$LIBWS_METHOD == xmemcheck ]; then mkdir build && cd build && cmake $CMAKE_ARGS .. && cmake --build . && ctest --output-on-failure; fi
-after_script:
-  - if [ x$LIBWS_METHOD == xautobahn ]; then kill -9 $FUZZ_PID; fi
+  - if [ x$LIBWS_METHOD == xautobahn ]; then sh -c ./.travis-ci-autobahn.sh; fi
 after_success:
   - if [ x$COVERALLS == xyes ]; then coveralls -x c --exclude test --exclude examples --exclude-pattern 'CMake.*?\.c' --exclude-pattern 'CMake.*?\.cpp' --exclude-pattern '.*?\.h'; fi
