@@ -64,7 +64,7 @@ endif()
 # TODO: Maybe move this to the find module.
 # First look for a CMake config for Libevent.
 # The location of which can be specified with -DLibevent_DIR=/path/to/Libevent/build
-find_package(Libevent CONFIG)
+find_package(Libevent NO_MODULE)
 
 # If no config was found, search the system.
 if (NOT Libevent_FOUND)
