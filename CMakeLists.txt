@@ -54,7 +54,7 @@ if (LIBWS_COVERAGE)
 	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -g -O0 -fprofile-arcs -ftest-coverage")
 endif()
 
-include_directories(${PROJECT_SOURCE_DIR})
+include_directories(${PROJECT_SOURCE_DIR}/src)
 
 if (WIN32)
 	add_definitions(-D_CRT_SECURE_NO_WARNINGS -D_CRT_NONSTDC_NO_DEPRECATE)
@@ -89,7 +89,7 @@ set(LIBWS_INLINE)
 
 # Generate the config header file.
 configure_file(
-	"libws_config.h.in" 
+	"src/libws_config.h.in"
 	"${PROJECT_BINARY_DIR}/libws_config.h"
 	)
 
@@ -97,30 +97,30 @@ include_directories(${PROJECT_BINARY_DIR})
 
 # Group the sources and headers.
 set(SRCS 
-	libws.c
-	libws_private.c
-	libws_header.c
-	libws_handshake.c
-	libws_log.c
-	libws_compat.c)
+	src/libws.c
+	src/libws_private.c
+	src/libws_header.c
+	src/libws_handshake.c
+	src/libws_log.c
+	src/libws_compat.c)
 
 set(HDRS_PUBLIC 
-	libws.h
-	libws_types.h
-	libws_header.h
-	libws_log.h)
+	src/libws.h
+	src/libws_types.h
+	src/libws_header.h
+	src/libws_log.h)
 
 set(HDRS_PRIVATE
-	libws_private.h
-	libws_compat.h
-	libws_handshake.h)
+	src/libws_private.h
+	src/libws_compat.h
+	src/libws_handshake.h)
 
 if (LIBWS_WITH_OPENSSL)
-	list(APPEND SRCS libws_openssl.c)
-	list(APPEND HDRS_PRIVATE libws_openssl.h)
+	list(APPEND SRCS src/libws_openssl.c)
+	list(APPEND HDRS_PRIVATE src/libws_openssl.h)
 else()
-	list(APPEND SRCS libws_sha1.c)
-	list(APPEND HDRS_PRIVATE libws_sha1.h)
+	list(APPEND SRCS src/libws_sha1.c)
+	list(APPEND HDRS_PRIVATE src/libws_sha1.h)
 endif()
 
 source_group("Headers public"	FILES ${HDRS_PUBLIC})
