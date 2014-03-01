@@ -389,6 +389,7 @@ int _ws_handle_frame_begin(ws_t ws)
 	if (!ws->in_msg)
 	{
 		ws->in_msg = 1;
+		ws->msg_isbinary = (ws->header.opcode == WS_OPCODE_BINARY_0X2);
 
 		if (ws->msg_begin_cb)
 		{

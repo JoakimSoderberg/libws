@@ -3,7 +3,7 @@
 int ws_utf8_isvalid(const unsigned char * bytes)
 {
     if(!bytes)
-        return 0;
+        return 1;
 
     while(*bytes)
     {

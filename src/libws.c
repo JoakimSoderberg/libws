@@ -1224,7 +1224,8 @@ void ws_default_msg_end_cb(ws_t ws, void *arg)
 	len = evbuffer_get_length(ws->msg);
 	payload = evbuffer_pullup(ws->msg, len);
 
-	if (!ws_utf8_isvalid((unsigned char *)payload))
+	if (!ws->msg_isbinary
+		&& !ws_utf8_isvalid((unsigned char *)payload))
 	{
 		// TODO: Do this earlier (needs to support incomplete UTF8 however)
 		LIBWS_LOG(LIBWS_ERR, "Invalid UTF8");
@@ -1238,7 +1239,7 @@ void ws_default_msg_end_cb(ws_t ws, void *arg)
 		{
 			LIBWS_LOG(LIBWS_DEBUG, "Calling message callback");
 			ws->msg_cb(ws, (char *)payload, len,
-				(ws->header.opcode == WS_OPCODE_BINARY_0X2), ws->msg_arg);
+				(ws->msg_isbinary), ws->msg_arg);
 		}
 		else
 		{

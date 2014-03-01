@@ -195,6 +195,7 @@ typedef struct ws_s
 	int 					has_header;			///< Has the websocket header been read yet?
 	ws_header_t				header;				///< Header for received websocket frame.
 	int 					in_msg;				///< Are we inside a message?
+	int 					msg_isbinary;		///< The opcode of the current message.
 	char 					ctrl_payload[WS_CONTROL_MAX_PAYLOAD_LEN]; ///< Control frame payload.
 	size_t					ctrl_len;			///< Length of the control payload.
 	int 					received_close;		///< Did we receive a close frame?
