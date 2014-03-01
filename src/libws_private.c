@@ -494,6 +494,53 @@ int _ws_handle_frame_end(ws_t ws)
 	return 0;
 }
 
+int _ws_validate_header(ws_t ws)
+{
+	ws_header_t *h = &ws->header;
+
+	if (h->rsv1 || h->rsv2 || h->rsv3)
+	{
+		LIBWS_LOG(LIBWS_ERR, "Protocol violation, reserve bit set");
+		return -1;
+	}
+
+	if (WS_OPCODE_IS_RESERVED(h->opcode))
+	{
+		LIBWS_LOG(LIBWS_ERR, "Protocol violation, reserved opcode used %d (%s)", 
+				h->opcode, ws_opcode_str(h->opcode));
+		return -1;
+	}
+
+	if (WS_OPCODE_IS_CONTROL(h->opcode) && !h->fin)
+	{
+		LIBWS_LOG(LIBWS_ERR, "Protocol violation, fragmented %s not allowed",
+				ws_opcode_str(h->opcode));
+		return -1;
+	}
+
+	if ((ws->header.opcode == WS_OPCODE_CONTINUATION_0X0)
+		&& !ws->in_msg)
+	{
+		LIBWS_LOG(LIBWS_ERR, "Got continuation frame when not in message");
+		return -1;
+	}
+
+	// If we're in a message, we must either get a continuation frame
+	// or an interjected control frame such as a ping.
+	if (ws->in_msg 
+		&& ((h->opcode != WS_OPCODE_CONTINUATION_0X0) 
+			&& !WS_OPCODE_IS_CONTROL(h->opcode)))
+	{
+		LIBWS_LOG(LIBWS_ERR, "Didn't get continuation frame when "
+							"still in message. opcode %d (%s)",
+							h->opcode,
+							ws_opcode_str(h->opcode));
+		return -1;
+	}
+
+	return 0;
+}
+
 void _ws_read_websocket(ws_t ws, struct evbuffer *in)
 {
 	assert(ws);
@@ -525,23 +572,8 @@ void _ws_read_websocket(ws_t ws, struct evbuffer *in)
 			assert(state != WS_PARSE_STATE_USER_ABORT);
 
 			// Look for protocol violations in the header.
-			if ((ws->header.opcode == WS_OPCODE_CONTINUATION_0X0)
-				&& !ws->in_msg)
+			if (state != WS_PARSE_STATE_NEED_MORE && _ws_validate_header(ws))
 			{
-				LIBWS_LOG(LIBWS_ERR, "Got continuation frame when not in message");
-				state = WS_PARSE_STATE_ERROR;
-			}
-
-			// If we're in a message, we must either get a continuation frame
-			// or an interjected control frame such as a ping.
-			if (ws->in_msg 
-				&& ((ws->header.opcode != WS_OPCODE_CONTINUATION_0X0) 
-					&& !WS_OPCODE_IS_CONTROL(ws->header.opcode)))
-			{
-				LIBWS_LOG(LIBWS_ERR, "Didn't get continuation frame when "
-									"still in message. opcode %d (%s)",
-									ws->header.opcode,
-									ws_opcode_str(ws->header.opcode));
 				state = WS_PARSE_STATE_ERROR;
 			}
 

@@ -107,27 +107,6 @@ ws_parse_state_t ws_unpack_header(ws_header_t *h, size_t *header_len,
 		*header_len += 4;
 	}
 
-	// Look for protocol violations.
-	if (h->rsv1 || h->rsv2 || h->rsv3)
-	{
-		LIBWS_LOG(LIBWS_ERR, "Protocol violation, reserve bit set");
-		return WS_PARSE_STATE_ERROR;
-	}
-
-	if (WS_OPCODE_IS_RESERVED(h->opcode))
-	{
-		LIBWS_LOG(LIBWS_ERR, "Protocol violation, reserved opcode used %d (%s)", 
-				h->opcode, ws_opcode_str(h->opcode));
-		return WS_PARSE_STATE_ERROR;
-	}
-
-	if (WS_OPCODE_IS_CONTROL(h->opcode) && !h->fin)
-	{
-		LIBWS_LOG(LIBWS_ERR, "Protocol violation, fragmented %s not allowed",
-				ws_opcode_str(h->opcode));
-		return WS_PARSE_STATE_ERROR;
-	}
-
 	return WS_PARSE_STATE_SUCCESS;
 need_more:
 	return WS_PARSE_STATE_NEED_MORE;
