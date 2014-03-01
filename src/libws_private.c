@@ -590,8 +590,6 @@ void _ws_read_websocket(ws_t ws, struct evbuffer *in)
 				bytes_read = evbuffer_remove(in, buf, recv_len);
 				ws->recv_frame_len += bytes_read;
 
-				LIBWS_LOG(LIBWS_DEBUG2, "Read byte: 0x%x (%c)", buf[0], buf[0]);
-
 				if (bytes_read != recv_len)
 				{
 					LIBWS_LOG(LIBWS_ERR, "Wanted to read %u but only got %d", 
