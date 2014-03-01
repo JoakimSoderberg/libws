@@ -524,10 +524,24 @@ void _ws_read_websocket(ws_t ws, struct evbuffer *in)
 
 			assert(state != WS_PARSE_STATE_USER_ABORT);
 
+			// Look for protocol violations in the header.
 			if ((ws->header.opcode == WS_OPCODE_CONTINUATION_0X0)
 				&& !ws->in_msg)
 			{
 				LIBWS_LOG(LIBWS_ERR, "Got continuation frame when not in message");
+				state = WS_PARSE_STATE_ERROR;
+			}
+
+			// If we're in a message, we must either get a continuation frame
+			// or an interjected control frame such as a ping.
+			if (ws->in_msg 
+				&& ((ws->header.opcode != WS_OPCODE_CONTINUATION_0X0) 
+					&& !WS_OPCODE_IS_CONTROL(ws->header.opcode)))
+			{
+				LIBWS_LOG(LIBWS_ERR, "Didn't get continuation frame when "
+									"still in message. opcode %d (%s)",
+									ws->header.opcode,
+									ws_opcode_str(ws->header.opcode));
 				state = WS_PARSE_STATE_ERROR;
 			}
 
