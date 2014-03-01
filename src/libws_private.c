@@ -567,9 +567,6 @@ void _ws_read_websocket(ws_t ws, struct evbuffer *in)
 			size_t recv_len = evbuffer_get_length(in);
 			size_t remaining = (size_t)(ws->header.payload_len - ws->recv_frame_len);
 
-			if (recv_len == 0)
-				return;
-
 			LIBWS_LOG(LIBWS_DEBUG2, "In frame (remaining %u bytes of %u payload)", 
 					remaining, ws->header.payload_len);
 
