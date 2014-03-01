@@ -142,6 +142,15 @@ typedef enum ws_close_status_e
 #define WS_OPCODE_IS_CONTROL(opcode) \
 	((opcode >= WS_OPCODE_CLOSE_0X8) && (opcode <= WS_OPCODE_CONTROL_RSV_0XF))
 
+#define WS_OPCODE_IS_RESERVED_CONTROL(opcode) \
+	((opcode >= WS_OPCODE_CONTROL_RSV_0XB) && (opcode <= WS_OPCODE_CONTROL_RSV_0XF))
+
+#define WS_OPCODE_IS_RESERVED_NON_CONTROL(opcode) \
+	((opcode >= WS_OPCODE_NON_CONTROL_RSV_0X3) && (opcode <= WS_OPCODE_NON_CONTROL_RSV_0X7))
+
+#define WS_OPCODE_IS_RESERVED(opcode) \
+	(WS_OPCODE_IS_RESERVED_CONTROL(opcode) || WS_OPCODE_IS_RESERVED_NON_CONTROL(opcode))
+
 #define WS_MAX_PAYLOAD_LEN 0x7FFFFFFFFFFFFFFF
 #define WS_CONTROL_MAX_PAYLOAD_LEN 125
 

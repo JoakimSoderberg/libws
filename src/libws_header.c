@@ -107,7 +107,13 @@ ws_parse_state_t ws_unpack_header(ws_header_t *h, size_t *header_len,
 		*header_len += 4;
 	}
 
+	// Look for protocol violations.
 	if (h->rsv1 || h->rsv2 || h->rsv3)
+	{
+		return WS_PARSE_STATE_ERROR;
+	}
+
+	if (WS_OPCODE_IS_RESERVED(h->opcode))
 	{
 		return WS_PARSE_STATE_ERROR;
 	}
