@@ -32,6 +32,7 @@
 #endif
 #include "libws.h"
 #include "libws_handshake.h"
+#include "libws_utf8.h"
 
 void ws_set_memory_functions(ws_malloc_replacement_f malloc_replace,
 							 ws_free_replacement_f free_replace,
@@ -1222,18 +1223,27 @@ void ws_default_msg_end_cb(ws_t ws, void *arg)
 
 	len = evbuffer_get_length(ws->msg);
 	payload = evbuffer_pullup(ws->msg, len);
-		
-	LIBWS_LOG(LIBWS_DEBUG2, "Message received of length %lu:\n%s", len, payload);
 
-	if (ws->msg_cb)
+	if (!ws_utf8_isvalid((unsigned char *)payload))
 	{
-		LIBWS_LOG(LIBWS_DEBUG, "Calling message callback");
-		ws->msg_cb(ws, (char *)payload, len, 
-			(ws->header.opcode == WS_OPCODE_BINARY_0X2), ws->msg_arg);
+		// TODO: Do this earlier (needs to support incomplete UTF8 however)
+		LIBWS_LOG(LIBWS_ERR, "Invalid UTF8");
+		ws_close_with_status(ws, WS_CLOSE_STATUS_INCONSISTENT_DATA_1007);
 	}
 	else
 	{
-		LIBWS_LOG(LIBWS_DEBUG, "No message callback set, drop message");
+		LIBWS_LOG(LIBWS_DEBUG2, "Message received of length %lu:\n%s", len, payload);
+
+		if (ws->msg_cb)
+		{
+			LIBWS_LOG(LIBWS_DEBUG, "Calling message callback");
+			ws->msg_cb(ws, (char *)payload, len,
+				(ws->header.opcode == WS_OPCODE_BINARY_0X2), ws->msg_arg);
+		}
+		else
+		{
+			LIBWS_LOG(LIBWS_DEBUG, "No message callback set, drop message");
+		}
 	}
 
 	evbuffer_free(ws->msg);

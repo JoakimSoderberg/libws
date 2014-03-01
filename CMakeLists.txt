@@ -102,7 +102,8 @@ set(SRCS
 	src/libws_header.c
 	src/libws_handshake.c
 	src/libws_log.c
-	src/libws_compat.c)
+	src/libws_compat.c
+	src/libws_utf8.c)
 
 set(HDRS_PUBLIC 
 	src/libws.h
@@ -113,7 +114,8 @@ set(HDRS_PUBLIC
 set(HDRS_PRIVATE
 	src/libws_private.h
 	src/libws_compat.h
-	src/libws_handshake.h)
+	src/libws_handshake.h
+	src/libws_utf8.h)
 
 if (LIBWS_WITH_OPENSSL)
 	list(APPEND SRCS src/libws_openssl.c)
