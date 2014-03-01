@@ -516,8 +516,10 @@ void _ws_read_websocket(ws_t ws, struct evbuffer *in)
 			bytes_read = evbuffer_copyout(in, (void *)header_buf, 
 											sizeof(header_buf));
 
+			LIBWS_LOG(LIBWS_DEBUG2, "Copied %d header bytes", bytes_read);
+
 			state = ws_unpack_header(&ws->header, &header_len, 
-					(unsigned char *)header_buf, sizeof(header_buf));
+					(unsigned char *)header_buf, bytes_read);
 
 			assert(state != WS_PARSE_STATE_USER_ABORT);
 
