@@ -12,6 +12,34 @@
 #include <arpa/inet.h>
 #endif
 
+const char *opcodes[] =
+{
+	"continuation", 		// 0x0
+	"text",					// 0x1
+	"binary",				// 0x2
+	"non control reserved",	// 0x3
+	"non control reserved", // 0x4
+	"non control reserved", // 0x5
+	"non control reserved", // 0x6
+	"non control reserved", // 0x7
+	"close",				// 0x8
+	"ping",					// 0x9
+	"pong",					// 0xA
+	"control reserved",		// 0xB
+	"control reserved",		// 0xC
+	"control reserved",		// 0xD
+	"control reserved",		// 0xE
+	"control reserved"		// 0xF
+};
+
+const char *ws_opcode_str(ws_opcode_t opcode)
+{
+	if ((opcode > 0) && (opcode <= 0xF))
+		return opcodes[opcode];
+
+	return NULL;
+}
+
 ws_parse_state_t ws_unpack_header(ws_header_t *h, size_t *header_len, 
 									const unsigned char *b, size_t len)
 {
@@ -81,7 +109,6 @@ ws_parse_state_t ws_unpack_header(ws_header_t *h, size_t *header_len,
 
 	return WS_PARSE_STATE_SUCCESS;
 need_more:
-	LIBWS_LOG(LIBWS_ERR, "Not enough data to unpack header");
 	return WS_PARSE_STATE_NEED_MORE;
 }
 

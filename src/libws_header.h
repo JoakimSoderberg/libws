@@ -3,6 +3,7 @@
 
 #include <stdio.h>
 #include <inttypes.h>
+#include "libws_types.h"
 
 typedef enum ws_opcode_e
 {
@@ -177,7 +178,29 @@ typedef struct ws_header_s
 	uint32_t mask;			///< Masking key for the payload.
 } ws_header_t;
 
-int ws_unpack_header(ws_header_t *h, size_t *header_len, 
+///
+/// Gets the name of an opcode as a string.
+///
+/// @param[in] opcode The opcode.
+///
+/// @returns NULL on failure, string otherwise.
+///
+const char *ws_opcode_str(ws_opcode_t opcode);
+
+///
+/// Unpacks a websocket header from a byte buffer into
+/// a header struct.
+///
+/// @param[out]	h 			A pointer to a header struct to store the result in.
+/// @param[out] header_len 	The size of the header in bytes.
+/// @param[in]	b 			The buffer that should be parsed.
+/// @param[in]  len 		The number of bytes the buffer contains.
+///
+/// @returns A parse state. WS_PARSE_STATE_SUCCESS if the header was
+///			 parsed successfully. WS_PARSE_STATE_NEED_MORE if more
+///			 data is needed.
+///
+ws_parse_state_t ws_unpack_header(ws_header_t *h, size_t *header_len,
 					const unsigned char *b, size_t len);
 
 ///
