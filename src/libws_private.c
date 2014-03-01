@@ -378,6 +378,7 @@ int _ws_handle_frame_begin(ws_t ws)
 	{
 		LIBWS_LOG(LIBWS_DEBUG, "  Control frame");
 		memset(ws->ctrl_payload, 0, sizeof(ws->ctrl_payload));
+		ws->ctrl_len = 0;
 		return 0;
 	}
 
