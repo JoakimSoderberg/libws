@@ -549,9 +549,9 @@ void _ws_read_websocket(ws_t ws, struct evbuffer *in)
 					LIBWS_LOG(LIBWS_DEBUG2, " Need more header data");
 					return;
 				case WS_PARSE_STATE_ERROR:
-					// TODO: Protocol violation.
 					LIBWS_LOG(LIBWS_ERR, "Error protocol violation in header");
-					break;
+					ws_close_with_status(ws, WS_CLOSE_STATUS_PROTOCOL_ERR_1002);
+					return;
 				case WS_PARSE_STATE_USER_ABORT:
 					// TODO: What to do here?
 					LIBWS_LOG(LIBWS_ERR, "User abort");

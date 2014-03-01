@@ -107,6 +107,11 @@ ws_parse_state_t ws_unpack_header(ws_header_t *h, size_t *header_len,
 		*header_len += 4;
 	}
 
+	if (h->rsv1 || h->rsv2 || h->rsv3)
+	{
+		return WS_PARSE_STATE_ERROR;
+	}
+
 	return WS_PARSE_STATE_SUCCESS;
 need_more:
 	return WS_PARSE_STATE_NEED_MORE;
