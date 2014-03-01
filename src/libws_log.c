@@ -41,7 +41,7 @@ char *_ws_get_time_str(char *buf, size_t bufsize)
 	ret = strftime(buf, bufsize, fmt, localtime(&now.tv_sec));
 	if (ret != 0)
 	{
-		snprintf(&buf[ret], bufsize, ".%d", now.tv_usec);
+		snprintf(&buf[ret], bufsize, ".%ld", now.tv_usec);
 	}
 	#endif
 
