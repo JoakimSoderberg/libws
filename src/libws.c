@@ -1068,6 +1068,8 @@ int ws_send_pong(ws_t ws, char *msg, size_t len, int binary)
 {
 	assert(ws);
 
+	LIBWS_LOG(LIBWS_DEBUG, "Send pong %*s", (int)len, msg);
+
 	if (_ws_send_frame_raw(ws, WS_OPCODE_PONG_0XA, msg, (uint64_t)len))
 	{
 		return -1;
