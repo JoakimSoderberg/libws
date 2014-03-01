@@ -524,6 +524,13 @@ void _ws_read_websocket(ws_t ws, struct evbuffer *in)
 
 			assert(state != WS_PARSE_STATE_USER_ABORT);
 
+			if ((ws->header.opcode == WS_OPCODE_CONTINUATION_0X0)
+				&& !ws->in_msg)
+			{
+				LIBWS_LOG(LIBWS_ERR, "Got continuation frame when not in message");
+				state = WS_PARSE_STATE_ERROR;
+			}
+
 			switch (state)
 			{
 				case WS_PARSE_STATE_SUCCESS: 

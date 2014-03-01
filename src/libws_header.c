@@ -34,7 +34,7 @@ const char *opcodes[] =
 
 const char *ws_opcode_str(ws_opcode_t opcode)
 {
-	if ((opcode > 0) && (opcode <= 0xF))
+	if ((opcode >= 0) && (opcode <= 0xF))
 		return opcodes[opcode];
 
 	return NULL;
