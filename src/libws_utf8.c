@@ -112,6 +112,7 @@ ws_utf8_parse_state_t ws_utf8_validate(const unsigned char *value,
 	return WS_UTF8_SUCCESS;
 }
 
+
 // Copyright (c) 2008-2009 Bjoern Hoehrmann <bjoern@hoehrmann.de>
 // See http://bjoern.hoehrmann.de/utf-8/decoder/dfa/ for details.
 
@@ -152,9 +153,17 @@ uint32_t libws_utf8_validate2(uint32_t *state, char *str, size_t len)
 
 	for (i = 0; i < len; i++)
 	{
+		// Impossible bytes.
+		if (((uint8_t)str[i] == 0xfe) 
+		 || ((uint8_t)str[i] == 0xff))
+		{
+			*state = WS_UTF8_REJECT;
+			break;
+		}
+
 		// We don't care about the codepoint, so this is
 		// a simplified version of the decode function.
-		type = utf8d[(uint8_t)str[i]];
+		type = utf8d[(uint32_t)str[i]];
 		*state = utf8d[256 + (*state) * 16 + type];
 
 		if (*state == WS_UTF8_REJECT)

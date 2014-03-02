@@ -662,17 +662,32 @@ void _ws_read_websocket(ws_t ws, struct evbuffer *in)
 
 				if (!ws->msg_isbinary)
 				{
+					LIBWS_LOG(LIBWS_DEBUG2, "About to validate UTF8, state = %d"
+							" len = %d", bytes_read, ws->utf8_state);
+
 					libws_utf8_validate2(&ws->utf8_state, 
 										buf, bytes_read);
 
-					if (ws->utf8_state == WS_UTF8_REJECT)
+					// Either the UTF8 is invalid, or a codepoint is not
+					// complete in the finish frame.
+					if ((ws->utf8_state == WS_UTF8_REJECT) 
+					|| ((ws->utf8_state != WS_UTF8_ACCEPT) && (ws->header.fin)))
 					{
 						LIBWS_LOG(LIBWS_ERR, "Invalid UTF8!");
 
 						ws_close_with_status(ws, 
 							WS_CLOSE_STATUS_INCONSISTENT_DATA_1007);
-						//goto msgfail;
+						goto msgfail;
 					}
+					/*else if (ws_utf8_validate(buf, bytes_read, NULL))
+					{
+						ws_close_with_status(ws, 
+							WS_CLOSE_STATUS_INCONSISTENT_DATA_1007);
+						goto msgfail;
+					}*/
+
+					LIBWS_LOG(LIBWS_DEBUG2, "Validated UTF8, state = %d", 
+							ws->utf8_state);
 				}
 
 				if (_ws_handle_frame_data(ws, buf, bytes_read))
