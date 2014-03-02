@@ -43,6 +43,8 @@ int TEST_ws_check_server_protocol_list(int argc, char *argv[])
 	size_t count = 0;
 	char *protocols[] = {"arne", "weises", "julafton"};
 
+	libws_test_HEADLINE("TEST_ws_check_server_protocol_list");
+
 	if (libws_test_init(argc, argv)) return -1;
 
 	if (ws_global_init(&base))
