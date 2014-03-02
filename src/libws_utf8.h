@@ -3,6 +3,7 @@
 #define __LIBWS_UTF8__ 
 
 #include <stdlib.h>
+#include <inttypes.h>
 
 typedef enum ws_utf8_parse_state_e
 {
@@ -16,5 +17,14 @@ typedef enum ws_utf8_parse_state_e
 
 ws_utf8_parse_state_t ws_utf8_validate(const unsigned char *value, 
 										size_t len, size_t *offset);
+
+#define WS_UTF8_ACCEPT 0
+#define WS_UTF8_REJECT 1
+typedef uint32_t ws_utf8_state_t;
+
+ws_utf8_state_t libws_utf8_decode(ws_utf8_state_t *state, uint32_t *codep, uint8_t byte);
+
+ws_utf8_state_t libws_utf8_validate2(ws_utf8_state_t *state, char *str, size_t len);
+
 
 #endif // __LIBWS_UTF8__
