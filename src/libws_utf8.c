@@ -68,7 +68,7 @@ ws_utf8_parse_state_t ws_utf8_validate(const unsigned char *value, size_t len)
 		uint8_t  extrabytes = trailingBytesForUTF8[(uint8_t) value[i]];
 
 		if (extrabytes + i >= len)
-			return WS_UTF8_FAILURE;
+			return WS_UTF8_NEED_MORE;
 
 		if (isLegalUTF8((uint8_t *) (value + i), extrabytes + 1) == 0) 
 			return WS_UTF8_FAILURE;
