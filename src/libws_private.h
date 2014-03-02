@@ -14,6 +14,7 @@
 #include "libws_log.h"
 #include "libws_types.h"
 #include "libws_header.h"
+#include "libws_utf8.h"
 #include "libws_handshake.h"
 
 #ifdef _WIN32
@@ -196,6 +197,7 @@ typedef struct ws_s
 	ws_header_t				header;				///< Header for received websocket frame.
 	int 					in_msg;				///< Are we inside a message?
 	int 					msg_isbinary;		///< The opcode of the current message.
+	ws_utf8_state_t			utf8_state;			///< Current state of utf8 validator.
 	char 					ctrl_payload[WS_CONTROL_MAX_PAYLOAD_LEN]; ///< Control frame payload.
 	size_t					ctrl_len;			///< Length of the control payload.
 	int 					received_close;		///< Did we receive a close frame?

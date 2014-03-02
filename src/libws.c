@@ -1203,7 +1203,7 @@ void ws_default_msg_frame_cb(ws_t ws, char *payload,
 
 	LIBWS_LOG(LIBWS_TRACE, "Default message frame callback "
 							"(append data to message)");
-	
+
 	// Finally we append the frame payload to the message payload.
 	evbuffer_add_buffer(ws->msg, ws->frame_data);
 }
@@ -1224,28 +1224,17 @@ void ws_default_msg_end_cb(ws_t ws, void *arg)
 	len = evbuffer_get_length(ws->msg);
 	payload = evbuffer_pullup(ws->msg, len);
 
-	/*
-	if (!ws->msg_isbinary
-		&& !ws_utf8_isvalid((unsigned char *)payload))
-	{
-		// TODO: Do this earlier (needs to support incomplete UTF8 however)
-		LIBWS_LOG(LIBWS_ERR, "Invalid UTF8");
-		ws_close_with_status(ws, WS_CLOSE_STATUS_INCONSISTENT_DATA_1007);
-	}
-	else*/
-	{
-		LIBWS_LOG(LIBWS_DEBUG2, "Message received of length %lu:\n%s", len, payload);
+	LIBWS_LOG(LIBWS_DEBUG2, "Message received of length %lu:\n%s", len, payload);
 
-		if (ws->msg_cb)
-		{
-			LIBWS_LOG(LIBWS_DEBUG, "Calling message callback");
-			ws->msg_cb(ws, (char *)payload, len,
-				ws->msg_isbinary, ws->msg_arg);
-		}
-		else
-		{
-			LIBWS_LOG(LIBWS_DEBUG, "No message callback set, drop message");
-		}
+	if (ws->msg_cb)
+	{
+		LIBWS_LOG(LIBWS_DEBUG, "Calling message callback");
+		ws->msg_cb(ws, (char *)payload, len,
+			ws->msg_isbinary, ws->msg_arg);
+	}
+	else
+	{
+		LIBWS_LOG(LIBWS_DEBUG, "No message callback set, drop message");
 	}
 
 	evbuffer_free(ws->msg);
@@ -1283,11 +1272,14 @@ void ws_default_msg_frame_begin_cb(ws_t ws, void *arg)
 void ws_default_msg_frame_data_cb(ws_t ws, char *payload, 
 								uint64_t len, void *arg)
 {
+	size_t prev_len;
 	assert(ws);
 
 	LIBWS_LOG(LIBWS_TRACE, "Default message frame data callback "
 							"(Append data to frame data buffer)");
 
+	// TODO: Instead of using a copied payload buf here, we should 
+	// instead use evbuffer_add_buffer()
 	evbuffer_add(ws->frame_data, payload, (size_t)len);
 }
 

@@ -27,6 +27,7 @@
 #include "libws_private.h"
 #include "libws.h"
 #include "libws_handshake.h"
+#include "libws_utf8.h"
 
 #ifdef LIBWS_WITH_OPENSSL
 #include "libws_openssl.h"
@@ -389,6 +390,7 @@ int _ws_handle_frame_begin(ws_t ws)
 	if (!ws->in_msg)
 	{
 		ws->in_msg = 1;
+		ws->utf8_state = WS_UTF8_ACCEPT;
 		ws->msg_isbinary = (ws->header.opcode == WS_OPCODE_BINARY_0X2);
 
 		if (ws->msg_begin_cb)
@@ -440,7 +442,7 @@ int _ws_handle_frame_data(ws_t ws, char *buf, size_t len)
 		LIBWS_LOG(LIBWS_DEBUG, "   Append %lu bytes to ctrl payload[%lu]", len, ws->ctrl_len);
 		memcpy(&ws->ctrl_payload[ws->ctrl_len], buf, len);
 		ws->ctrl_len += len;
-		
+
 		return ret;
 	}
 
@@ -658,10 +660,19 @@ void _ws_read_websocket(ws_t ws, struct evbuffer *in)
 					ws_unmask_payload(ws->header.mask, buf, bytes_read);
 				}
 
-				if (!WS_OPCODE_IS_CONTROL(ws->header.opcode)
-					&& !ws->msg_isbinary)
+				if (!ws->msg_isbinary)
 				{
-					//ws_utf8_isvalid(buf, bytes_read);
+					libws_utf8_validate2(&ws->utf8_state, 
+										buf, bytes_read);
+
+					if (ws->utf8_state == WS_UTF8_REJECT)
+					{
+						LIBWS_LOG(LIBWS_ERR, "Invalid UTF8!");
+
+						ws_close_with_status(ws, 
+							WS_CLOSE_STATUS_INCONSISTENT_DATA_1007);
+						//goto msgfail;
+					}
 				}
 
 				if (_ws_handle_frame_data(ws, buf, bytes_read))
@@ -681,7 +692,7 @@ void _ws_read_websocket(ws_t ws, struct evbuffer *in)
 						_ws_handle_frame_end(ws);
 					}
 				}
-
+			msgfail:
 				_ws_free(buf);
 			}
 		}
