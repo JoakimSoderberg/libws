@@ -1,6 +1,12 @@
 #include "libws_utf8.h"
 #include <inttypes.h>
 #include <stdlib.h>
+#include <stdio.h>
+
+//
+// Copyright(c) 2011 Einar Otto Stangvik <einaros@gmail.com>
+// MIT Licensed
+//
 
 // http://tools.ietf.org/html/rfc3629
 
@@ -57,7 +63,8 @@ static int isLegalUTF8(const uint8_t *source, const int length)
 	return 1;
 }
 
-ws_utf8_parse_state_t ws_utf8_validate(const unsigned char *value, size_t len)
+ws_utf8_parse_state_t ws_utf8_validate(const unsigned char *value, 
+									size_t len, size_t *offset)
 {
 	unsigned int i;
 
@@ -66,11 +73,17 @@ ws_utf8_parse_state_t ws_utf8_validate(const unsigned char *value, size_t len)
 	{
 		uint32_t ch = 0;
 		uint8_t  extrabytes = trailingBytesForUTF8[(uint8_t) value[i]];
+		
+		if (offset)
+			*offset = i;
 
 		if (extrabytes + i >= len)
-			return WS_UTF8_NEED_MORE;
+		{
+			// We need more data.
+			return (ws_utf8_parse_state_t)(extrabytes + (i - len + 1));
+		}
 
-		if (isLegalUTF8((uint8_t *) (value + i), extrabytes + 1) == 0) 
+		if (isLegalUTF8((uint8_t *)(value + i), extrabytes + 1) == 0) 
 			return WS_UTF8_FAILURE;
 
 		switch (extrabytes) 
