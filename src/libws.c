@@ -1224,6 +1224,7 @@ void ws_default_msg_end_cb(ws_t ws, void *arg)
 	len = evbuffer_get_length(ws->msg);
 	payload = evbuffer_pullup(ws->msg, len);
 
+	/*
 	if (!ws->msg_isbinary
 		&& !ws_utf8_isvalid((unsigned char *)payload))
 	{
@@ -1231,7 +1232,7 @@ void ws_default_msg_end_cb(ws_t ws, void *arg)
 		LIBWS_LOG(LIBWS_ERR, "Invalid UTF8");
 		ws_close_with_status(ws, WS_CLOSE_STATUS_INCONSISTENT_DATA_1007);
 	}
-	else
+	else*/
 	{
 		LIBWS_LOG(LIBWS_DEBUG2, "Message received of length %lu:\n%s", len, payload);
 
@@ -1239,7 +1240,7 @@ void ws_default_msg_end_cb(ws_t ws, void *arg)
 		{
 			LIBWS_LOG(LIBWS_DEBUG, "Calling message callback");
 			ws->msg_cb(ws, (char *)payload, len,
-				(ws->msg_isbinary), ws->msg_arg);
+				ws->msg_isbinary, ws->msg_arg);
 		}
 		else
 		{

@@ -1,80 +1,100 @@
 #include "libws_utf8.h"
+#include <inttypes.h>
+#include <stdlib.h>
 
-int ws_utf8_isvalid(const unsigned char * bytes)
+// http://tools.ietf.org/html/rfc3629
+
+#define UNI_SUR_HIGH_START   (uint32_t) 0xD800
+#define UNI_SUR_LOW_END    (uint32_t) 0xDFFF
+#define UNI_REPLACEMENT_CHAR (uint32_t) 0x0000FFFD
+#define UNI_MAX_LEGAL_UTF32  (uint32_t) 0x0010FFFF
+
+static const uint8_t trailingBytesForUTF8[256] = 
 {
-    if(!bytes)
-        return 1;
+  0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+  0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+  0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+  0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+  0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+  0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+  1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1, 1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
+  2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2, 3,3,3,3,3,3,3,3,4,4,4,4,5,5,5,5
+};
 
-    while(*bytes)
-    {
-        if( (// ASCII
-             // use bytes[0] <= 0x7F to allow ASCII control characters
-                bytes[0] == 0x09 ||
-                bytes[0] == 0x0A ||
-                bytes[0] == 0x0D ||
-                (0x20 <= bytes[0] && bytes[0] <= 0x7E)
-            )
-        ) {
-            bytes += 1;
-            continue;
-        }
+static const uint32_t offsetsFromUTF8[6] = 
+{
+	0x00000000, 0x00003080, 0x000E2080,
+	0x03C82080, 0xFA082080, 0x82082080
+};
 
-        if( (// non-overlong 2-byte
-                (0xC2 <= bytes[0] && bytes[0] <= 0xDF) &&
-                (0x80 <= bytes[1] && bytes[1] <= 0xBF)
-            )
-        ) {
-            bytes += 2;
-            continue;
-        }
+static int isLegalUTF8(const uint8_t *source, const int length)
+{
+	uint8_t a;
+	const uint8_t *srcptr = source + length;
 
-        if( (// excluding overlongs
-                bytes[0] == 0xE0 &&
-                (0xA0 <= bytes[1] && bytes[1] <= 0xBF) &&
-                (0x80 <= bytes[2] && bytes[2] <= 0xBF)
-            ) ||
-            (// straight 3-byte
-                ((0xE1 <= bytes[0] && bytes[0] <= 0xEC) ||
-                    bytes[0] == 0xEE ||
-                    bytes[0] == 0xEF) &&
-                (0x80 <= bytes[1] && bytes[1] <= 0xBF) &&
-                (0x80 <= bytes[2] && bytes[2] <= 0xBF)
-            ) ||
-            (// excluding surrogates
-                bytes[0] == 0xED &&
-                (0x80 <= bytes[1] && bytes[1] <= 0x9F) &&
-                (0x80 <= bytes[2] && bytes[2] <= 0xBF)
-            )
-        ) {
-            bytes += 3;
-            continue;
-        }
+	switch (length) 
+	{
+		default: return 0;
+		// Everything else falls through when "true"...
+		// RFC3629 makes 5 & 6 bytes UTF-8 illegal
+		//case 6: if ((a = (*--srcptr)) < 0x80 || a > 0xBF) return 0;
+		//case 5: if ((a = (*--srcptr)) < 0x80 || a > 0xBF) return 0;
+		case 4: if ((a = (*--srcptr)) < 0x80 || a > 0xBF) return 0;
+		case 3: if ((a = (*--srcptr)) < 0x80 || a > 0xBF) return 0;
+		case 2: if ((a = (*--srcptr)) > 0xBF) return 0;
+		switch (*source) 
+		{
+			// no fall-through in this inner switch.
+			case 0xE0: if (a < 0xA0) return 0; break;
+			case 0xED: if (a > 0x9F) return 0; break;
+			case 0xF0: if (a < 0x90) return 0; break;
+			case 0xF4: if (a > 0x8F) return 0; break;
+			default:   if (a < 0x80) return 0;
+		}
+		case 1: if (*source >= 0x80 && *source < 0xC2) return 0;
+	}
+	if (*source > 0xF4) return 0;
+	return 1;
+}
 
-        if( (// planes 1-3
-                bytes[0] == 0xF0 &&
-                (0x90 <= bytes[1] && bytes[1] <= 0xBF) &&
-                (0x80 <= bytes[2] && bytes[2] <= 0xBF) &&
-                (0x80 <= bytes[3] && bytes[3] <= 0xBF)
-            ) ||
-            (// planes 4-15
-                (0xF1 <= bytes[0] && bytes[0] <= 0xF3) &&
-                (0x80 <= bytes[1] && bytes[1] <= 0xBF) &&
-                (0x80 <= bytes[2] && bytes[2] <= 0xBF) &&
-                (0x80 <= bytes[3] && bytes[3] <= 0xBF)
-            ) ||
-            (// plane 16
-                bytes[0] == 0xF4 &&
-                (0x80 <= bytes[1] && bytes[1] <= 0x8F) &&
-                (0x80 <= bytes[2] && bytes[2] <= 0xBF) &&
-                (0x80 <= bytes[3] && bytes[3] <= 0xBF)
-            )
-        ) {
-            bytes += 4;
-            continue;
-        }
+ws_utf8_parse_state_t ws_utf8_validate(const unsigned char *value, size_t len)
+{
+	unsigned int i;
 
-        return 0;
-    }
+	// Is the string valid UTF-8?
+	for (i = 0; i < len; i++) 
+	{
+		uint32_t ch = 0;
+		uint8_t  extrabytes = trailingBytesForUTF8[(uint8_t) value[i]];
 
-    return 1;
+		if (extrabytes + i >= len)
+			return WS_UTF8_FAILURE;
+
+		if (isLegalUTF8((uint8_t *) (value + i), extrabytes + 1) == 0) 
+			return WS_UTF8_FAILURE;
+
+		switch (extrabytes) 
+		{
+			case 5 : ch += (uint8_t) value[i++]; ch <<= 6;
+			case 4 : ch += (uint8_t) value[i++]; ch <<= 6;
+			case 3 : ch += (uint8_t) value[i++]; ch <<= 6;
+			case 2 : ch += (uint8_t) value[i++]; ch <<= 6;
+			case 1 : ch += (uint8_t) value[i++]; ch <<= 6;
+			case 0 : ch += (uint8_t) value[i];
+		}
+
+		ch -= offsetsFromUTF8[extrabytes];
+
+		if (ch <= UNI_MAX_LEGAL_UTF32) 
+		{
+			if (ch >= UNI_SUR_HIGH_START && ch <= UNI_SUR_LOW_END)
+				return WS_UTF8_FAILURE;
+		} 
+		else 
+		{
+			return WS_UTF8_FAILURE;
+		}
+	}
+
+	return WS_UTF8_SUCCESS;
 }

@@ -658,6 +658,12 @@ void _ws_read_websocket(ws_t ws, struct evbuffer *in)
 					ws_unmask_payload(ws->header.mask, buf, bytes_read);
 				}
 
+				if (!WS_OPCODE_IS_CONTROL(ws->header.opcode)
+					&& !ws->msg_isbinary)
+				{
+					//ws_utf8_isvalid(buf, bytes_read);
+				}
+
 				if (_ws_handle_frame_data(ws, buf, bytes_read))
 				{
 					// TODO: Raise protocol error via error cb.
