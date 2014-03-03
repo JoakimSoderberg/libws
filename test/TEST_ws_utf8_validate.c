@@ -214,11 +214,28 @@ static int test_utf8_need_more()
 int TEST_ws_utf8_validate(int argc, char **argv)
 {
 	int ret = 0;
+	ws_utf8_state_t s = WS_UTF8_ACCEPT;
+	ws_utf8_parse_state_t s2;
+	char *bla = "\x48\x65\x6c\x6c\x6f\x2d\xc2\xb5\x40\xc3\x9f\xc3\xb6\xc3\xa4"
+				"\xc3\xbc\xc3\xa0\xc3\xa1\x2d\x55\x54\x46\x2d\x38\x21\x21";
+				// "Hello-\xb5@\xdf\xf6\xe4\xfc\xe0\xe1-UTF-8!!";
 
 	libws_test_HEADLINE("TEST_ws_utf8_validate");
 
 	ret |= test_utf8_overlong();
 	ret |= test_utf8_valid();
+
+	s = ws_utf8_validate2(&s, bla, 
+		strlen(bla));
+
+	if (s == WS_UTF8_REJECT)
+		libws_test_FAILURE("Invalid utf8");
+
+	s2 = ws_utf8_validate(bla,
+		strlen(bla), NULL);
+
+	if (s2 != WS_UTF8_SUCCESS)
+		libws_test_FAILURE("Invalid utf8 2");
 
 	return ret;
 }

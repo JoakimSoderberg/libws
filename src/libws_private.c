@@ -660,12 +660,13 @@ void _ws_read_websocket(ws_t ws, struct evbuffer *in)
 					ws_unmask_payload(ws->header.mask, buf, bytes_read);
 				}
 
-				if (!ws->msg_isbinary)
+				if (!ws->msg_isbinary 
+				 && !WS_OPCODE_IS_CONTROL(ws->header.opcode))
 				{
 					LIBWS_LOG(LIBWS_DEBUG2, "About to validate UTF8, state = %d"
-							" len = %d", bytes_read, ws->utf8_state);
+							" len = %d", ws->utf8_state, bytes_read);
 
-					libws_utf8_validate2(&ws->utf8_state, 
+					ws_utf8_validate2(&ws->utf8_state, 
 										buf, bytes_read);
 
 					// Either the UTF8 is invalid, or a codepoint is not
@@ -677,14 +678,14 @@ void _ws_read_websocket(ws_t ws, struct evbuffer *in)
 
 						ws_close_with_status(ws, 
 							WS_CLOSE_STATUS_INCONSISTENT_DATA_1007);
-						goto msgfail;
 					}
-					/*else if (ws_utf8_validate(buf, bytes_read, NULL))
+					else if (ws_utf8_validate((unsigned char *)buf, 
+												bytes_read, NULL))
 					{
+						// TODO: Get rid of this. Make libws_utf8_validate2 work instead.			
 						ws_close_with_status(ws, 
 							WS_CLOSE_STATUS_INCONSISTENT_DATA_1007);
-						goto msgfail;
-					}*/
+					}
 
 					LIBWS_LOG(LIBWS_DEBUG2, "Validated UTF8, state = %d", 
 							ws->utf8_state);

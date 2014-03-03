@@ -134,7 +134,7 @@ static const uint8_t utf8d[] =
   1,3,1,1,1,1,1,3,1,3,1,1,1,1,1,1,1,3,1,1,1,1,1,1,1,1,1,1,1,1,1,1, // s7..s8
 };
 
-uint32_t libws_utf8_decode(uint32_t *state, uint32_t *codep, uint8_t byte)
+uint32_t libws_utf8_decode(uint32_t *state, uint32_t *codep, uint32_t byte)
 {
 	uint32_t type = utf8d[byte];
 
@@ -146,7 +146,8 @@ uint32_t libws_utf8_decode(uint32_t *state, uint32_t *codep, uint8_t byte)
 	return *state;
 }
 
-uint32_t libws_utf8_validate2(uint32_t *state, char *str, size_t len)
+ws_utf8_state_t ws_utf8_validate2(ws_utf8_state_t *state, 
+				char *str, size_t len)
 {
 	size_t i;
 	uint32_t type;
@@ -167,7 +168,9 @@ uint32_t libws_utf8_validate2(uint32_t *state, char *str, size_t len)
 		*state = utf8d[256 + (*state) * 16 + type];
 
 		if (*state == WS_UTF8_REJECT)
+		{
 			break;
+		}
 	}
 
 	return *state;
