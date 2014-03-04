@@ -310,7 +310,8 @@ int ws_close_with_status_reason(ws_t ws, ws_close_status_t status,
 	struct timeval tv;
 	assert(ws);
 
-	LIBWS_LOG(LIBWS_TRACE, "Sending close frame");
+	LIBWS_LOG(LIBWS_TRACE, "Sending close frame %d, %*s", 
+			status, reason_len, reason);
 
 	ws->state = WS_STATE_CLOSING;
 
