@@ -679,13 +679,6 @@ void _ws_read_websocket(ws_t ws, struct evbuffer *in)
 						ws_close_with_status(ws, 
 							WS_CLOSE_STATUS_INCONSISTENT_DATA_1007);
 					}
-					else if (ws_utf8_validate((unsigned char *)buf, 
-												bytes_read, NULL))
-					{
-						// TODO: Get rid of this. Make libws_utf8_validate2 work instead.			
-						ws_close_with_status(ws, 
-							WS_CLOSE_STATUS_INCONSISTENT_DATA_1007);
-					}
 
 					LIBWS_LOG(LIBWS_DEBUG2, "Validated UTF8, state = %d", 
 							ws->utf8_state);
