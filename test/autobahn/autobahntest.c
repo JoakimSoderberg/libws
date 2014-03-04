@@ -37,6 +37,7 @@ typedef struct libws_autobahn_args_s
 	int maxtime;
 	int fulldata;
 	int compact;
+	int quiet;
 	const char *config;
 
 	int skiprange[2];
@@ -214,21 +215,24 @@ void onmsg(ws_t ws, char *msg, uint64_t len, int binary, void *arg)
 		default:
 		case LIBWS_AUTOBAHN_STATE_TEST:
 		{
-			// Echo any message.
-			if (args.fulldata && !binary)
+			if (!args.quiet)
 			{
-				printf("%s (%llu bytes) ", msg, len);
-			}
-			else
-			{
-				printf("%*llu bytes (%s)",
-					args.compact ? 10 : 0, len,
-					binary ? "binary" : "text");
+				if (args.fulldata && !binary)
+				{
+					printf("%s (%llu bytes) ", msg, len);
+				}
+				else
+				{
+					printf("%*llu bytes (%s)",
+						args.compact ? 10 : 0, len,
+						binary ? "binary" : "text");
+				}
+
+				if (!args.compact)
+					printf("\n");
 			}
 
-			if (!args.compact)
-				printf("\n");
-
+			// Echo the message to the server.
 			ws_send_msg_ex(ws, msg, len, binary);
 			break;
 		}
@@ -702,6 +706,7 @@ int load_config(const char *path)
 			"s?:i" // ssl
 			"s?:i" // debug
 			"s?:i" // nocolor
+			"s?:i" // quiet
 			"s?:o" // tests
 			"s?:o" // skips
 			"s?:o" // testrange
@@ -714,6 +719,7 @@ int load_config(const char *path)
 		"ssl", &args.ssl,
 		"debug", &args.debug,
 		"nocolor", &args.nocolor,
+		"quiet", &args.quiet,
 		"tests", &tests,
 		"skips", &skips,
 		"testrange", &testrange,
@@ -839,6 +845,10 @@ int main(int argc, char **argv)
 				&args.test_count, CARGO_NARGS_ONE_OR_MORE, CARGO_INT,
 				"A list of tests to run.");
 		cargo_add_alias(cargo, "--tests", "-t");
+
+		ret |= cargo_add(cargo, "--quiet", &args.quiet, CARGO_BOOL,
+					"Don't output anything relating to the data in the messages."
+					"This can be good when running the tests that spam a lot of data.");
 
 		if (ret != 0)
 		{
