@@ -292,7 +292,7 @@ static int _ws_handle_close_frame(ws_t ws)
 
 			// Validate UTF8 text.
 			ws->utf8_state = WS_UTF8_ACCEPT;
-			ws_utf8_validate2(&ws->utf8_state, 
+			ws_utf8_validate(&ws->utf8_state, 
 							ws->server_reason, ws->server_reason_len);
 
 			if (ws->utf8_state == WS_UTF8_REJECT)
@@ -686,7 +686,7 @@ void _ws_read_websocket(ws_t ws, struct evbuffer *in)
 					LIBWS_LOG(LIBWS_DEBUG2, "About to validate UTF8, state = %d"
 							" len = %d", ws->utf8_state, bytes_read);
 
-					ws_utf8_validate2(&ws->utf8_state, 
+					ws_utf8_validate(&ws->utf8_state, 
 										buf, bytes_read);
 
 					// Either the UTF8 is invalid, or a codepoint is not

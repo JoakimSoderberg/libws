@@ -36,7 +36,7 @@ uint32_t libws_utf8_decode(uint32_t *state, uint32_t *codep, uint32_t byte)
 	return *state;
 }
 
-ws_utf8_state_t ws_utf8_validate2(ws_utf8_state_t *state, 
+ws_utf8_state_t ws_utf8_validate(ws_utf8_state_t *state, 
 				const char *str, size_t len)
 {
 	size_t i;

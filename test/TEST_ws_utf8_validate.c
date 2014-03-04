@@ -39,7 +39,7 @@ static int test_utf8_overlong()
 		print_utf8_str(utf8_overlong[i], strlen(utf8_overlong[i]));
 
 		s = WS_UTF8_ACCEPT;
-		ws_utf8_validate2(&s, utf8_overlong[i], strlen(utf8_overlong[i]));
+		ws_utf8_validate(&s, utf8_overlong[i], strlen(utf8_overlong[i]));
 
 		if (s == WS_UTF8_REJECT)
 		{
@@ -131,7 +131,7 @@ static int test_utf8_valid()
 			print_utf8_str(valids[j], strlen(valids[j]));
 
 			s = WS_UTF8_ACCEPT;
-			ws_utf8_validate2(&s, valids[j], strlen(valids[j]));
+			ws_utf8_validate(&s, valids[j], strlen(valids[j]));
 
 			if (s == WS_UTF8_ACCEPT)
 			{
@@ -154,9 +154,8 @@ static int test_utf8_valid()
 			{
 				print_utf8_str(valids[j], i);
 
-				//s = ws_utf8_validate((unsigned char *)valids[j], i, NULL);
 				s = WS_UTF8_ACCEPT;
-				ws_utf8_validate2(&s, valids[j], i);
+				ws_utf8_validate(&s, valids[j], i);
 
 				if (s == expected[j][i])
 				{

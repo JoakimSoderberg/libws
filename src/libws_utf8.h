@@ -12,7 +12,7 @@ typedef uint32_t ws_utf8_state_t;
 
 ws_utf8_state_t ws_utf8_decode(ws_utf8_state_t *state, uint32_t *codep, uint32_t byte);
 
-ws_utf8_state_t ws_utf8_validate2(ws_utf8_state_t *state, const char *str, size_t len);
+ws_utf8_state_t ws_utf8_validate(ws_utf8_state_t *state, const char *str, size_t len);
 
 
 #endif // __LIBWS_UTF8__
