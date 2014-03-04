@@ -262,7 +262,9 @@ static int _ws_handle_close_frame(ws_t ws)
 			LIBWS_LOG(LIBWS_ERR, "Close frame application data lacking "
 								 "status code");
 
-			ws_close_with_status(ws, WS_CLOSE_STATUS_STATUS_CODE_EXPECTED_1005);
+			ws->server_close_status = WS_CLOSE_STATUS_STATUS_CODE_EXPECTED_1005;
+
+			ws_close_with_status(ws, WS_CLOSE_STATUS_PROTOCOL_ERR_1002);
 			return 0;
 		}
 		else
@@ -274,10 +276,28 @@ static int _ws_handle_close_frame(ws_t ws)
 				(ws_close_status_t)ntohs(*((uint16_t *)ws->ctrl_payload));
 			ws->server_reason = &ws->ctrl_payload[2];
 			ws->server_reason_len = ws->ctrl_len - 2;
+			ws->server_reason[ws->server_reason_len] = '\0';
+
+			LIBWS_LOG(LIBWS_INFO, "Got close status %d, \"%s\"", 
+				ws->server_close_status, 
+				ws->server_reason);
 
 			if (!WS_IS_PEER_CLOSE_STATUS_VALID(ws->server_close_status))
 			{
+				LIBWS_LOG(LIBWS_ERR, "Invalid close code from peer %d", 
+							ws->server_close_status);
 				ws_close_with_status(ws, WS_CLOSE_STATUS_PROTOCOL_ERR_1002);
+				return 0;
+			}
+
+			// Validate UTF8 text.
+			ws->utf8_state = WS_UTF8_ACCEPT;
+			ws_utf8_validate2(&ws->utf8_state, 
+							ws->server_reason, ws->server_reason_len);
+
+			if (ws->utf8_state == WS_UTF8_REJECT)
+			{
+				ws_close_with_status(ws, WS_CLOSE_STATUS_INCONSISTENT_DATA_1007);
 				return 0;
 			}
 		}
@@ -295,6 +315,7 @@ static int _ws_handle_close_frame(ws_t ws)
 	// data.
 	if (!ws->sent_close)
 	{
+		LIBWS_LOG(LIBWS_INFO, "Echoing status code %d", ws->server_close_status);
 		return ws_close_with_status_reason(ws, 
 			ws->server_close_status, 
 			ws->server_reason, 
@@ -658,6 +679,7 @@ void _ws_read_websocket(ws_t ws, struct evbuffer *in)
 					ws_unmask_payload(ws->header.mask, buf, bytes_read);
 				}
 
+				// Validate UTF8 text. Control frames are handled seperately.
 				if (!ws->msg_isbinary 
 				 && !WS_OPCODE_IS_CONTROL(ws->header.opcode))
 				{
@@ -1193,7 +1215,7 @@ int _ws_send_close(ws_t ws, ws_close_status_t status_code,
 	}
 
 	// (Status code is a uint16_t == 2 bytes)
-	if ((reason_len + 2) >= WS_CONTROL_MAX_PAYLOAD_LEN)
+	if ((reason_len + 2) > WS_CONTROL_MAX_PAYLOAD_LEN)
 	{
 		LIBWS_LOG(LIBWS_ERR, "Close reason too big to fit max control "
 							 "frame payload size %u + 2 byte status (max %d)", 

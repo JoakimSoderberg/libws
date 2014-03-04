@@ -15,7 +15,9 @@ uint64_t libws_ntoh64(const uint64_t input);
 uint64_t libws_hton64(const uint64_t input);
 
 // TODO: ifdef this
+#ifndef strsep
 char *strsep(char **s, const char *del);
+#endif
 char *ws_rtrim(char *s);
 
 #ifdef _WIN32

@@ -26,6 +26,7 @@ uint64_t libws_hton64(const uint64_t input)
 }
 
 // TODO: Ifdef this
+#ifndef strsep
 char *strsep(char **s, const char *del)
 {
     char *d, *tok;
@@ -49,6 +50,7 @@ char *strsep(char **s, const char *del)
 
     return tok;
 }
+#endif
 
 char *ws_rtrim(char *s)
 {

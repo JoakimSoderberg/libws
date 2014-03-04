@@ -16,21 +16,6 @@ static void print_utf8_str(const char *str, size_t len)
 	printf("\n");
 }
 
-static const char *utf8_state_str(ws_utf8_parse_state_t s)
-{
-	switch (s)
-	{
-		case WS_UTF8_FAILURE: return "fail";
-		case WS_UTF8_SUCCESS: return "success";
-		case WS_UTF8_NEED_MORE: return "need more";
-		case WS_UTF8_NEED_MORE2: return "need more 2";
-		case WS_UTF8_NEED_MORE3: return "need more 3";
-		case WS_UTF8_NEED_MORE4: return "need more 4";
-	}
-
-	return NULL;
-}
-
 static const char *utf8_overlong[] =
 {
 	"\xc0\xaf",
@@ -45,26 +30,25 @@ static int test_utf8_overlong()
 {
 	int ret = 0;
 	int i;
-	ws_utf8_parse_state_t s;
+	ws_utf8_state_t s;
 
 	libws_test_STATUS("Test overlong strings:");
 
 	for (i = 0; i < UTF8_OVERLONG_COUNT; i++)
 	{
-		print_utf8_str(utf8_overlong[i], 
-			strlen(utf8_overlong[i]));
-		
-		s = ws_utf8_validate((unsigned char *)utf8_overlong[i], 
-				strlen(utf8_overlong[i]), NULL);
+		print_utf8_str(utf8_overlong[i], strlen(utf8_overlong[i]));
 
-		if (s == WS_UTF8_FAILURE)
+		s = WS_UTF8_ACCEPT;
+		ws_utf8_validate2(&s, utf8_overlong[i], strlen(utf8_overlong[i]));
+
+		if (s == WS_UTF8_REJECT)
 		{
-			libws_test_SUCCESS("Got expected %s", utf8_state_str(s));
+			libws_test_SUCCESS("Got expected ACCEPT");
 		}
 		else
 		{
 			ret |= -1;
-			libws_test_FAILURE("Got unexpected %s", utf8_state_str(s));
+			libws_test_FAILURE("Got unexpected REJECT");
 		}
 	}
 
@@ -75,7 +59,7 @@ static int test_utf8_valid()
 {
 	int ret = 0;
 	size_t j;
-	ws_utf8_parse_state_t s;
+	ws_utf8_state_t s = WS_UTF8_ACCEPT;
 	const char *valids[] =
 	{
 		"\x48\x65\x6c\x6c\x6f\x2d\xc2\xb5\x40\xc3\x9f\xc3\xb6"
@@ -84,57 +68,57 @@ static int test_utf8_valid()
 		"\xce\xba\xe1\xbd\xb9\xcf\x83\xce\xbc\xce\xb5"
 	};
 
-	ws_utf8_parse_state_t expvalid0[] =
+	ws_utf8_state_t expvalid0[] =
 	{
-		WS_UTF8_SUCCESS, 	// 0
-		WS_UTF8_SUCCESS, 	// 1
-		WS_UTF8_SUCCESS, 	// 2
-		WS_UTF8_SUCCESS, 	// 3
-		WS_UTF8_SUCCESS, 	// 4
-		WS_UTF8_SUCCESS, 	// 5
-		WS_UTF8_SUCCESS, 	// 6
-		WS_UTF8_NEED_MORE,	// 7
-		WS_UTF8_SUCCESS,	// 8
-		WS_UTF8_SUCCESS,	// 9
-		WS_UTF8_NEED_MORE,	// 10
-		WS_UTF8_SUCCESS,	// 11
-		WS_UTF8_NEED_MORE,	// 12
-		WS_UTF8_SUCCESS,	// 13
-		WS_UTF8_NEED_MORE,	// 14
-		WS_UTF8_SUCCESS,	// 15
-		WS_UTF8_NEED_MORE,	// 16
-		WS_UTF8_SUCCESS,	// 17
-		WS_UTF8_NEED_MORE,	// 18
-		WS_UTF8_SUCCESS,	// 19
-		WS_UTF8_NEED_MORE,	// 20
-		WS_UTF8_SUCCESS,	// 21
-		WS_UTF8_SUCCESS,	// 22
-		WS_UTF8_SUCCESS,	// 23
-		WS_UTF8_SUCCESS,	// 24
-		WS_UTF8_SUCCESS,	// 25
-		WS_UTF8_SUCCESS,	// 26
-		WS_UTF8_SUCCESS,	// 27
-		WS_UTF8_SUCCESS,	// 28
-		WS_UTF8_SUCCESS		// 29
+		WS_UTF8_ACCEPT, 	// 0
+		WS_UTF8_ACCEPT, 	// 1
+		WS_UTF8_ACCEPT, 	// 2
+		WS_UTF8_ACCEPT, 	// 3
+		WS_UTF8_ACCEPT, 	// 4
+		WS_UTF8_ACCEPT, 	// 5
+		WS_UTF8_ACCEPT, 	// 6
+		WS_UTF8_NEEDMORE,	// 7
+		WS_UTF8_ACCEPT,		// 8
+		WS_UTF8_ACCEPT,		// 9
+		WS_UTF8_NEEDMORE,	// 10
+		WS_UTF8_ACCEPT,		// 11
+		WS_UTF8_NEEDMORE,	// 12
+		WS_UTF8_ACCEPT,		// 13
+		WS_UTF8_NEEDMORE,	// 14
+		WS_UTF8_ACCEPT,		// 15
+		WS_UTF8_NEEDMORE,	// 16
+		WS_UTF8_ACCEPT,		// 17
+		WS_UTF8_NEEDMORE,	// 18
+		WS_UTF8_ACCEPT,		// 19
+		WS_UTF8_NEEDMORE,	// 20
+		WS_UTF8_ACCEPT,		// 21
+		WS_UTF8_ACCEPT,		// 22
+		WS_UTF8_ACCEPT,		// 23
+		WS_UTF8_ACCEPT,		// 24
+		WS_UTF8_ACCEPT,		// 25
+		WS_UTF8_ACCEPT,		// 26
+		WS_UTF8_ACCEPT,		// 27
+		WS_UTF8_ACCEPT,		// 28
+		WS_UTF8_ACCEPT		// 29
 	};
 
-	ws_utf8_parse_state_t expvalid1[] =
+	ws_utf8_state_t expvalid1[] =
 	{
-		WS_UTF8_SUCCESS,	// 0
-		WS_UTF8_NEED_MORE,	// 1
-		WS_UTF8_SUCCESS,	// 2
-		WS_UTF8_NEED_MORE2,	// 3
-		WS_UTF8_NEED_MORE,	// 4
-		WS_UTF8_SUCCESS,	// 5
-		WS_UTF8_NEED_MORE,	// 6
-		WS_UTF8_SUCCESS,	// 7
-		WS_UTF8_NEED_MORE,	// 8
-		WS_UTF8_SUCCESS,	// 9
-		WS_UTF8_NEED_MORE,	// 10
-		WS_UTF8_SUCCESS		// 11
+		WS_UTF8_ACCEPT,		// 0
+		WS_UTF8_NEEDMORE,	// 1
+		WS_UTF8_ACCEPT,		// 2
+		WS_UTF8_NEEDMORE+1,	// 3
+		WS_UTF8_NEEDMORE,	// 4
+		WS_UTF8_ACCEPT,		// 5
+		WS_UTF8_NEEDMORE,	// 6
+		WS_UTF8_ACCEPT,		// 7
+		WS_UTF8_NEEDMORE,	// 8
+		WS_UTF8_ACCEPT,		// 9
+		WS_UTF8_NEEDMORE,	// 10
+		WS_UTF8_ACCEPT		// 11
 	};
 
-	ws_utf8_parse_state_t *expected[] =
+	ws_utf8_state_t *expected[] =
 	{
 		expvalid0,
 		expvalid1
@@ -146,10 +130,10 @@ static int test_utf8_valid()
 		{
 			print_utf8_str(valids[j], strlen(valids[j]));
 
-			s = ws_utf8_validate((unsigned char *)valids[j], 
-						strlen(valids[j]), NULL);
+			s = WS_UTF8_ACCEPT;
+			ws_utf8_validate2(&s, valids[j], strlen(valids[j]));
 
-			if (s == WS_UTF8_SUCCESS)
+			if (s == WS_UTF8_ACCEPT)
 			{
 				libws_test_SUCCESS("Full valid utf8 string parsed");
 			}
@@ -170,72 +154,33 @@ static int test_utf8_valid()
 			{
 				print_utf8_str(valids[j], i);
 
-				s = ws_utf8_validate((unsigned char *)valids[j], i, NULL);
+				//s = ws_utf8_validate((unsigned char *)valids[j], i, NULL);
+				s = WS_UTF8_ACCEPT;
+				ws_utf8_validate2(&s, valids[j], i);
 
 				if (s == expected[j][i])
 				{
-					libws_test_SUCCESS("[%i] Got expected \"%s\"", i,
-									utf8_state_str(s));
+					libws_test_SUCCESS("[%i] Got expected \"%u\"", i, s);
 				}
 				else
 				{
-					libws_test_FAILURE("[%i] Expected \"%s\" but got \"%s\"", i,
-						utf8_state_str(expected[j][i]), utf8_state_str(s));
+					libws_test_FAILURE("[%i] Expected \"%u\" but got \"%u\"", i,
+									expected[j][i], s);
 				}
 			}
 		}
 	}
 	return ret;
 }
-/*
-static int test_utf8_need_more()
-{
-	int ret = 0;
-	size_t i;
-	ws_utf8_parse_state_t s;
-	const char part1[] = "\xce\xba\xe1\xbd\xb9\xcf\x83\xce\xbc\xce\xb5";
-	const char part2[] = "\xf4\x90\x80\x80";
-
-	s = ws_utf8_validate(part1, strlen(part1));
-
-	if (s == WS_UTF8_NEED_MORE)
-	{
-		ws_utf8_validate(part2, strlen(part2));
-	}
-	else
-	{
-		ret = -1;
-	}
-
-	return ret;
-}
-*/
 
 int TEST_ws_utf8_validate(int argc, char **argv)
 {
 	int ret = 0;
-	ws_utf8_state_t s = WS_UTF8_ACCEPT;
-	ws_utf8_parse_state_t s2;
-	char *bla = "\x48\x65\x6c\x6c\x6f\x2d\xc2\xb5\x40\xc3\x9f\xc3\xb6\xc3\xa4"
-				"\xc3\xbc\xc3\xa0\xc3\xa1\x2d\x55\x54\x46\x2d\x38\x21\x21";
-				// "Hello-\xb5@\xdf\xf6\xe4\xfc\xe0\xe1-UTF-8!!";
 
 	libws_test_HEADLINE("TEST_ws_utf8_validate");
 
 	ret |= test_utf8_overlong();
 	ret |= test_utf8_valid();
-
-	s = ws_utf8_validate2(&s, bla, 
-		strlen(bla));
-
-	if (s == WS_UTF8_REJECT)
-		libws_test_FAILURE("Invalid utf8");
-
-	s2 = ws_utf8_validate(bla,
-		strlen(bla), NULL);
-
-	if (s2 != WS_UTF8_SUCCESS)
-		libws_test_FAILURE("Invalid utf8 2");
 
 	return ret;
 }

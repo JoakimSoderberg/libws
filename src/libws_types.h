@@ -141,19 +141,6 @@ typedef enum ws_close_status_e
 	|| (code == WS_CLOSE_STATUS_ABNORMAL_1006) \
 	|| (code == WS_CLOSE_STATUS_FAILED_TLS_HANDSHAKE_1015))
 
-/// Has the peer sent a valid close code?
-#define WS_IS_PEER_CLOSE_STATUS_VALID(code) \
-	((code == WS_CLOSE_STATUS_NORMAL_1000) \
-	|| (code == WS_CLOSE_STATUS_PROTOCOL_ERR_1002) \
-	|| (code == WS_CLOSE_STATUS_UNSUPPORTED_DATA_1003) \
-	|| (code == WS_CLOSE_STATUS_INCONSISTENT_DATA_1007) \
-	|| (code == WS_CLOSE_STATUS_POLICY_VIOLATION_1008) \
-	|| (code == WS_CLOSE_STATUS_MESSAGE_TOO_BIG_1009) \
-	|| (code == WS_CLOSE_STATUS_EXTENSION_NOT_NEGOTIATED_1010) \
-	|| (code == WS_CLOSE_STATUS_UNEXPECTED_CONDITION_1011) \
-	|| WS_IS_CLOSE_STATUS_IANA_RESERVED(code))
-
-
 /// Status codes in the range 4000-4999 are reserved for private use
 /// and thus can't be registered.  Such codes can be used by prior
 /// agreements between WebSocket applications.  The interpretation of
@@ -172,6 +159,20 @@ typedef enum ws_close_status_e
 
 #define WS_OPCODE_IS_RESERVED(opcode) \
 	(WS_OPCODE_IS_RESERVED_CONTROL(opcode) || WS_OPCODE_IS_RESERVED_NON_CONTROL(opcode))
+
+/// Has the peer sent a valid close code?
+#define WS_IS_PEER_CLOSE_STATUS_VALID(code) \
+	(WS_IS_CLOSE_STATUS_IANA_RESERVED(code) \
+	|| (WS_IS_CLOSE_STATUS_PRIVATE_USE(code)) \
+	|| (code == WS_CLOSE_STATUS_NORMAL_1000) \
+	|| (code == WS_CLOSE_STATUS_GOING_AWAY_1001) \
+	|| (code == WS_CLOSE_STATUS_PROTOCOL_ERR_1002) \
+	|| (code == WS_CLOSE_STATUS_UNSUPPORTED_DATA_1003) \
+	|| (code == WS_CLOSE_STATUS_INCONSISTENT_DATA_1007) \
+	|| (code == WS_CLOSE_STATUS_POLICY_VIOLATION_1008) \
+	|| (code == WS_CLOSE_STATUS_MESSAGE_TOO_BIG_1009) \
+	|| (code == WS_CLOSE_STATUS_EXTENSION_NOT_NEGOTIATED_1010) \
+	|| (code == WS_CLOSE_STATUS_UNEXPECTED_CONDITION_1011))
 
 #define WS_MAX_PAYLOAD_LEN 0x7FFFFFFFFFFFFFFF
 #define WS_CONTROL_MAX_PAYLOAD_LEN 125

@@ -233,8 +233,6 @@ void onmsg(ws_t ws, char *msg, uint64_t len, int binary, void *arg)
 			break;
 		}
 	}
-
-	ws_close(ws);
 }
 
 void onping(ws_t ws, char *payload, uint64_t len, int binary, void *arg)
