@@ -261,27 +261,25 @@ static int _ws_handle_close_frame(ws_t ws)
 		{
 			LIBWS_LOG(LIBWS_ERR, "Close frame application data lacking "
 								 "status code");
-			_ws_shutdown(ws);
-			return -1;
+
+			ws_close_with_status(ws, WS_CLOSE_STATUS_STATUS_CODE_EXPECTED_1005);
+			return 0;
 		}
 		else
 		{
 			LIBWS_LOG(LIBWS_DEBUG, "Reading server close status and reason "
 					" (payload length %lu)", ws->ctrl_len);
 
-			// Read status and reason.
-			// TODO: Hmm this should already unmasked earlier...
-			if (h->mask_bit)
-			{
-				ws_unmask_payload(h->mask, ws->ctrl_payload, ws->ctrl_len);
-			}
-
-			// TODO: Fix reading this properly.
-			/*
 			ws->server_close_status = 
 				(ws_close_status_t)ntohs(*((uint16_t *)ws->ctrl_payload));
 			ws->server_reason = &ws->ctrl_payload[2];
-			ws->server_reason_len = ws->ctrl_len - 2;*/
+			ws->server_reason_len = ws->ctrl_len - 2;
+
+			if (!WS_IS_PEER_CLOSE_STATUS_VALID(ws->server_close_status))
+			{
+				ws_close_with_status(ws, WS_CLOSE_STATUS_PROTOCOL_ERR_1002);
+				return 0;
+			}
 		}
 	}
 

@@ -132,6 +132,28 @@ typedef enum ws_close_status_e
 #define WS_IS_CLOSE_STATUS_IANA_RESERVED(code) \
 	((code >= 3000) && (code <= 3999))
 
+/// Is the close code meant to only be used locally by a websocket
+/// endpoint. That is, if it's not allowed to be sent to a peer as
+/// a close code.
+#define WS_IS_CLOSE_STATUS_LOCAL(code) \
+	(  (code == WS_CLOSE_STATUS_RESERVED_1004) \
+	|| (code == WS_CLOSE_STATUS_STATUS_CODE_EXPECTED_1005) \
+	|| (code == WS_CLOSE_STATUS_ABNORMAL_1006) \
+	|| (code == WS_CLOSE_STATUS_FAILED_TLS_HANDSHAKE_1015))
+
+/// Has the peer sent a valid close code?
+#define WS_IS_PEER_CLOSE_STATUS_VALID(code) \
+	((code == WS_CLOSE_STATUS_NORMAL_1000) \
+	|| (code == WS_CLOSE_STATUS_PROTOCOL_ERR_1002) \
+	|| (code == WS_CLOSE_STATUS_UNSUPPORTED_DATA_1003) \
+	|| (code == WS_CLOSE_STATUS_INCONSISTENT_DATA_1007) \
+	|| (code == WS_CLOSE_STATUS_POLICY_VIOLATION_1008) \
+	|| (code == WS_CLOSE_STATUS_MESSAGE_TOO_BIG_1009) \
+	|| (code == WS_CLOSE_STATUS_EXTENSION_NOT_NEGOTIATED_1010) \
+	|| (code == WS_CLOSE_STATUS_UNEXPECTED_CONDITION_1011) \
+	|| WS_IS_CLOSE_STATUS_IANA_RESERVED(code))
+
+
 /// Status codes in the range 4000-4999 are reserved for private use
 /// and thus can't be registered.  Such codes can be used by prior
 /// agreements between WebSocket applications.  The interpretation of
