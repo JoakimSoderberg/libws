@@ -158,7 +158,7 @@ void parse_test_status(char *msg)
 		return;
 	}
 
-	if (!strcmp(behavior, "OK"))
+	if (!strcmp(behavior, "OK") || !strcmp(behavior, "INFORMATIONAL"))
 	{
 		if (args.compact)
 		{
