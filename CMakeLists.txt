@@ -19,6 +19,7 @@ set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/CMakeModules)
 include(CheckCSourceCompiles)
 include(CheckFunctionExists)
 include(CheckIncludeFiles)
+include(CheckSymbolExists)
 include(CheckTypeSize)
 
 # Set some nicer output dirs.
@@ -100,20 +101,6 @@ check_type_size("unsigned long long" LIBWS_HAVE_UNSIGNED_LONG_LONG_INT)
 check_type_size("unsigned long" LIBWS_HAVE_UNSIGNED_LONG_INT)
 check_type_size("unsigned int" LIBWS_HAVE_UNSIGNED_INT)
 
-if (LIBWS_HAVE_UINT64_T)
-	set(LIBWS_UINT64 uint64_t)
-elseif (LIBWS_HAVE___UINT64)
-	set(LIBWS_UINT64 __uint64)
-elseif (LIBWS_HAVE_UNSIGNED_LONG_INT
-		AND (${LIBWS_HAVE_UNSIGNED_LONG_LONG_INT} EQUAL 8))
-	set(LIBWS_UINT64 "unsigned long long")
-elseif (LIBWS_HAVE_UNSIGNED_LONG_INT
-		AND (${LIBWS_HAVE_UNSIGNED_LONG_INT} EQUAL 8))
-	set(LIBWS_UINT64 "unsigned long int")
-else()
-	message(FATAL_ERROR "Could not detect a valid unsigned 64-bit integer type")
-endif()
-
 # Check our unsigned 32 bit integer sizes.
 check_type_size(uint32_t LIBWS_HAVE_UINT32_T)
 check_type_size(__uint32 LIBWS_HAVE___UINT32)
@@ -131,10 +118,47 @@ else()
 	message(FATAL_ERROR "Could not detect a valid unsigned 32-bit integer type")
 endif()
 
-if (WIN32) # matches both msvc and cygwin
-	set(LIBWS_64FMT "\"I64d\"")
+# Check for 64-bit types and format string.
+check_symbol_exists("PRIu64" "inttypes.h" LIBWS_HAVE_PRIU64)
+
+if (LIBWS_HAVE_UINT64_T)
+	set(LIBWS_UINT64 uint64_t)
+
+	if (LIBWS_HAVE_PRIU64)
+		set(LIBWS_U64FMT "PRIu64")
+	else()
+		set(LIBWS_U64FMT "\"llu\"")
+	endif()
+
+elseif (LIBWS_HAVE___UINT64)
+
+	set(LIBWS_UINT64 __uint64)
+	set(LIBWS_U64FMT "PRIu64")
+
+elseif (LIBWS_HAVE_UNSIGNED_LONG_LONG_INT
+		AND (${LIBWS_HAVE_UNSIGNED_LONG_LONG_INT} EQUAL 8))
+
+	set(LIBWS_UINT64 "unsigned long long")
+	set(LIBWS_U64FMT "\"llu\"")
+
+elseif (LIBWS_HAVE_UNSIGNED_LONG_INT
+		AND (${LIBWS_HAVE_UNSIGNED_LONG_INT} EQUAL 8))
+
+	set(LIBWS_UINT64 "unsigned long int")
+	set(LIBWS_U64FMT "\"lu\"")
+
+elseif (LIBWS_HAVE__UNSIGNED_INT
+		AND (${LIBWS_HAVE__UNSIGNED_INT} EQUAL 8))
+
+	set(LIBWS_UINT64 "unsigned long int")
+	set(LIBWS_U64FMT "\"u\"")
+
 else()
-	set(LIBWS_64FMT "\"lld\"")
+	message(FATAL_ERROR "Could not detect a valid unsigned 64-bit integer type")
+endif()
+
+if (WIN32) # matches both msvc and cygwin
+	set(LIBWS_64FMT "\"I64u\"")
 endif()
 
 # Check for different inline keyword versions.
@@ -160,7 +184,7 @@ set(CMAKE_REQUIRED_DEFINITIONS "")
 # Generate the config header file.
 configure_file(
 	"src/libws_config.h.in"
-	"${PROJECT_BINARY_DIR}/include/libws_config.h"
+	"${PROJECT_BINARY_DIR}/libws_config.h"
 	)
 
 configure_file(

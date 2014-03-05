@@ -223,11 +223,11 @@ void onmsg(ws_t ws, char *msg, uint64_t len, int binary, void *arg)
 			{
 				if (args.fulldata && !binary)
 				{
-					printf("%s (%llu bytes) ", msg, len);
+					printf("%s (%"PRIu64" bytes) ", msg, len);
 				}
 				else
 				{
-					printf("%*llu bytes (%s)",
+					printf("%*"PRIu64" bytes (%s)",
 						args.compact ? 10 : 0, len,
 						binary ? "binary" : "text");
 				}
@@ -246,7 +246,7 @@ void onmsg(ws_t ws, char *msg, uint64_t len, int binary, void *arg)
 void onping(ws_t ws, char *payload, uint64_t len, int binary, void *arg)
 {
 	ws_onping_default_cb(ws, payload, len, binary, arg);
-	printf("Ping! (%llu byte payload)\n", len);
+	printf("Ping! (%"PRIu64" byte payload)\n", len);
 }
 
 void onclose(ws_t ws, ws_close_status_t status,
