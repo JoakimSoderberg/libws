@@ -721,7 +721,7 @@ void _ws_read_websocket(ws_t ws, struct evbuffer *in)
 						_ws_handle_frame_end(ws);
 					}
 				}
-			msgfail:
+
 				_ws_free(buf);
 			}
 		}
@@ -1240,13 +1240,17 @@ int _ws_get_random_mask(ws_t ws, char *buf, size_t len)
 {
 	#ifdef _WIN32
 	size_t i;
+	unsigned int tmp;
+
 	// http://msdn.microsoft.com/en-us/library/sxtz2fa8(VS.80).aspx
 	for (i = 0; i < len; i++)
 	{
-		if (rand_s((unsigned int *)&buf[i]))
+		if (rand_s(&tmp))
 		{
 			return -1;
 		}
+
+		buf[i] = (char)tmp;
 	}
 	#else
 	int i;
