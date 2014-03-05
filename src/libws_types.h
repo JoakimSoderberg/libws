@@ -123,14 +123,14 @@ typedef enum ws_close_status_e
 /// this protocol, its future revisions, and extensions specified in a
 /// permanent and readily available public specification.
 #define WS_IS_CLOSE_STATUS_WEBSOCKET_RESERVED(code) \
-	((code >= 1000) && (code <= 2999))
+	(((int)code >= 1000) && ((int)code <= 2999))
 
 /// Status codes in the range 3000-3999 are reserved for use by
 /// libraries, frameworks, and applications.  These status codes are
 /// registered directly with IANA.  The interpretation of these codes
 /// is undefined by this protocol.
 #define WS_IS_CLOSE_STATUS_IANA_RESERVED(code) \
-	((code >= 3000) && (code <= 3999))
+	(((int)code >= 3000) && ((int)code <= 3999))
 
 /// Is the close code meant to only be used locally by a websocket
 /// endpoint. That is, if it's not allowed to be sent to a peer as
@@ -146,19 +146,23 @@ typedef enum ws_close_status_e
 /// agreements between WebSocket applications.  The interpretation of
 /// these codes is undefined by this protocol.
 #define WS_IS_CLOSE_STATUS_PRIVATE_USE(code) \
-	((code >= 4000) && (code <= 4999))
+	(((int)code >= 4000) && ((int)code <= 4999))
 
 #define WS_OPCODE_IS_CONTROL(opcode) \
-	((opcode >= WS_OPCODE_CLOSE_0X8) && (opcode <= WS_OPCODE_CONTROL_RSV_0XF))
+	(((int)opcode >= WS_OPCODE_CLOSE_0X8) \
+	&& ((int)opcode <= WS_OPCODE_CONTROL_RSV_0XF))
 
 #define WS_OPCODE_IS_RESERVED_CONTROL(opcode) \
-	((opcode >= WS_OPCODE_CONTROL_RSV_0XB) && (opcode <= WS_OPCODE_CONTROL_RSV_0XF))
+	(((int)opcode >= WS_OPCODE_CONTROL_RSV_0XB) \
+	&& ((int)opcode <= WS_OPCODE_CONTROL_RSV_0XF))
 
 #define WS_OPCODE_IS_RESERVED_NON_CONTROL(opcode) \
-	((opcode >= WS_OPCODE_NON_CONTROL_RSV_0X3) && (opcode <= WS_OPCODE_NON_CONTROL_RSV_0X7))
+	(((int)opcode >= WS_OPCODE_NON_CONTROL_RSV_0X3) \
+	&& ((int)opcode <= WS_OPCODE_NON_CONTROL_RSV_0X7))
 
 #define WS_OPCODE_IS_RESERVED(opcode) \
-	(WS_OPCODE_IS_RESERVED_CONTROL(opcode) || WS_OPCODE_IS_RESERVED_NON_CONTROL(opcode))
+	(WS_OPCODE_IS_RESERVED_CONTROL(opcode) \
+	|| WS_OPCODE_IS_RESERVED_NON_CONTROL(opcode))
 
 /// Has the peer sent a valid close code?
 #define WS_IS_PEER_CLOSE_STATUS_VALID(code) \
@@ -181,7 +185,9 @@ typedef enum ws_close_status_e
 #define WS_HDR_PAYLOAD_LEN_SIZE 8
 #define WS_HDR_MASK_SIZE 4
 #define WS_HDR_MIN_SIZE WS_HDR_BASE_SIZE
-#define WS_HDR_MAX_SIZE (WS_HDR_BASE_SIZE + WS_HDR_PAYLOAD_LEN_SIZE + WS_HDR_MASK_SIZE)
+#define WS_HDR_MAX_SIZE (WS_HDR_BASE_SIZE \
+						+ WS_HDR_PAYLOAD_LEN_SIZE \
+						+ WS_HDR_MASK_SIZE)
 
 ///
 /// Websocket header structure.
@@ -253,22 +259,30 @@ typedef enum libws_ssl_state_e
 
 #define WS_RANDOM_PATH "/dev/urandom"
 
-typedef void (*ws_msg_callback_f)(ws_t ws, char *msg, uint64_t len, int binary, void *arg);
+typedef void (*ws_msg_callback_f)(ws_t ws, char *msg, uint64_t len,
+			int binary, void *arg);
 
 typedef void (*ws_msg_begin_callback_f)(ws_t ws, void *arg);
-typedef void (*ws_msg_frame_callback_f)(ws_t ws, char *payload, uint64_t len, void *arg);
+typedef void (*ws_msg_frame_callback_f)(ws_t ws, char *payload, 
+										uint64_t len, void *arg);
 typedef void (*ws_msg_end_callback_f)(ws_t ws, void *arg);
 
 typedef void (*ws_msg_frame_begin_callback_f)(ws_t ws, void *arg);
-typedef void (*ws_msg_frame_data_callback_f)(ws_t ws, char *payload, uint64_t len, void *arg);
+typedef void (*ws_msg_frame_data_callback_f)(ws_t ws, char *payload,
+											uint64_t len, void *arg);
 typedef void (*ws_msg_frame_end_callback_f)(ws_t ws, void *arg);
 
-typedef void (*ws_err_callback_f)(ws_t ws, int errcode, const char *errmsg, void *arg);
-typedef void (*ws_close_callback_f)(ws_t ws, ws_close_status_t status, const char *reason, size_t reason_len, void *arg);
+typedef void (*ws_err_callback_f)(ws_t ws, int errcode,
+								const char *errmsg, void *arg);
+typedef void (*ws_close_callback_f)(ws_t ws, ws_close_status_t status,
+				const char *reason, size_t reason_len, void *arg);
 typedef void (*ws_connect_callback_f)(ws_t ws, void *arg);
-typedef void (*ws_timeout_callback_f)(ws_t ws, struct timeval timeout, void *arg);
-typedef void (*ws_no_copy_cleanup_f)(ws_t ws, const void *data, uint64_t datalen, void *extra);
-typedef int (*ws_header_callback_f)(ws_t ws, const char *header_name, const char *header_val, void *arg);
+typedef void (*ws_timeout_callback_f)(ws_t ws,
+				struct timeval timeout, void *arg);
+typedef void (*ws_no_copy_cleanup_f)(ws_t ws, const void *data,
+						uint64_t datalen, void *extra);
+typedef int (*ws_header_callback_f)(ws_t ws, const char *header_name,
+				const char *header_val, void *arg);
 
 typedef void *(*ws_malloc_replacement_f)(size_t bytes);
 typedef void (*ws_free_replacement_f)(void *ptr);
