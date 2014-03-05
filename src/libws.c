@@ -139,14 +139,15 @@ void ws_global_destroy(ws_base_t *base)
 
 	b = *base;
 
-	#ifndef _WIN32
+	#ifdef _WIN32
+	WSACleanup();
+	#else
 	if (close(b->random_fd))
 	{
 		LIBWS_LOG(LIBWS_ERR, "Failed to close random source: %s (%d)", 
 							strerror(errno), errno);
 	}
 
-	WSACleanup();
 	#endif // _WIN32
 
 	if (b->dns_base)
