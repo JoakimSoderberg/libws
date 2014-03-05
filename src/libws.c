@@ -43,6 +43,10 @@ void ws_set_memory_functions(ws_malloc_replacement_f malloc_replace,
 
 int ws_global_init(ws_base_t *base)
 {
+	#ifdef _WIN32
+	WSADATA wsa_data;
+	int err;
+	#endif // _WIN32
 	ws_base_t b;
 
 	assert(base);
@@ -59,8 +63,23 @@ int ws_global_init(ws_base_t *base)
 
 	b = *base;
 
+	#ifdef _WIN32
+	// Initialize Winsock.
+	err = WSAStartup(MAKEWORD(2,2), &wsa_data);
+
+	if (err != 0)
+	{
+		LIBWS_LOG(LIBWS_ERR, "Failed to find a usable Winsock DLL. Error code: %d\n", err);
+		return -1;
+	}
+
+	if (LOBYTE(wsa_data.wVersion) != 2 || HIBYTE(wsa_data.wVersion) != 2)
+	{
+		LIBWS_LOG(LIBWS_ERR, "Failed to get v2.2 of Winsock");
+		return -1;
+	}
+	#else
 	// Don't crash on Broken pipe for a socket.
-	#ifndef _WIN32
 	signal(SIGPIPE, SIG_IGN);
 
 	if ((b->random_fd = open(WS_RANDOM_PATH, O_RDONLY)) < 0)
@@ -120,13 +139,15 @@ void ws_global_destroy(ws_base_t *base)
 
 	b = *base;
 
-	#ifndef WIN32
+	#ifndef _WIN32
 	if (close(b->random_fd))
 	{
 		LIBWS_LOG(LIBWS_ERR, "Failed to close random source: %s (%d)", 
 							strerror(errno), errno);
 	}
-	#endif
+
+	WSACleanup();
+	#endif // _WIN32
 
 	if (b->dns_base)
 	{
@@ -1273,7 +1294,6 @@ void ws_default_msg_frame_begin_cb(ws_t ws, void *arg)
 void ws_default_msg_frame_data_cb(ws_t ws, char *payload, 
 								uint64_t len, void *arg)
 {
-	size_t prev_len;
 	assert(ws);
 
 	LIBWS_LOG(LIBWS_TRACE, "Default message frame data callback "
