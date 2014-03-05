@@ -4,6 +4,38 @@
 
 #cmakedefine LIBWS_WITH_OPENSSL 1
 #cmakedefine LIBWS_WITH_LOG 1
+
+#cmakedefine LIBWS_HAVE_STDINT_H
+#cmakedefine LIBWS_HAVE_INTTYPES_H
+#cmakedefine LIBWS_HAVE_SYS_TYPES_H
+
+#if defined(LIBWS_HAVE_STDINT_H)
+#  include <stdint.h>
+#elif defined(LIBWS_HAVE_INTTYPES_H)
+#  include <inttypes.h>
+#elif defined(LIBWS_HAVE_SYS_TYPES_H)
+#  include <sys/types.h>
+#endif
+
+#cmakedefine LIBWS_HAVE_UINT32_T 1
+#ifndef LIBWS_HAVE_UINT32_T
+#  define uint32_t @LIBWS_UINT32@
+#endif
+
+#cmakedefine LIBWS_HAVE_UINT64_T 1
+#ifndef LIBWS_HAVE_UINT64_T
+#  define uint64_t @LIBWS_UINT64@
+#endif
+
+#define LIBWS_64FMT @LIBWS_64FMT@
+
+// If your compiler supports the inline keyword in C, JSON_INLINE is
+// defined to `inline', otherwise empty. In C++, the inline is always
+// supported.
+#ifdef __cplusplus
+#define LIBWS_INLINE inline
+#else
 #define LIBWS_INLINE @LIBWS_INLINE@
+#endif
 
 #endif // __LIBWS_CONFIG_H__

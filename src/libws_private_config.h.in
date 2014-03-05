@@ -1,4 +1,7 @@
 #ifndef __LIBWS_PRIVATE_CONFIG_H__
 #define __LIBWS_PRIVATE_CONFIG_H__
 
+#cmakedefine LIBWS_HAVE_UNISTD_H
+#cmakedefine LIBWS_HAVE_SYS_TIME_H
+
 #endif // __LIBWS_PRIVATE_CONFIG_H__
