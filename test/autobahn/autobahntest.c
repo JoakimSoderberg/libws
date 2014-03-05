@@ -11,6 +11,10 @@
 #include "cargo/cargo.h"
 #include "libws_test_helpers.h"
 
+#ifdef _WIN32
+#define snprintf _snprintf
+#endif
+
 typedef enum libws_autobahn_state_e
 {
 	LIBWS_AUTOBAHN_STATE_TEST = 0,
@@ -38,7 +42,7 @@ typedef struct libws_autobahn_args_s
 	int fulldata;
 	int compact;
 	int quiet;
-	const char *config;
+	char *config;
 
 	int skiprange[2];
 	size_t skiprange_count;
@@ -393,7 +397,7 @@ int get_case_count()
 
 int skip_case(int testcase)
 {
-	int j;
+	size_t j;
 
 	for (j = 0; j < args.skip_count; j++)
 	{
@@ -415,8 +419,8 @@ int combine_range_and_values(int max_case,
 	const int *range, size_t range_count,
 	int **values, size_t *value_count)
 {
-	int i;
-	int j;
+	size_t i;
+	size_t j;
 	int start = 0;
 	int stop = 0;
 	int more_count = 0;
@@ -441,7 +445,7 @@ int combine_range_and_values(int max_case,
 	// count how many of those are outside the range.
 	for (i = 0; i < *value_count; i++)
 	{
-		if ((_values[i] < start) || (_values[i] > stop))
+		if ((_values[i] < (int)start) || (_values[i] > (int)stop))
 		{
 			more_count++;
 		}
@@ -466,7 +470,7 @@ int combine_range_and_values(int max_case,
 		exit(1);
 	}
 
-	for (i = 0, j = start; j <= stop; i++)
+	for (i = 0, j = start; j <= (size_t)stop; i++)
 	{
 		tmp[i] = j++;
 	}
@@ -498,8 +502,7 @@ int combine_range_and_values(int max_case,
 
 int run_cases()
 {
-	int i;
-	int j;
+	size_t i;
 	int max_case = 0;
 	if ((max_case = get_case_count()) < 0)
 	{
@@ -640,7 +643,7 @@ int load_config_int_array(json_t *array, const char *name,
 					goto fail;
 				}
 
-				(*target)[i] = json_integer_value(val);
+				(*target)[i] = (int)json_integer_value(val);
 			}
 		}
 	}
@@ -682,7 +685,6 @@ int load_config_int_range(json_t *range, char *name,
 int load_config(const char *path)
 {
 	int ret = 0;
-	size_t i;
 	json_t *json = NULL;
 	json_t *tests = NULL;
 	json_t *skips = NULL;
@@ -761,7 +763,6 @@ fail:
 int main(int argc, char **argv)
 {
 	int ret = 0;
-	int i;
 	cargo_t cargo;
 
 	printf("\nlibws AutobahnTestSuite client (C) Joakim Soderberg 2014\n\n");
