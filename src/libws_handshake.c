@@ -247,7 +247,7 @@ int _ws_check_server_protocol_list(ws_t ws, const char *val)
 	char *end = NULL;
 	int found = 0;
 	
-	while ((prot = strsep(&v, ",")) != NULL)
+	while ((prot = libws_strsep(&v, ",")) != NULL)
 	{
 		// Trim start.
 		prot += strspn(prot, " ");
