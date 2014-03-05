@@ -16,6 +16,7 @@ option(LIBWS_WITH_AUTOBAHN "Compile the Autobahn test suite client. This require
 set(PROJECT_VERSION ${PROJECT_MAJOR_VERSION}.${PROJECT_MINOR_VERSION}.${PROJECT_PATCH_VERSION})
 set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/CMakeModules)
 
+include(CheckCSourceCompiles)
 include(CheckFunctionExists)
 include(CheckIncludeFiles)
 include(CheckTypeSize)
@@ -82,15 +83,86 @@ if (LIBWS_WITH_OPENSSL)
 	include_directories(${OPENSSL_INCLUDE_DIR})
 endif(LIBWS_WITH_OPENSSL)
 
-# Do system introspection.
+################################################################################
+###                        System introspection                              ###
+################################################################################
 
-# TODO: Check for inline keyword.
-set(LIBWS_INLINE)
+check_include_files(unistd.h LIBWS_HAVE_UNISTD_H)
+check_include_files(sys/time.h LIBWS_HAVE_SYS_TIME_H)
+check_include_files(stdint.h LIBWS_HAVE_STDINT_H)
+
+# Look for 64-bit integer sizes.
+check_type_size(__uint64 LIBWS_HAVE___UINT64)
+check_type_size(uint64_t LIBWS_HAVE_UINT64_T)
+check_type_size("unsigned long long" LIBWS_HAVE_UNSIGNED_LONG_LONG_INT)
+check_type_size("unsigned long" LIBWS_HAVE_UNSIGNED_LONG_INT)
+check_type_size("unsigned int" LIBWS_HAVE_UNSIGNED_INT)
+
+if (LIBWS_HAVE_UINT64_T)
+	set(LIBWS_UINT64 uint64_t)
+elseif (LIBWS_HAVE___UINT64)
+	set(LIBWS_UINT64 __uint64)
+elseif (LIBWS_HAVE_UNSIGNED_LONG_INT 
+		AND (${LIBWS_HAVE_UNSIGNED_LONG_LONG_INT} EQUAL 8))
+	set(LIBWS_UINT64 "unsigned long long")
+elseif (LIBWS_HAVE_UNSIGNED_LONG_INT AND (${LIBWS_HAVE_UNSIGNED_INT} EQUAL 8))
+	set(LIBWS_UINT64 "unsigned long int")
+else()
+	message(FATAL_ERROR "Could not detect a valid unsigned 64-bit integer type")
+endif()
+
+# Check our 32 bit integer sizes.
+check_type_size(uint32_t LIBWS_HAVE_UINT32_T)
+check_type_size(__uint32 LIBWS_HAVE___UINT32)
+
+if (HAVE_UINT32_T)
+	set(LIBWS_HAVE_UINT32 uint32_t)
+elseif (HAVE___UINT32)
+	set(LIBWS_HAVE_UINT32 __uint32)
+elseif (LIBWS_HAVE_UNSIGNED_LONG_INT 
+		AND (${LIBWS_HAVE_UNSIGNED_LONG_INT} EQUAL 4))
+	set(LIBWS_HAVE_UINT32 "unsigned long")
+elseif (LIBWS_HAVE_UNSIGNED_INT AND (${LIBWS_HAVE_UNSIGNED_INT} EQUAL 4))
+	set(LIBWS_HAVE_UINT32 "unsigned int")
+else()
+	message(FATAL_ERROR "Could not detect a valid unsigned 32-bit integer type")
+endif()
+
+if (WIN32) # matches both msvc and cygwin
+	set(LIBWS_64FMT "\"I64d\"")
+else()
+	set(LIBWS_64FMT "\"lld\"")
+endif()
+
+# Check for different inline keyword versions.
+foreach(KEYWORD "inline" "__inline__" "__inline")
+    set(CMAKE_REQUIRED_DEFINITIONS "-DKEYWORD=${KEYWORD}")
+    CHECK_C_SOURCE_COMPILES(
+        "
+        #include <stdio.h>
+        KEYWORD void a() {}
+        int main(int argc, char **argv) { a(); return 0; }
+        " LIBWS_HAVE_${KEYWORD})
+endforeach()
+
+if (NOT LIBWS_HAVE_inline)
+    if (LIBWS_HAVE___inline__)
+        set(LIBWS__inline __inline__)
+    elseif(LIBWS_HAVE___inline)
+        set(LIBWS__inline __inline)
+    endif()
+endif()
+set(CMAKE_REQUIRED_DEFINITIONS "")
 
 # Generate the config header file.
 configure_file(
 	"src/libws_config.h.in"
 	"${PROJECT_BINARY_DIR}/libws_config.h"
+	)
+
+configure_file(
+	"src/libws_private_config.h.in"
+	"${PROJECT_BINARY_DIR}/libws_private_config.h"
 	)
 
 include_directories(${PROJECT_BINARY_DIR})

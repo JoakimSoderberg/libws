@@ -1,0 +1,4 @@
+#ifndef __LIBWS_PRIVATE_CONFIG_H__
+#define __LIBWS_PRIVATE_CONFIG_H__
+
+#endif // __LIBWS_PRIVATE_CONFIG_H__
