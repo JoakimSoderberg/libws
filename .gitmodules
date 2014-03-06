@@ -10,3 +10,6 @@
 [submodule "test/autobahn/cargo"]
 	path = test/autobahn/cargo
 	url = https://github.com/JoakimSoderberg/cargo.git
+[submodule "deps/libevent"]
+	path = deps/libevent
+	url = https://github.com/libevent/libevent.git
