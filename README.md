@@ -5,4 +5,6 @@ libws
 
 A multiplatform C websocket client library.
 
+Currently it passes all the tests in the Autobahn Test Suite (excluding extensions).
+
 NOTE! This is still in early non-working pre-alpha stage!
