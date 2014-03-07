@@ -1,9 +1,3 @@
-[submodule "examples/autobahntest/cargo"]
-	path = examples/autobahntest/cargo
-	url = https://github.com/JoakimSoderberg/cargo.git
-[submodule "examples/autobahntest/jansson"]
-	path = examples/autobahntest/jansson
-	url = https://github.com/akheron/jansson.git
 [submodule "test/autobahn/jansson"]
 	path = test/autobahn/jansson
 	url = https://github.com/akheron/jansson.git
