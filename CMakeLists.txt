@@ -89,6 +89,7 @@ endif(LIBWS_WITH_OPENSSL)
 ################################################################################
 
 check_include_files(unistd.h LIBWS_HAVE_UNISTD_H)
+check_include_files(sys/socket.h LIBWS_HAVE_SYS_SOCKET_H)
 check_include_files(sys/time.h LIBWS_HAVE_SYS_TIME_H)
 check_include_files(stdint.h LIBWS_HAVE_STDINT_H)
 check_include_files(inttypes.h LIBWS_HAVE_INTTYPES_H)

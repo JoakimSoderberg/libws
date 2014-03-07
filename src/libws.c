@@ -9,17 +9,27 @@
 #include <stdio.h>
 #ifdef _WIN32
 #include <WinSock2.h>
-#else
+#endif
+#ifdef LIBWS_HAVE_SYS_SOCKET_H
 #include <sys/socket.h>
 #endif
+
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <assert.h>
+
+#ifdef LIBWS_HAVE_STDINT_H
 #include <stdint.h>
-#include <inttypes.h>
-#ifndef _WIN32
-#include <unistd.h> // TODO: System introspection.
 #endif
+
+#ifdef LIBWS_HAVE_INTTYPES_H
+#include <inttypes.h>
+#endif
+
+#ifdef LIBWS_HAVE_UNISTD_H
+#include <unistd.h>
+#endif
+
 #include <string.h>
 #include <signal.h>
 
@@ -65,6 +75,10 @@ int ws_global_init(ws_base_t *base)
 
 	#ifdef _WIN32
 	// Initialize Winsock.
+
+	// An application can call WSAStartup more than once if it needs to obtain 
+	// the WSADATA structure information more than once. On each such call, 
+	// the application can specify any version number supported by the Winsock DLL.
 	err = WSAStartup(MAKEWORD(2,2), &wsa_data);
 
 	if (err != 0)
@@ -76,6 +90,7 @@ int ws_global_init(ws_base_t *base)
 	if (LOBYTE(wsa_data.wVersion) != 2 || HIBYTE(wsa_data.wVersion) != 2)
 	{
 		LIBWS_LOG(LIBWS_ERR, "Failed to get v2.2 of Winsock");
+		WSACleanup();
 		return -1;
 	}
 	#else
@@ -98,7 +113,6 @@ int ws_global_init(ws_base_t *base)
 			goto fail;
 		}
 
-		// TODO: Passing 1 here fails on windows... dns/server regress test in Libevent does not.
 		if (!(b->dns_base = evdns_base_new(b->ev_base, 1)))
 		{
 			LIBWS_LOG(LIBWS_CRIT, "Out of memory!");
@@ -140,8 +154,16 @@ void ws_global_destroy(ws_base_t *base)
 	b = *base;
 
 	#ifdef _WIN32
+	// An application must call the WSACleanup function for every successful time
+	// the WSAStartup function is called. This means, for example, that if an
+	// application calls WSAStartup three times, it must call WSACleanup three times.
+	// The first two calls to WSACleanup do nothing except decrement an internal counter;
+	// the final WSACleanup call for the task does all necessary resource
+	// deallocation for the task.
 	WSACleanup();
+	
 	#else
+
 	if (close(b->random_fd))
 	{
 		LIBWS_LOG(LIBWS_ERR, "Failed to close random source: %s (%d)", 
@@ -213,8 +235,6 @@ void ws_destroy(ws_t *ws)
 		return; 
 
 	w = *ws;
-
-	// TODO: If connected, send close frame with status WS_CLOSE_STATUS_GOING_AWAY_1001
 
 	if (w->bev)
 	{
@@ -469,58 +489,6 @@ int ws_base_quit(ws_base_t base, int let_running_events_complete)
 	return ws_base_quit_delay(base, let_running_events_complete, NULL);
 }
 
-#if 0
-int ws_service(ws_t ws)
-{
-	assert(ws);
-
-	if (event_base_loop(ws->base, EVLOOP_NONBLOCK))
-	{
-		LIBWS_LOG(LIBWS_ERR, "Failed to feed event loop");
-		return -1;
-	}
-
-	return 0;
-}
-
-int ws_service_until_quit(ws_t ws)
-{
-	int ret;
-	assert(ws);
-
-	ret = event_base_dispatch(ws->base);
-
-	ws->state = WS_STATE_DISCONNECTED;
-
-	return ret;
-}
-
-int ws_quit(ws_t ws, int let_running_events_complete)
-{
-	int ret;
-	assert(ws);
-
-	if (!ws->base)
-	{
-		LIBWS_LOG(LIBWS_ERR, "Websocket event base not initialized");
-		return -1;
-	}
-
-	ws_close(ws);
-
-	if (let_running_events_complete)
-	{
-		ret = event_base_loopexit(ws->base, NULL);
-	}
-	else
-	{
-		ret = event_base_loopbreak(ws->base);
-	}
-
-	return ret;
-}
-#endif
-
 char *ws_get_uri(ws_t ws, char *buf, size_t bufsize)
 {
 	assert(ws);
@@ -532,11 +500,15 @@ char *ws_get_uri(ws_t ws, char *buf, size_t bufsize)
 	}
 
 	// TODO: Check return value?
-	evutil_snprintf(buf, bufsize, "%s://%s:%d/%s", 
+	if (evutil_snprintf(buf, bufsize, "%s://%s:%d/%s", 
 		(ws->use_ssl != LIBWS_SSL_OFF) ? "wss" : "ws", 
 		ws->server,
 		ws->port,
-		ws->uri);
+		ws->uri) < 0)
+	{
+		LIBWS_LOG(LIBWS_ERR, "Buffer of size %lu is too small for uri", bufsize);
+		return NULL;
+	}
 
 	return buf;
 }
@@ -644,7 +616,6 @@ int ws_msg_frame_data_begin(ws_t ws, uint64_t datalen)
 	 	return -1;
 	}
 
-	// TODO: Use this function for WS_OPCODE_PING/PONG as well?
 	if (ws->send_state == WS_SEND_STATE_MESSAGE_BEGIN)
 	{
 		// Opcode will be set to either TEXT or BINARY here.
@@ -718,7 +689,6 @@ int ws_msg_frame_send(ws_t ws, char *frame_data, uint64_t datalen)
 		return -1;
 	}
 
-	// TODO: This can be chunked.
 	if (ws_msg_frame_data_send(ws, frame_data, datalen))
 	{
 		return -1;
@@ -765,7 +735,7 @@ int ws_send_msg_ex(ws_t ws, char *msg, uint64_t len, int binary)
 	saved_binary_mode = ws->binary_mode;
 	ws->binary_mode = binary;
 
-	// TODO: Use _ws_send_frame_raw if we're not fragmenting the message.
+	// Use _ws_send_frame_raw if we're not fragmenting the message.
 	if (len <= ws->max_frame_size)
 	{
 		return _ws_send_frame_raw(ws, 
