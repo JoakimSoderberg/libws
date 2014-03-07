@@ -8,7 +8,6 @@
 
 #include <stdio.h>
 #ifdef _WIN32
-#error "Testing jenkins!"
 #include <WinSock2.h>
 #endif
 #ifdef LIBWS_HAVE_SYS_SOCKET_H
