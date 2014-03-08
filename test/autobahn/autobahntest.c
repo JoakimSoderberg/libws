@@ -245,7 +245,7 @@ void onmsg(ws_t ws, char *msg, uint64_t len, int binary, void *arg)
 
 void onping(ws_t ws, char *payload, uint64_t len, int binary, void *arg)
 {
-	ws_onping_default_cb(ws, payload, len, binary, arg);
+	ws_default_onping_cb(ws, payload, len, binary, arg);
 	printf("Ping! (%"PRIu64" byte payload)\n", len);
 }
 

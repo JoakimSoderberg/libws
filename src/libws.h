@@ -334,6 +334,7 @@ ws_header_t *ws_get_header(ws_t ws);
 /// 
 void ws_set_onconnect_cb(ws_t ws, ws_connect_callback_f func, void *arg);
 
+
 ///
 /// Sets the message callback function. Once a full websocket message
 /// has been received and assembeled this function will be called.
@@ -559,7 +560,7 @@ int ws_set_origin(ws_t ws, const char *origin);
 /// @param[in]	len 	The ping payload length.
 /// @param[in]	arg		User context passed to the callback.
 ///
-void ws_onping_default_cb(ws_t ws, char *msg, uint64_t len, 
+void ws_default_onping_cb(ws_t ws, char *msg, uint64_t len, 
 							int binary, void *arg);
 
 ///
@@ -575,7 +576,7 @@ void ws_onping_default_cb(ws_t ws, char *msg, uint64_t len,
 /// @param[in]	len 	The pong payload length.
 /// @param[in]	arg		User context passed to the callback.
 ///
-void ws_onpong_default_cb(ws_t ws, char *msg, uint64_t len, 
+void ws_default_onpong_cb(ws_t ws, char *msg, uint64_t len, 
 						int binary, void *arg);
 
 ///
@@ -826,5 +827,4 @@ void ws_set_rate_limits(ws_t ws, size_t read_rate, size_t read_burst,
 						size_t write_rate, size_t write_burst);
 
 #endif // __LIBWS_H__
-
 

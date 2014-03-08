@@ -211,8 +211,8 @@ int ws_init(ws_t *ws, ws_base_t ws_base)
 	// Just for convenience.
 	w = *ws;
 
-	w->ping_cb = ws_onping_default_cb;
-	w->pong_cb = ws_onpong_default_cb;
+	w->ping_cb = ws_default_onping_cb;
+	w->pong_cb = ws_default_onpong_cb;
 	w->msg_begin_cb = ws_default_msg_begin_cb;
 	w->msg_frame_cb = ws_default_msg_frame_cb;
 	w->msg_end_cb = ws_default_msg_end_cb;
@@ -925,7 +925,7 @@ int ws_set_origin(ws_t ws, const char *origin)
 	return 0;
 }
 
-void ws_onping_default_cb(ws_t ws, char *msg, uint64_t len, 
+void ws_default_onping_cb(ws_t ws, char *msg, uint64_t len, 
 						int binary, void *arg)
 {
 	assert(ws);
@@ -940,11 +940,11 @@ void ws_set_onping_cb(ws_t ws, ws_msg_callback_f func, void *arg)
 {
 	assert(ws);
 
-	ws->ping_cb = func ? func : ws_onping_default_cb;
+	ws->ping_cb = func ? func : ws_default_onping_cb;
 	ws->ping_arg = arg;
 }
 
-void ws_onpong_default_cb(ws_t ws, char *msg, uint64_t len, 
+void ws_default_onpong_cb(ws_t ws, char *msg, uint64_t len, 
 						int binary, void *arg)
 {
 	assert(ws);
@@ -957,7 +957,7 @@ void ws_set_onpong_cb(ws_t ws, ws_msg_callback_f func, void *arg)
 {
 	assert(ws);
 
-	ws->pong_cb = func ? func : ws_onpong_default_cb;
+	ws->pong_cb = func ? func : ws_default_onpong_cb;
 	ws->pong_arg = arg;
 }
 
