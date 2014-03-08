@@ -110,6 +110,17 @@ int ws_close(ws_t ws);
 ///
 int ws_close_with_status(ws_t ws, ws_close_status_t status);
 
+///
+/// Closes the websocket connecton, with a specified status code
+/// and reason text.
+///
+/// @see ws_close, ws_close_with_status
+///
+/// @param[in] ws 		Websocket context.
+/// @param[in] status 	Status code.
+///
+/// @returns 0 on success. -1 on failure.
+///
 int ws_close_with_status_reason(ws_t ws, ws_close_status_t status, 
 				const char *reason, size_t reason_len);
 
@@ -155,45 +166,8 @@ int ws_base_quit_delay(ws_base_t base, int let_running_events_complete,
 ///
 int ws_base_quit(ws_base_t base, int let_running_events_complete);
 
-#if 0
-///
-/// Services the Websocket connection.
-///
-/// @param[in] ws 	The websocket context to be serviced.
-///
-/// @returns 0 on success. -1 on failure.
-///
-int ws_service(ws_t ws);
-
-///
-/// Services the Websocket connection blocking until
-/// the connection is quit.
-///
-/// @param[in] ws 	The websocket session context.
-///
-/// @returns		0 on success, -1 otherwise.
-///
-int ws_service_until_quit(ws_t ws);
-
-///
-/// Quit/disconnect from a websocket connection.
-///
-/// @param[in] ws 	The websocket session context.
-/// @param[in] let_running_events_complete
-///					Should we let pending events run, or quit
-///					right away?
-///
-/// @returns		0 on success.
-///
-int ws_quit(ws_t ws, int let_running_events_complete);
-#endif
-
 ///
 /// Send a websocket message.
-///
-/// @note To send binary data call #ws_set_binary first.
-///
-/// @see ws_set_binary
 ///
 /// @param[in]	ws 		The websocket session context.
 /// @param[in]	msg 	The message payload UTF-8 string or binary.
@@ -207,31 +181,24 @@ int ws_send_msg_ex(ws_t ws, char *msg, uint64_t len, int binary);
 ///
 /// Send a websocket UTF-8 text message.
 ///
-/// @note This overrides the binary mode set with #ws_set_binary
-/// 	  to send binary data use #ws_send_msg_ex instead
-///
 /// @see ws_send_msg_ex
 ///
 /// @param[in]	ws 		The websocket session context.
-/// @param[in]	msg 	The message payload UTF-8 string or binary.
+/// @param[in]	msg 	The message payload UTF-8 string.
 ///
 /// @returns			0 on success.
 ///
 int ws_send_msg(ws_t ws, char *msg);
 
-//
-// Based on this API:
-// http://autobahn.ws/python/tutorials/streaming
-//
-
 ///
 /// Begin sending a websocket message of the given type.
 ///
 /// @param[in]	ws 		The websocket session context.
+/// @param[in]	binary	Send in binary mode.
 ///
 /// @returns			0 on success.
 ///
-int ws_msg_begin(ws_t ws);
+int ws_msg_begin(ws_t ws, int binary);
 
 ///
 /// Starts sending a websocket frame.
@@ -279,8 +246,10 @@ int ws_msg_frame_data_begin(ws_t ws, uint64_t datalen);
 int ws_msg_frame_data_send(ws_t ws, char *data, uint64_t datalen);
 
 ///
-/// Sends a ping. To receive the pong reply use 
+/// Sends a ping with no payload. To receive the pong reply use 
 /// #ws_set_onpong_cb to set a callback.
+///
+/// @see ws_send_ping_ex, ws_set_onpong_cb
 ///
 /// @param[in]	ws 		The websocket session context.
 ///
@@ -291,6 +260,9 @@ int ws_send_ping(ws_t ws);
 ///
 /// Sends a ping with a payload. Same as #ws_send_ping but with
 /// a specified payload.
+///
+/// @see ws_send_ping, ws_set_onpong_cb
+///
 /// @param[in]	ws 		The websocket session context.
 /// @param[in]	data 	The frame payload data to send.
 /// @param[in]	datalen	The length of the frame payload.
@@ -313,11 +285,10 @@ int ws_send_ping_ex(ws_t ws, char *msg, size_t len);
 /// @param[in]	ws 		The websocket session context.
 /// @param[in]	msg 	Pong payload (MUST be same as ping payload).
 /// @param[in]	len 	Length of pong payload.
-/// @param[in]	binary  Send payload as binary?
 ///
 /// @returns 			0 on success.
 /// 
-int ws_send_pong(ws_t ws, char *msg, size_t len, int binary);
+int ws_send_pong(ws_t ws, char *msg, size_t len);
 
 ///
 /// Sets the max allowed frame size. If any frame size exceeds
@@ -644,15 +615,6 @@ void ws_set_onpong_cb(ws_t ws, ws_msg_callback_f func, void *arg);
 /// 
 void ws_set_pong_timeout_cb(ws_t ws, ws_timeout_callback_f func, 
 							struct timeval timeout, void *arg);
-
-///
-/// Sets binary mode for the messages that are sent 
-/// to the websocket connection.
-///
-/// @param[in]	ws 		The websocket session context.
-/// @param[in]	binary	Set to 1 if binary mode should be used.
-///
-void ws_set_binary(ws_t ws, int binary);
 
 ///
 /// Adds a HTTP header to the initial connection handshake.

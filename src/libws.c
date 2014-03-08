@@ -1,5 +1,6 @@
 
 #include "libws_config.h"
+#include "libws_private_config.h"
 
 #include <event2/dns.h>
 #include <event2/event.h>
@@ -559,7 +560,7 @@ void *ws_get_user_state(ws_t ws)
 		return -1; \
 	} 
 
-int ws_msg_begin(ws_t ws)
+int ws_msg_begin(ws_t ws, int binary)
 {
 	assert(ws);
 	_WS_MUST_BE_CONNECTED(ws, "message begin");
@@ -570,6 +571,8 @@ int ws_msg_begin(ws_t ws)
 	{
 		return -1;
 	}
+
+	ws->binary_mode = binary;
 
 	memset(&ws->header, 0, sizeof(ws_header_t));
 	// FIN, RSVx bits are 0.
@@ -732,9 +735,6 @@ int ws_send_msg_ex(ws_t ws, char *msg, uint64_t len, int binary)
 
 	LIBWS_LOG(LIBWS_TRACE, "Send message start");
 
-	saved_binary_mode = ws->binary_mode;
-	ws->binary_mode = binary;
-
 	// Use _ws_send_frame_raw if we're not fragmenting the message.
 	if (len <= ws->max_frame_size)
 	{
@@ -743,7 +743,7 @@ int ws_send_msg_ex(ws_t ws, char *msg, uint64_t len, int binary)
 				msg, len);
 	}
 
-	if (ws_msg_begin(ws))
+	if (ws_msg_begin(ws, binary))
 	{
 		return -1;
 	}
@@ -777,8 +777,6 @@ int ws_send_msg_ex(ws_t ws, char *msg, uint64_t len, int binary)
 	{
 		return -1;
 	}
-
-	ws->binary_mode = saved_binary_mode;
 
 	LIBWS_LOG(LIBWS_TRACE, "Send message end");
 
@@ -926,7 +924,7 @@ void ws_onping_default_cb(ws_t ws, char *msg, uint64_t len,
 {
 	assert(ws);
 
-	if (ws_send_pong(ws, msg, (size_t)len, binary))
+	if (ws_send_pong(ws, msg, (size_t)len))
 	{
 		LIBWS_LOG(LIBWS_ERR, "Failed to send pong");
 	}
@@ -964,12 +962,6 @@ void ws_set_pong_timeout_cb(ws_t ws, ws_timeout_callback_f func,
 
 	ws->pong_timeout_cb = func;
 	ws->pong_timeout_arg = arg;
-}
-
-void ws_set_binary(ws_t ws, int binary)
-{
-	assert(ws);
-	ws->binary_mode = binary;
 }
 
 int ws_add_header(ws_t ws, const char *header, const char *value)
@@ -1058,7 +1050,7 @@ int ws_send_ping(ws_t ws)
 	return ws_send_ping_ex(ws, NULL, 0);
 }
 
-int ws_send_pong(ws_t ws, char *msg, size_t len, int binary)
+int ws_send_pong(ws_t ws, char *msg, size_t len)
 {
 	assert(ws);
 
