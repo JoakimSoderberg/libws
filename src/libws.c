@@ -730,6 +730,8 @@ int ws_msg_end(ws_t ws)
 int ws_send_msg_ex(ws_t ws, char *msg, uint64_t len, int binary)
 {
 	int saved_binary_mode;
+	uint64_t curlen;
+	uint64_t remaining;
 	assert(ws);
 	_WS_MUST_BE_CONNECTED(ws, "send message");
 
@@ -743,35 +745,30 @@ int ws_send_msg_ex(ws_t ws, char *msg, uint64_t len, int binary)
 				msg, len);
 	}
 
+	// Split the message into multiple frames.
 	if (ws_msg_begin(ws, binary))
 	{
 		return -1;
 	}
 
-	if (ws_msg_frame_send(ws, msg, len))
-	{
-		return -1;
-	}
+	curlen = (len > ws->max_frame_size)
+			? ws->max_frame_size : len;
+	remaining = len;
 
-	/*
-	TODO: Send in chunks based on max_frame_size
-	while (1)
+	do
 	{
+		curlen = (remaining > ws->max_frame_size)
+				? ws->max_frame_size : remaining;
 
-		if (ws_msg_frame_send(ws, msg, len))
+		if (ws_msg_frame_send(ws, msg, curlen))
 		{
 			return -1;
 		}
 
-		if (ws->max_frame_size)
-		{
-			if (len > ws->max_frame_size)
-			{
-				break;
-			}
-		}
+		msg += curlen;
+		remaining -= curlen;
 	}
-	*/
+	while (remaining > 0);
 
 	if (ws_msg_end(ws))
 	{
