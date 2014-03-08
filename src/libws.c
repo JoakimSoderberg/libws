@@ -211,6 +211,15 @@ int ws_init(ws_t *ws, ws_base_t ws_base)
 	// Just for convenience.
 	w = *ws;
 
+	w->ping_cb = ws_onping_default_cb;
+	w->pong_cb = ws_onpong_default_cb;
+	w->msg_begin_cb = ws_default_msg_begin_cb;
+	w->msg_frame_cb = ws_default_msg_frame_cb;
+	w->msg_end_cb = ws_default_msg_end_cb;
+	w->msg_frame_begin_cb = ws_default_msg_frame_begin_cb;
+	w->msg_frame_data_cb = ws_default_msg_frame_data_cb;
+	w->msg_frame_end_cb = ws_default_msg_frame_end_cb;
+
 	w->ws_base = ws_base;
 
 	#ifdef LIBWS_WITH_OPENSSL
@@ -834,7 +843,7 @@ void ws_set_onmsg_begin_cb(ws_t ws, ws_msg_begin_callback_f func, void *arg)
 {
 	assert(ws);
 
-	ws->msg_begin_cb = func;
+	ws->msg_begin_cb = func ? func : ws_default_msg_begin_cb;
 	ws->msg_begin_arg = arg;
 }
 
@@ -842,7 +851,7 @@ void ws_set_onmsg_frame_cb(ws_t ws, ws_msg_frame_callback_f func, void *arg)
 {
 	assert(ws);
 
-	ws->msg_frame_cb = func;
+	ws->msg_frame_cb = func ? func : ws_default_msg_frame_cb;
 	ws->msg_frame_arg = arg;
 }
 
@@ -850,7 +859,7 @@ void ws_set_onmsg_end_cb(ws_t ws, ws_msg_end_callback_f func, void *arg)
 {
 	assert(ws);
 
-	ws->msg_end_cb = func;
+	ws->msg_end_cb = func ? func : ws_default_msg_end_cb;
 	ws->msg_end_arg = arg;
 }
 
@@ -859,7 +868,7 @@ void ws_set_onmsg_frame_begin_cb(ws_t ws, ws_msg_frame_begin_callback_f func,
 {
 	assert(ws);
 
-	ws->msg_frame_begin_cb = func;
+	ws->msg_frame_begin_cb = func ? func : ws_default_msg_frame_begin_cb;
 	ws->msg_frame_begin_arg = arg;
 }
 
@@ -868,7 +877,7 @@ void ws_set_onmsg_frame_data_cb(ws_t ws, ws_msg_frame_data_callback_f func,
 {
 	assert(ws);
 
-	ws->msg_frame_data_cb = func;
+	ws->msg_frame_data_cb = func ? func : ws_default_msg_frame_data_cb;
 	ws->msg_frame_data_arg = arg;
 }
 
@@ -877,7 +886,7 @@ void ws_set_onmsg_frame_end_cb(ws_t ws, ws_msg_frame_end_callback_f func,
 {
 	assert(ws);
 
-	ws->msg_frame_end_cb = func;
+	ws->msg_frame_end_cb = func ? func : ws_default_msg_frame_end_cb;
 	ws->msg_frame_end_arg = arg;
 }
 

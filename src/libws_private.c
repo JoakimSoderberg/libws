@@ -330,14 +330,7 @@ int _ws_handle_ping_frame(ws_t ws)
 	assert(ws);
 	LIBWS_LOG(LIBWS_TRACE, "  Ping frame");
 
-	if (ws->ping_cb)
-	{
-		ws->ping_cb(ws, ws->ctrl_payload, ws->ctrl_len, 1, NULL);
-	}
-	else
-	{
-		ws_onping_default_cb(ws, ws->ctrl_payload, ws->ctrl_len, 1, NULL);
-	}
+	ws->ping_cb(ws, ws->ctrl_payload, ws->ctrl_len, 1, NULL);
 
 	return 0;
 }
@@ -347,14 +340,7 @@ int _ws_handle_pong_frame(ws_t ws)
 	assert(ws);
 	LIBWS_LOG(LIBWS_TRACE, "  Pong frame");
 
-	if (ws->pong_cb)
-	{
-		ws->pong_cb(ws, ws->ctrl_payload, ws->ctrl_len, 0, NULL);
-	}
-	else
-	{
-		ws_onpong_default_cb(ws, ws->ctrl_payload, ws->ctrl_len, 0, NULL);
-	}
+	ws->pong_cb(ws, ws->ctrl_payload, ws->ctrl_len, 0, NULL);
 
 	return 0;
 }
@@ -412,26 +398,12 @@ int _ws_handle_frame_begin(ws_t ws)
 		ws->utf8_state = WS_UTF8_ACCEPT;
 		ws->msg_isbinary = (ws->header.opcode == WS_OPCODE_BINARY_0X2);
 
-		if (ws->msg_begin_cb)
-		{
-			LIBWS_LOG(LIBWS_DEBUG, "Call message begin callback");
-			ws->msg_begin_cb(ws, ws->msg_begin_arg);
-		}
-		else
-		{
-			ws_default_msg_begin_cb(ws, ws->msg_begin_arg);
-		}
+		LIBWS_LOG(LIBWS_DEBUG, "Call message begin callback");
+		ws->msg_begin_cb(ws, ws->msg_begin_arg);
 	}
 
-	if (ws->msg_frame_begin_cb)
-	{
-		LIBWS_LOG(LIBWS_DEBUG, "Call frame begin callback");
-		ws->msg_frame_begin_cb(ws, ws->msg_frame_begin_arg);
-	}
-	else
-	{
-		ws_default_msg_frame_begin_cb(ws, ws->msg_frame_begin_arg);
-	}
+	LIBWS_LOG(LIBWS_DEBUG, "Call frame begin callback");
+	ws->msg_frame_begin_cb(ws, ws->msg_frame_begin_arg);
 
 	return 0;
 }
@@ -465,14 +437,7 @@ int _ws_handle_frame_data(ws_t ws, char *buf, size_t len)
 		return ret;
 	}
 
-	if (ws->msg_frame_data_cb)
-	{
-		ws->msg_frame_data_cb(ws, buf, len, ws->msg_frame_data_arg);
-	}
-	else
-	{
-		ws_default_msg_frame_data_cb(ws, buf, len, ws->msg_frame_data_arg);
-	}
+	ws->msg_frame_data_cb(ws, buf, len, ws->msg_frame_data_arg);
 
 	return ret;
 }
@@ -488,26 +453,11 @@ int _ws_handle_frame_end(ws_t ws)
 		return _ws_handle_control_frame(ws);
 	}
 
-	if (ws->msg_frame_end_cb)
-	{
-		ws->msg_frame_end_cb(ws, ws->msg_frame_end_arg);
-	}
-	else
-	{
-		ws_default_msg_frame_end_cb(ws, ws->msg_frame_end_arg);
-	}
+	ws->msg_frame_end_cb(ws, ws->msg_frame_end_arg);
 
 	if (ws->header.fin)
 	{
-		if (ws->msg_end_cb)
-		{
-			ws->msg_end_cb(ws, ws->msg_end_arg);
-		}
-		else
-		{
-			ws_default_msg_end_cb(ws, ws->msg_end_arg);
-		}
-
+		ws->msg_end_cb(ws, ws->msg_end_arg);
 		ws->in_msg = 0;
 	}
 

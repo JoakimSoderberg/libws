@@ -334,7 +334,6 @@ ws_header_t *ws_get_header(ws_t ws);
 /// 
 void ws_set_onconnect_cb(ws_t ws, ws_connect_callback_f func, void *arg);
 
-
 ///
 /// Sets the message callback function. Once a full websocket message
 /// has been received and assembeled this function will be called.
