@@ -3,5 +3,9 @@
 
 #cmakedefine LIBWS_HAVE_UNISTD_H
 #cmakedefine LIBWS_HAVE_SYS_TIME_H
+#cmakedefine LIBWS_HAVE_SYS_SOCKET_H
+#cmakedefine LIBWS_HAVE_STDINT_H
+#cmakedefine LIBWS_HAVE_INTTYPES_H
+#cmakedefine LIBWS_HAVE_SYS_TYPES_H
 
 #endif // __LIBWS_PRIVATE_CONFIG_H__
