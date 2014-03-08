@@ -332,11 +332,11 @@ int _ws_handle_ping_frame(ws_t ws)
 
 	if (ws->ping_cb)
 	{
-		ws->ping_cb(ws, ws->ctrl_payload, ws->ctrl_len, 0, NULL);
+		ws->ping_cb(ws, ws->ctrl_payload, ws->ctrl_len, 1, NULL);
 	}
 	else
 	{
-		ws_onping_default_cb(ws, ws->ctrl_payload, ws->ctrl_len, 0, NULL);
+		ws_onping_default_cb(ws, ws->ctrl_payload, ws->ctrl_len, 1, NULL);
 	}
 
 	return 0;
