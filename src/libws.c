@@ -738,7 +738,7 @@ int ws_send_msg_ex(ws_t ws, char *msg, uint64_t len, int binary)
 	LIBWS_LOG(LIBWS_TRACE, "Send message start");
 
 	// Use _ws_send_frame_raw if we're not fragmenting the message.
-	if (len <= ws->max_frame_size)
+	if ((len <= ws->max_frame_size) || !ws->max_frame_size)
 	{
 		return _ws_send_frame_raw(ws, 
 				binary ? WS_OPCODE_BINARY_0X2 : WS_OPCODE_TEXT_0X1, 
